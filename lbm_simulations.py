@@ -103,9 +103,6 @@ def main(data_type):
 
 if __name__ == "__main__":
 
-    print("Starting training simulations...")
     main('train')
-    print("Starting validation simulations...")
     main('validation')
-    print("Starting test simulations...")
     main('test')

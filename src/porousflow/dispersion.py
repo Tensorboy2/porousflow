@@ -111,7 +111,7 @@ if __name__ == "__main__":
     solid[:,0] = True
     solid[:,-1] = True
 
-    u_physical, kx_phys, ky_phys, iteration, Ma, Re_lattice, dt, tau, Re_lattice_2 = LBM_solver(
+    u_physical, kx_phys, ky_phys, iteration, Ma, Re_lattice, dt, tau, Re_lattice_2, dx, F = LBM_solver(
         solid, L_physical=1e-3, max_iterations=1_000)
 
     u_max = np.max(u_physical[:,:,0])
@@ -137,7 +137,7 @@ if __name__ == "__main__":
     L = solid.shape[0] * dx
     g =10.0  # body force in m/s^2
     nu=1e-6  # physical kinematic viscosity in m^2/s
-    u_max = g*(L**2)/(8.0*nu) # Poiseuille analytic u-max.
+    # u_max = g*(L**2)/(8.0*nu) # Poiseuille analytic u-max.
     print("u_max =", u_max)
     D_phys = u_max * L / target_Pe
 

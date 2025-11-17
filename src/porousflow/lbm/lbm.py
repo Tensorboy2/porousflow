@@ -13,7 +13,7 @@ def LBM_solver(solid, force_dir=0,
             rho_phys=1e3,     # density [kg/m^3]
             g=10.0,      # gravity [m/s^2]
             tau=1.5,         # relaxation parameter 
-            max_iterations=200_000,
+            max_iterations=100_000,
             convergence_threshold=1e-8):
     Nx, Ny = solid.shape
 
