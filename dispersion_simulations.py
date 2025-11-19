@@ -18,7 +18,7 @@ def load_media_samples(image_path):
 
 def load_lbm_results(lbm_path, index):
     data = np.load(os.path.join(lbm_path, f'simulation_result_{index}.npz'))
-    ux = data['u_physical']
+    ux = data['ux_physical']
     uy = data['uy_physical']
     return ux, uy
 
@@ -32,28 +32,39 @@ def check_if_file_exists(save_path, sample_index):
 def worker(index, save_path, solid, ux, uy, rank):
     start = MPI.Wtime()
 
+    dx = 1  # from L_physical and grid size
+    Pe = 200
+    L = solid.shape[0]
+    ux_mean = np.mean(ux[~solid])
+    uy_mean = np.mean(uy[~solid])
+    D_m_x = ux_mean * L / Pe
+    D_m_y = uy_mean * L / Pe
+    steps = int(1e5)  # simulate long enough to reach asymptotic regime
+    dt = 5e-2#min(dx**2 / (2.0 * D), dx / np.max(ux))
+
     # dispersion in x direction
     Dx = run_dispersion_sim_physical(
         solid=solid,
         velocity=ux,
-        steps=50_000,
-        num_particles=10_000,
+        steps=steps,
+        num_particles=1_000,
         velocity_strength=1.0,
-        dt=0.01,
-        D=1.0,
-        dx=1.0
+        dt=dt,
+        D=D_m_x,
+        dx=dx
     )
 
+    # dt = min(dx**2 / (2.0 * D), dx / np.max(uy))
     # dispersion in y direction
     Dy = run_dispersion_sim_physical(
         solid=solid,
         velocity=uy,
-        steps=50_000,
-        num_particles=10_000,
+        steps=steps,
+        num_particles=1_000,
         velocity_strength=1.0,
-        dt=0.01,
-        D=1.0,
-        dx=1.0
+        dt=dt,
+        D=D_m_y,
+        dx=dx
     )
 
     end = MPI.Wtime()

@@ -21,6 +21,23 @@ def detect_percolation(binary_img):
 
     return x_perc, y_perc, labeled
 
+
+def fill_non_percolating_fluid(binary_img):
+    """
+    # Not in use!
+    Turns non-percolating fluid regions into solid.
+    """
+    labels, _ = label(~binary_img)
+    top, bottom = set(labels[0, :]) - {0}, set(labels[-1, :]) - {0}
+    left, right = set(labels[:, 0]) - {0}, set(labels[:, -1]) - {0}
+
+    percolating = (top & bottom) | (left & right)
+    non_perc_mask = (labels > 0) & ~np.isin(labels, list(percolating))
+
+    filled_img = binary_img.copy()
+    filled_img[non_perc_mask] = True  # fill in fluid to solid
+    return filled_img
+
 def fill_non_percolating_fluid_periodic(binary_img):
     """Turns non-percolating fluid regions into solid with periodic BCs."""
     h, w = binary_img.shape
@@ -51,15 +68,24 @@ def fill_non_percolating_fluid_periodic(binary_img):
 
 if __name__ == "__main__":
     # Example usage
-    test_img = np.array([[True, False, True, True],
-                         [False, False, True, False],
-                         [True, True, False, True],
-                         [True, False, True, True]])
+    from binary_blobs import periodic_binary_blobs
+    import matplotlib.pyplot as plt
+
+    test_img = periodic_binary_blobs(n_dim=2, length=128, volume_fraction=0.4, blob_size_fraction=0.1, 
+                                     seed=0)
+    plt.subplot(1, 2, 1)
+    plt.imshow(test_img, cmap='gray')
+    plt.title("Original Image")
 
     x_perc, y_perc, labels = detect_percolation(test_img)
     print("Percolation in x:", x_perc)
     print("Percolation in y:", y_perc)
-    print("Labeled clusters:\n", labels)
+    # print("Labeled clusters:\n", labels)
 
     filled_img = fill_non_percolating_fluid_periodic(test_img)
-    print("Filled image:\n", filled_img)
+    # print("Filled image:\n", filled_img)
+    plt.subplot(1, 2, 2)
+    plt.imshow(filled_img, cmap='gray')
+    plt.title("Filled Non-Percolating Regions")
+
+    plt.show()

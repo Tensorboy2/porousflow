@@ -4,6 +4,7 @@ dispersion.py
 Module for simulating dispersion in porous flow.
 '''
 import numpy as np
+import os 
 from numba import njit
 
 
@@ -36,8 +37,8 @@ def run_dispersion_sim_physical(solid, velocity, steps, num_particles,
     
     # Initialize particles in PHYSICAL coordinates
     center = find_most_central_fluid_point(solid)
-    center_phys_x = center[0] * dx
-    center_phys_y = center[1] * dx
+    center_phys_x = center[0]
+    center_phys_y = center[1]
     
     # Use zeros + loop instead of np.full (numba compatible)
     particles_positions_unwrapped = np.zeros((num_particles, 2), dtype=np.float64)
@@ -52,6 +53,10 @@ def run_dispersion_sim_physical(solid, velocity, steps, num_particles,
     initial_positions = particles_positions_unwrapped.copy()
     
     M_t_all = np.zeros((steps, 2, 2))
+    # inc = 1000
+    # positions_for_plot = np.zeros((num_particles, 2, steps//inc), dtype=np.float64)
+    # positions_for_plot[:, 0, 0] = particles_positions_wrapped[:, 0]
+    # positions_for_plot[:, 1, 0] = particles_positions_wrapped[:, 1]
     
     for step in range(steps):
         for i in range(num_particles):
@@ -85,6 +90,10 @@ def run_dispersion_sim_physical(solid, velocity, steps, num_particles,
                 particles_positions_wrapped[i, 1] = new_y_phys
                 particles_positions_unwrapped[i, 0] += disp_x
                 particles_positions_unwrapped[i, 1] += disp_y
+
+            # if step % inc == 0 and step > 0:
+            #     positions_for_plot[i, 0, step//inc] = particles_positions_unwrapped[i, 0]
+            #     positions_for_plot[i, 1, step//inc] = particles_positions_unwrapped[i, 1]
         
         # Dispersion tensor (now in physical units²)
         disp = particles_positions_unwrapped - initial_positions
@@ -101,59 +110,128 @@ def run_dispersion_sim_physical(solid, velocity, steps, num_particles,
 
     D = M_t_all[-1] / (2.0 * dt * steps)
     
-    return D
+    return D#M_t_all, positions_for_plot
 
 if __name__ == "__main__":
     from lbm.lbm import LBM_solver
+    import matplotlib.pyplot as plt
+    from matplotlib.animation import FuncAnimation
+
+
 
     # Example usage
     solid = np.zeros((128, 128), dtype=bool)
-    solid[:,0] = True
-    solid[:,-1] = True
+    solid[0,:] = True
+    solid[-1,:] = True
 
-    u_physical, kx_phys, ky_phys, iteration, Ma, Re_lattice, dt, tau, Re_lattice_2, dx, F = LBM_solver(
-        solid, L_physical=1e-3, max_iterations=1_000)
+    # u_physical, kx_phys, ky_phys, iteration, Ma, Re_lattice, dt, tau, Re_lattice_2, dx, F = LBM_solver(solid,force_dir=1)
 
-    u_max = np.max(u_physical[:,:,0])
-    dx = 1e-3 / 128  # from L_physical and grid size
-    D = 2.023e-9  # physical diffusion coeff [m^2/s]
-    target_Pe = 1e-3*u_max/D #1000  # advection-dominated but not purely ballistic
-    L = solid.shape[0] * dx
+
+    # u_max = np.max(u_physical[:,:,0])
+    u_physical = np.zeros((128,128,2), dtype=np.float64)
+    # analytic Poiseuille profile
+    for i in range(1, solid.shape[0]-1):
+        for j in range(0, solid.shape[1]):
+            y = i - 1
+            L = solid.shape[0] - 2
+            u_physical[i, j, 1] = 1 * 4.0 * y * (L - y) / (L**2)
+    # plt.imshow(u_physical[:,:,1], cmap='viridis')
+    # plt.colorbar()
+    # plt.show()
+
+    u_mean = np.mean(u_physical[:,:,][~solid])
+    u = u_physical/u_mean
+    u_mean = 1.0
+    # L = 1e-3* 126/128
+    # dx = L / 128  # from L_physical and grid size
+
+    D_phys = 1e-5#2.023e-9  # physical diffusion coeff [m^2/s]
+    target_Pe = 200#1e-3*u_mean/D_phys #1000  # advection-dominated but not purely ballistic
+    L = (solid.shape[0]-2)
+    D_m = u_mean * L / target_Pe
+    print("D_m =", D_m)
     # D = u_max * L / target_Pe
-    num_particles = 10_000
-    number_of_steps = 30_000
-    dt_diff = dx**2 / (2.0 * D)
-    dt_adv  = dx / u_max
-    dt = min(dt_diff, dt_adv)
-    D = run_dispersion_sim_physical(
-        solid, u_physical, steps=40000, num_particles=1000, 
-        velocity_strength=1.0, dt=dt, D=D, dx=dx)
+    dx = 1.0 # from L_physical and grid size
+    dt_diff = dx**2 / (2.0 * D_m)
+    dt_adv  = dx / u_mean
+    dt = 5e-2#min(dt_diff, dt_adv)
+    print("dt_diff =", dt_diff)
+    print("dt_adv =", dt_adv)
+    print("dt used =", dt)
+    total_steps = int(1e5)
+
+    M, positions_for_plot = run_dispersion_sim_physical(
+        solid, u, steps=total_steps, num_particles=1_000, 
+        velocity_strength=1.0, dt=dt, D=D_m, dx=dx)
     
-    D_sim = D[0, 0]  # Longitudinal dispersion coefficient
+    fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+
+    def update(i):
+        axes[0].cla()
+        axes[1].cla()
+
+        axes[0].hist(positions_for_plot[:, 0, i], bins=50)
+        axes[0].set_title(f"X distribution (step={i*1e3:.0f})")
+        # axes[0].set_xlim(-10,140)
+        axes[0].set_ylim(0,100)
+
+        axes[1].hist(positions_for_plot[:, 1, i], bins=50)
+        axes[1].set_title(f"Y distribution (step={i*1e3:.0f})")
+        # axes[1].set_xlim(-10,1000)
+        axes[1].set_ylim(0,100)
+
+        return axes
+
+    ani = FuncAnimation(fig, update, frames=positions_for_plot.shape[2], interval=24, repeat_delay=1000)
+    # ani.save("particle_distribution.gif", writer="imagemagick")
+    # plt.show()
+    # for i in range(positions_for_plot.shape[2]):
+    #     plt.subplot(1,2,1)
+    #     plt.hist(positions_for_plot[:,0,i], bins=50)
+    #     plt.subplot(1,2,2)
+    #     plt.hist(positions_for_plot[:,1,i], bins=50)
+    #     plt.close()
+    # plt.show()
+
+    plt.figure()
+    t = np.arange(total_steps)*dt
+    plt.subplot(1,2,1)
+    plt.plot(t,M[:,0,0], label='M_xx')
+    plt.plot(t,np.ones_like(t)*L**2/12, label='L^2/12', linestyle='--',alpha=0.9)
+    plt.plot(t,2*D_m*t, label='2 D_m t', linestyle='--',alpha=0.9)
+    plt.ylim(-10, L**2/10)
+    plt.legend()
+
+    plt.subplot(1,2,2)
+    plt.plot(t,M[:,1,1], label='M_yy')
+    s = total_steps*2//5
+    D_sim = (M[-1,1,1]-M[s,1,1])/(2.0*dt*total_steps*3//5)
+    intercept = M[s,1,1] - 2.0*D_sim*dt*s
+
+    plt.plot(t,t*D_sim*2 + intercept, label='2 D_sim t', linestyle='--',alpha=0.9)
+    plt.plot(t,2*D_m*t, label='2 D_m t', linestyle='--',alpha=0.9)
+    plt.legend()
+    plt.show()
+    # D_sim = D[0, 0]  # Longitudinal dispersion coefficient in physical units [m^2/s]
     
     # print("Dispersion tensor at final step:\n", M_t_all[-1])
 
     # Theoretical calculation
     L = solid.shape[0] * dx
-    g =10.0  # body force in m/s^2
+    g =10  # body force in m/s^2
     nu=1e-6  # physical kinematic viscosity in m^2/s
-    # u_max = g*(L**2)/(8.0*nu) # Poiseuille analytic u-max.
+    u_max = 0.1*g*(L**2)/(8.0*nu) # Poiseuille analytic u-max.
     print("u_max =", u_max)
-    D_phys = u_max * L / target_Pe
+    # D_phys = u_max * L / target_Pe
 
-    Pe = L * u_max / D_phys
+    Pe = L * u_mean / D_m
     print("target_Pe =", target_Pe)
     print("Calculated Pe =", Pe)
     # Pe = target_Pe / 3.0  # = (2/3 u_max)*(L/2)/D_phys -> simplifies to target_Pe/3
 
     kappa = 1.0/210.0
-    D_eff_theory = D_phys * (1.0 + Pe**2 * kappa)
-
-    # compact formula (same result)
-    # D_eff_compact = u_max * L * (1.0/target_Pe + target_Pe / 1890.0)
-    # D_laminar = (L/2)**2 * u_max**2 / (48 * D_phys)
-    # D_eff = D_phys + 1/210 * (u_max)**2* (128)**2 / D_phys
-    D_theory = D_phys + (2/105)* (u_max*2/3)**2 * (L)**2 / D_phys
+    # D_eff_theory = D_phys * (1.0 + Pe**2 * kappa)
+    D_theory = D_m*(1 + (2/105)*Pe**2) # m^2/s + (m/s)^2 * m^2 / (m^2/s) = m^2/s
 
     print("L =", L)
     print("D_phys =", D_phys)
@@ -163,8 +241,8 @@ if __name__ == "__main__":
     # print("D_laminar =", D_laminar)
 
     # print("D_eff =", D_eff)
-    print("relative error theory-sim =", abs(D_theory - D_sim) / D_eff_theory)
-    print("D_eff/D_phys =", D_theory / D_phys)
-    t_trans = (L/2)**2 / D_phys
-    t_sim = number_of_steps * dt
+    print("relative error theory-sim =", abs(D_theory - D_sim) / D_theory)
+    print("D_theory/D_sim =", D_theory / D_sim)
+    t_trans = (L)**2 / D_m
+    t_sim = total_steps * dt
     print('t_sim / t_trans =', t_sim / t_trans)

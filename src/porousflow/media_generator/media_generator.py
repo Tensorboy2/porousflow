@@ -8,12 +8,12 @@ import os
 import pandas as pd
 
 from .utils.binary_blobs import periodic_binary_blobs
-from .utils.precolation_check import detect_percolation, fill_non_percolating_fluid_periodic
+from .utils.precolation_check import detect_percolation, fill_non_percolating_fluid
 
 def generate_media(number_of_samples=1, 
                    shape=(128, 128), 
-                   porosity_range=(0.3, 0.7),
-                   sigma_range=(1.0, 3.0),
+                   porosity_range=(0.1, 0.9),
+                   sigma_range=(0.05, 0.15),
                    base_seed=0,
                    save_path=None):
     '''
@@ -45,12 +45,13 @@ def generate_media(number_of_samples=1,
         density = 1.0 - porosity
         sigma = np.random.uniform(*sigma_range)
 
-        img = periodic_binary_blobs(shape=shape, density=density, sigma=sigma, seed=seed)
+        # img = periodic_binary_blobs(n_dim=2, density=density, sigma=sigma, seed=seed)
+        img = periodic_binary_blobs(n_dim=2, length=128,volume_fraction=density, blob_size_fraction=sigma, seed=seed)
 
         x_perc, y_perc, _ = detect_percolation(img)
 
         if x_perc and y_perc:
-            filled_img = fill_non_percolating_fluid_periodic(img)
+            filled_img = fill_non_percolating_fluid(img)
             filled_imgs[total_accepted] = filled_img
             images[total_accepted] = img
             total_accepted += 1

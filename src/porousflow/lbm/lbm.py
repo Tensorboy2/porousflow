@@ -7,14 +7,16 @@ import numpy as np
 from numba import njit
 
 @njit(fastmath=True)
-def LBM_solver(solid, force_dir=0,
+def LBM_solver(solid,
+            force_dir=0,
             L_physical=1e-3,  # channel width w [m]
             nu=1e-6,          # kinematic viscosity [m^2/s]
             rho_phys=1e3,     # density [kg/m^3]
             g=10.0,      # gravity [m/s^2]
-            tau=1.5,         # relaxation parameter 
+            tau=0.9,         # relaxation parameter 
             max_iterations=100_000,
-            convergence_threshold=1e-8):
+            convergence_threshold=1e-8,
+            force_strength=1e-5):
     Nx, Ny = solid.shape
 
     # fluid mask
@@ -34,33 +36,15 @@ def LBM_solver(solid, force_dir=0,
     # parameter mapping
     # --------------------------------------------------------------------
     cs = 1.0 / np.sqrt(3.0)
-    Ma_target = 0.1
-    Re_target = 19.7
-
-    U_lattice = Ma_target * cs
-    Ma = Ma_target
-
     dx = L_physical / Nx
-    U_physical = g*(L_physical**2)/(8.0*nu) # Poiseuille analytic u-max.  Re_target * nu / L_physical
-    tau = 1.9
+    L_lattice = Ny
     nu_lattice = (tau - 0.5) / 3.0
-    dt = nu_lattice * dx**2 / nu#U_lattice * dx / U_physical
-
-    # nu_lattice = nu * dt / (dx * dx)
-    # tau = (3.0 * nu_lattice + 0.5)
-    L_lattice = float(Nx)
-    Re_lattice = U_lattice * L_lattice / nu_lattice
+    dt = nu_lattice * dx**2 / nu
 
     # --------------------------------------------------------------------
     # Force: physical -> lattice
     # --------------------------------------------------------------------
-    # physical force density f_phys = rho_phys * g  (N/m^3)
-    f_phys = rho_phys * g
-    # convert to lattice units (you used dt^2/dx; kept same)
-    F_lattice = 1e-1*g* dt * dt / dx
-    # F_lattice = g * dt / cs**2
-
-
+    F_lattice = force_strength*g* dt * dt / dx
 
     # initialize fields
     rho = np.ones((Nx, Ny), dtype=np.float64)
@@ -203,11 +187,13 @@ def LBM_solver(solid, force_dir=0,
     kx_phys = k_x_lattice * dx**2
     ky_phys = k_y_lattice * dx**2
 
-    u_lattice = np.max(u)
+    u_lattice = np.mean(u)
     Ma = u_lattice / cs
     u_phys = u * dx / dt
 
-    return u_phys, kx_phys, ky_phys, iteration, Ma, Re_lattice, dt, tau, u_lattice*L_lattice/nu_lattice, dx , F_lattice
+    Re_phys = np.mean(u_phys) * L_physical / nu
+    Re_lattice = u_lattice * L_lattice / nu_lattice
+    return u_phys, kx_phys, ky_phys, iteration, Ma, Re_phys, dt, tau, Re_lattice, dx , F_lattice
 
 
 if __name__ == "__main__":
@@ -218,14 +204,14 @@ if __name__ == "__main__":
     L = 1e-3  # channel width [m]
     import time
     start_time = time.time()
-    u_phys, kx_phys, ky_phys, iteration, Ma, Re_lattice, dt, tau, Re_lattice_2, dx , F_lattice = LBM_solver(solid, 
+    u_phys, kx_phys, ky_phys, iteration, Ma, Re_phys, dt, tau, Re_lattice_2, dx , F_lattice = LBM_solver(solid, 
                                                                          L_physical=L,
                                                                          )
     print("Elapsed time: {:.2f} seconds".format(time.time() - start_time))
     print("Simulation completed in {} iterations".format(iteration))
     print("Permeability kx (m^2): {:.6e}, ky (m^2): {:.6e}".format(kx_phys, ky_phys))
-    print("Mach number: {:.4f},, tau: {:.4f} Lattice Reynolds number: {:.2f}".format(Ma,tau, Re_lattice_2))
-    print("Re_phys {}".format(u_phys.max() * L / (1e-6)))
+    print("Mach number: {:.4e},, tau: {:.4f} Lattice Reynolds number: {:.3e}".format(Ma,tau, Re_lattice_2))
+    print("Re_phys {:.3e}".format(Re_phys))
     print(f"U_physical max: {np.max(u_phys)} m/s")
     print(f"dx: {dx} m, dt: {dt} s, F_lattice: {F_lattice} ")
 
