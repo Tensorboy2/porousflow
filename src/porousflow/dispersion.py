@@ -30,15 +30,16 @@ def find_most_central_fluid_point(solid):
     return closest_point
 
 @njit(fastmath=True)
-def run_dispersion_sim_physical(solid, velocity, steps, num_particles, 
-                       velocity_strength=1.0, dt=0.01, D=1.0, dx=1.0):
+def run_dispersion_sim_physical(solid, velocity, steps=10_000, num_particles=1_000, 
+                       velocity_strength=1.0, dt=1e-3, D=12.0, dx=1.0):
     Nx, Ny = solid.shape
     Lx, Ly = Nx * dx, Ny * dx  # Physical domain size
     
     # Initialize particles in PHYSICAL coordinates
-    center = find_most_central_fluid_point(solid)
-    center_phys_x = center[0]
-    center_phys_y = center[1]
+    # center = find_most_central_fluid_point(solid)
+    center_x, center_y = initial_point(velocity)
+    center_phys_x = center_x
+    center_phys_y = center_y
     
     # Use zeros + loop instead of np.full (numba compatible)
     particles_positions_unwrapped = np.zeros((num_particles, 2), dtype=np.float64)
@@ -112,6 +113,107 @@ def run_dispersion_sim_physical(solid, velocity, steps, num_particles,
     
     return D#M_t_all, positions_for_plot
 
+@njit(fastmath=True)
+def initial_point(u):
+    u_max = 0
+    x_max, y_max = 0,0
+    for x in range(u.shape[0]):
+        for y in range(u.shape[1]):
+            if u[x,y,0]**2 + u[x,y,1]**2 > u_max:
+                u_max = u[x,y,0]**2 + u[x,y,1]**2
+                x_max, y_max = x,y
+    return x_max,y_max      
+
+
+@njit(fastmath=True)
+def run_dispersion_sim_physical_test(solid, velocity, steps=10_000, num_particles=1_000, 
+                       velocity_strength=1.0, dt=1e-3, D=12.0, dx=1.0):
+    Nx, Ny = solid.shape
+    Lx, Ly = Nx * dx, Ny * dx  # Physical domain size
+    
+    # Initialize particles in PHYSICAL coordinates
+    # center = find_most_central_fluid_point(solid)
+    # fluid_points = np.argwhere(~solid)  # indices of all fluid points
+
+    # index of the max value
+    # idx = np.argmax(fluid_values)
+
+    center_x, center_y = initial_point(velocity)#np.argmax(velocity)#fluid_points[idx]
+    center_phys_x = center_x#[0]
+    center_phys_y = center_y#[1]
+    
+    # Use zeros + loop instead of np.full (numba compatible)
+    particles_positions_unwrapped = np.zeros((num_particles, 2), dtype=np.float64)
+    particles_positions_wrapped = np.zeros((num_particles, 2), dtype=np.float64)
+    
+    for i in range(num_particles):
+        particles_positions_unwrapped[i, 0] = center_phys_x
+        particles_positions_unwrapped[i, 1] = center_phys_y
+        particles_positions_wrapped[i, 0] = center_phys_x
+        particles_positions_wrapped[i, 1] = center_phys_y
+    
+    initial_positions = particles_positions_unwrapped.copy()
+    
+    M_t_all = np.zeros((steps, 2, 2))
+    inc = steps//1000
+    positions_for_plot = np.zeros((num_particles, 2, steps//inc), dtype=np.float64)
+    positions_for_plot[:, 0, 0] = particles_positions_wrapped[:, 0]
+    positions_for_plot[:, 1, 0] = particles_positions_wrapped[:, 1]
+    
+    for step in range(steps):
+        for i in range(num_particles):
+            # Positions are in PHYSICAL units (meters)
+            x_phys, y_phys = particles_positions_wrapped[i]
+            
+            # Convert to grid indices for velocity lookup
+            ix = int(x_phys / dx) % Nx
+            iy = int(y_phys / dx) % Ny
+            
+            # Diffusion (physical units)
+            disp_x = np.sqrt(2 * D * dt) * np.random.normal(0, 1)
+            disp_y = np.sqrt(2 * D * dt) * np.random.normal(0, 1)
+            
+            # Advection (velocity already in physical units)
+            vx = velocity[ix, iy, 0] * velocity_strength
+            vy = velocity[ix, iy, 1] * velocity_strength
+            disp_x += vx * dt
+            disp_y += vy * dt
+            
+            # New position in physical coordinates
+            new_x_phys = (x_phys + disp_x) % Lx
+            new_y_phys = (y_phys + disp_y) % Ly
+            
+            # Check collision
+            new_ix = int(new_x_phys / dx) % Nx
+            new_iy = int(new_y_phys / dx) % Ny
+            
+            if solid[new_ix, new_iy] == 0:
+                particles_positions_wrapped[i, 0] = new_x_phys
+                particles_positions_wrapped[i, 1] = new_y_phys
+                particles_positions_unwrapped[i, 0] += disp_x
+                particles_positions_unwrapped[i, 1] += disp_y
+
+            if step % inc == 0 and step > 0:
+                positions_for_plot[i, 0, step//inc] = particles_positions_wrapped[i, 0]
+                positions_for_plot[i, 1, step//inc] = particles_positions_wrapped[i, 1]
+        
+        # Dispersion tensor (now in physical units²)
+        disp = particles_positions_unwrapped - initial_positions
+        mean_x = np.sum(disp[:, 0]) / num_particles
+        mean_y = np.sum(disp[:, 1]) / num_particles
+        
+        fluc_x = disp[:, 0] - mean_x
+        fluc_y = disp[:, 1] - mean_y
+        
+        M_t_all[step, 0, 0] = np.sum(fluc_x * fluc_x) / num_particles
+        M_t_all[step, 0, 1] = np.sum(fluc_x * fluc_y) / num_particles
+        M_t_all[step, 1, 0] = np.sum(fluc_y * fluc_x) / num_particles
+        M_t_all[step, 1, 1] = np.sum(fluc_y * fluc_y) / num_particles
+
+    D = M_t_all[-1] / (2.0 * dt * steps)
+    
+    return D, M_t_all, positions_for_plot
+
 if __name__ == "__main__":
     from lbm.lbm import LBM_solver
     import matplotlib.pyplot as plt
@@ -148,21 +250,21 @@ if __name__ == "__main__":
     D_phys = 1e-5#2.023e-9  # physical diffusion coeff [m^2/s]
     target_Pe = 200#1e-3*u_mean/D_phys #1000  # advection-dominated but not purely ballistic
     L = (solid.shape[0]-2)
-    D_m = u_mean * L / target_Pe
+    D_m = 1#u_mean * L / target_Pe
     print("D_m =", D_m)
     # D = u_max * L / target_Pe
     dx = 1.0 # from L_physical and grid size
     dt_diff = dx**2 / (2.0 * D_m)
     dt_adv  = dx / u_mean
-    dt = 5e-2#min(dt_diff, dt_adv)
+    dt = 1e-3#min(dt_diff, dt_adv)
     print("dt_diff =", dt_diff)
     print("dt_adv =", dt_adv)
     print("dt used =", dt)
     total_steps = int(1e5)
 
-    M, positions_for_plot = run_dispersion_sim_physical(
-        solid, u, steps=total_steps, num_particles=1_000, 
-        velocity_strength=1.0, dt=dt, D=D_m, dx=dx)
+    D, M, positions_for_plot = run_dispersion_sim_physical_test(
+        solid, u, steps=total_steps, num_particles=1_00, 
+        velocity_strength=0.0, dt=dt, D=D_m, dx=dx)
     
     fig, axes = plt.subplots(1, 2, figsize=(8, 4))
 

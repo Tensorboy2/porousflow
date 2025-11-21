@@ -8,7 +8,7 @@ import os
 import pandas as pd
 
 from .utils.binary_blobs import periodic_binary_blobs
-from .utils.precolation_check import detect_percolation, fill_non_percolating_fluid
+from .utils.precolation_check import detect_percolation, fill_non_percolating_fluid_periodic
 
 def generate_media(number_of_samples=1, 
                    shape=(128, 128), 
@@ -51,7 +51,7 @@ def generate_media(number_of_samples=1,
         x_perc, y_perc, _ = detect_percolation(img)
 
         if x_perc and y_perc:
-            filled_img = fill_non_percolating_fluid(img)
+            filled_img = fill_non_percolating_fluid_periodic(img)
             filled_imgs[total_accepted] = filled_img
             images[total_accepted] = img
             total_accepted += 1

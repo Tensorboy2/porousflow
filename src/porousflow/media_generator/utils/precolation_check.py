@@ -11,7 +11,7 @@ STRUCTURE_8 = np.ones((3, 3), dtype=int) # 8-connectivity structure
 def detect_percolation(binary_img):
     """Check if fluid clusters percolate in x or y (periodic)."""
 
-    dilated = binary_dilation(binary_img)
+    dilated = binary_dilation(binary_img,iterations=2)
     labeled, _ = label(~dilated,STRUCTURE_8)
     h, w = labeled.shape
 
@@ -42,7 +42,7 @@ def fill_non_percolating_fluid_periodic(binary_img):
     """Turns non-percolating fluid regions into solid with periodic BCs."""
     h, w = binary_img.shape
 
-    tiled = np.tile(binary_img, (3, 3))
+    tiled = np.tile(~binary_img, (3, 3))
     labels, _ = label(tiled,STRUCTURE_8)
 
     center_labels = labels[h:2*h, w:2*w]

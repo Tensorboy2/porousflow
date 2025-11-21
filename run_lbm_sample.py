@@ -19,13 +19,15 @@ def check_if_file_exists(save_path, sample_index):
 def worker(index, save_path, solid):
     import time
     start = time.time()
-
+    L_physical = 1e-3
+    tau=0.6
+    force_scaling=1e-1
     # Run LBM in x and y directions
     ux_physical, kxx_phys, kxy_phys, iter_x, Ma_x, Re_phys_x, dt_x, tau_x, Re_lattice_x, dx_x, Fx = LBM_solver(
-        solid, force_dir=0, L_physical=1e-3)
+        solid, force_dir=0, L_physical=L_physical, tau=tau, force_strength=force_scaling)
 
     uy_physical, kyx_phys, kyy_phys, iter_y, Ma_y, Re_phys_y, dt_y, tau_y, Re_lattice_y, dx_y, Fy = LBM_solver(
-        solid, force_dir=1, L_physical=1e-3)
+        solid, force_dir=1, L_physical=L_physical, tau=tau, force_strength=force_scaling)
 
     K = np.array([[kxx_phys, kxy_phys],
                   [kyx_phys, kyy_phys]])

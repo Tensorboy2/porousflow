@@ -16,7 +16,7 @@ if __name__ == "__main__":
     root_path = os.path.dirname(os.path.abspath(__file__))
     save_path = os.path.join(root_path,"data","media_samples_train")
     total_generated = generate_media(
-        number_of_samples=64,
+        number_of_samples=512,
         shape=(128, 128),
         porosity_range=(0.2,0.8),
         sigma_range=(0.1, 0.1),
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     base_seed=total_generated
     save_path = os.path.join(root_path,"data","media_samples_validation")
     total_generated += generate_media(
-        number_of_samples=16,
+        number_of_samples=64,
         shape=(128, 128),
         porosity_range=(0.2,0.8),
         sigma_range=(0.1, 0.1),
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     base_seed=total_generated
     save_path = os.path.join(root_path,"data","media_samples_test")
     total_generated += generate_media(
-        number_of_samples=16,
+        number_of_samples=64,
         shape=(128, 128),
         porosity_range=(0.2,0.8),
         sigma_range=(0.1, 0.1),

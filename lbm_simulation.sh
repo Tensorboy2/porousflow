@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set number of parallel jobs (8 physical cores)
-JOBS=16
+JOBS=8
 
 # Define data types
 DATA_TYPES=("train" "validation" "test")
