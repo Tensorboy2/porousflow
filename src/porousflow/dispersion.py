@@ -126,6 +126,81 @@ def initial_point(u):
 
 
 @njit(fastmath=True)
+def run_dispersion_sim_self_diffusivity(solid, velocity, steps=10_000, num_particles=1_000, 
+                       velocity_strength=1.0, dt=1e-3, D=1.0, dx=1.0):
+    Nx, Ny = solid.shape
+    Lx, Ly = Nx * dx, Ny * dx  # Physical domain size
+
+    center_x, center_y = initial_point(velocity)#np.argmax(velocity)#fluid_points[idx]
+    center_phys_x = center_x#[0]
+    center_phys_y = center_y#[1]
+    
+    # Use zeros + loop instead of np.full (numba compatible)
+    particles_positions_unwrapped = np.zeros((num_particles, 2), dtype=np.float64)
+    particles_positions_wrapped = np.zeros((num_particles, 2), dtype=np.float64)
+    
+    for i in range(num_particles):
+        particles_positions_unwrapped[i, 0] = center_phys_x
+        particles_positions_unwrapped[i, 1] = center_phys_y
+        particles_positions_wrapped[i, 0] = center_phys_x
+        particles_positions_wrapped[i, 1] = center_phys_y
+    
+    initial_positions = particles_positions_unwrapped.copy()
+    
+    M_t_all = np.zeros((steps, 2, 2))
+
+    for step in range(steps):
+        for i in range(num_particles):
+            # Positions are in PHYSICAL units (meters)
+            x_phys, y_phys = particles_positions_wrapped[i]
+            
+            # Convert to grid indices for velocity lookup
+            ix = int(x_phys / dx) % Nx
+            iy = int(y_phys / dx) % Ny
+            
+            # Diffusion (physical units)
+            disp_x = np.sqrt(2 * D * dt) * np.random.normal(0, 1)
+            disp_y = np.sqrt(2 * D * dt) * np.random.normal(0, 1)
+            
+            # Advection (velocity already in physical units)
+            vx = velocity[ix, iy, 0] * velocity_strength
+            vy = velocity[ix, iy, 1] * velocity_strength
+            disp_x += vx * dt
+            disp_y += vy * dt
+            
+            # New position in physical coordinates
+            new_x_phys = (x_phys + disp_x) % Lx
+            new_y_phys = (y_phys + disp_y) % Ly
+            
+            # Check collision
+            new_ix = int(new_x_phys / dx) % Nx
+            new_iy = int(new_y_phys / dx) % Ny
+            
+            if solid[new_ix, new_iy] == 0:
+                particles_positions_wrapped[i, 0] = new_x_phys
+                particles_positions_wrapped[i, 1] = new_y_phys
+                particles_positions_unwrapped[i, 0] += disp_x
+                particles_positions_unwrapped[i, 1] += disp_y
+
+            
+        # Dispersion tensor (now in physical units²)
+        disp = particles_positions_unwrapped - initial_positions
+        mean_x = np.sum(disp[:, 0]) / num_particles
+        mean_y = np.sum(disp[:, 1]) / num_particles
+        
+        fluc_x = disp[:, 0] - mean_x
+        fluc_y = disp[:, 1] - mean_y
+        
+        M_t_all[step, 0, 0] = np.sum(fluc_x * fluc_x) / num_particles
+        M_t_all[step, 0, 1] = np.sum(fluc_x * fluc_y) / num_particles
+        M_t_all[step, 1, 0] = np.sum(fluc_y * fluc_x) / num_particles
+        M_t_all[step, 1, 1] = np.sum(fluc_y * fluc_y) / num_particles
+
+    # D = M_t_all[-1] / (2.0 * dt * steps)
+    
+    return M_t_all
+
+@njit(fastmath=True)
 def run_dispersion_sim_physical_test(solid, velocity, steps=10_000, num_particles=1_000, 
                        velocity_strength=1.0, dt=1e-3, D=12.0, dx=1.0):
     Nx, Ny = solid.shape

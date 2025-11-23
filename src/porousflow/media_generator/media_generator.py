@@ -7,8 +7,12 @@ import numpy as np
 import os
 import pandas as pd
 
-from .utils.binary_blobs import periodic_binary_blobs
-from .utils.precolation_check import detect_percolation, fill_non_percolating_fluid_periodic
+if __name__ == '__main__':
+    from utils.binary_blobs import periodic_binary_blobs
+    from utils.precolation_check import detect_percolation, fill_non_percolating_fluid_periodic
+else:
+    from .utils.binary_blobs import periodic_binary_blobs
+    from .utils.precolation_check import detect_percolation, fill_non_percolating_fluid_periodic
 
 def generate_media(number_of_samples=1, 
                    shape=(128, 128), 
@@ -64,6 +68,8 @@ def generate_media(number_of_samples=1,
         metrics['percolates_y'].append(y_perc)
     
     metrics_df = pd.DataFrame(metrics)
+    
+    print(f"Generated {number_of_samples} samples, accepted {total_accepted}, total tried {total_generated}")
 
     if save_path is not None:
         os.makedirs(save_path, exist_ok=True)
@@ -71,12 +77,17 @@ def generate_media(number_of_samples=1,
                             images=images, filled_images=filled_imgs)
         metrics_df.to_csv(os.path.join(save_path, 'media_metrics.csv'), index=False)
     
-    print(f"Generated {number_of_samples} samples, accepted {total_accepted}, total tried {total_generated}")
     return total_generated
 
     
 
 
+if __name__ == "__main__":
+    import sys
+    num = float(sys.argv[1])
+    save_path = sys.argv[2]
 
-# if __name__ == "__main__":
+    generate_media(number_of_samples=num, save_path=save_path)
+    print(f"Processing number {num}")
+    print(f"saving to {save_path}")
 
