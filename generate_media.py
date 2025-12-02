@@ -55,7 +55,7 @@ if __name__ == "__main__":
     root_path = os.path.dirname(os.path.abspath(__file__))
     save_path = os.path.join(root_path,"data","train")
     total_generated = generate_media_zarr(zarr_path=save_path,
-        number_of_samples=512,
+        number_of_samples=16000,
         shape=(128, 128),
         porosity_range=(0.2,0.8),
         sigma_range=(0.1, 0.1),
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     base_seed=total_generated
     save_path = os.path.join(root_path,"data","validation")
     total_generated += generate_media_zarr(zarr_path=save_path,
-        number_of_samples=64,
+        number_of_samples=4000,
         shape=(128, 128),
         porosity_range=(0.2,0.8),
         sigma_range=(0.1, 0.1),
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     base_seed=total_generated
     save_path = os.path.join(root_path,"data","test")
     total_generated += generate_media_zarr(zarr_path=save_path,
-        number_of_samples=64,
+        number_of_samples=4000,
         shape=(128, 128),
         porosity_range=(0.2,0.8),
         sigma_range=(0.1, 0.1),
