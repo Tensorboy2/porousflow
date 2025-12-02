@@ -2,19 +2,18 @@ from src.porousflow.lbm.lbm import LBM_solver
 import numpy as np
 import os
 import sys
+import zarr
 
-def load_media_samples(file_path):
-    data = np.load(file_path)
-    images = data['images']
-    filled_images = data['filled_images']
-    return images, filled_images
+def load_media_samples(file_path,index):
+    root = zarr.open(file_path,mode='r')
+    filled_images_ds = root['filled_images']['filled_images']
+    solid = filled_images_ds[index]
+    return solid
 
 def save_simulation_results(save_path, sample_index, results):
-    os.makedirs(save_path, exist_ok=True)
-    np.savez_compressed(os.path.join(save_path, f'simulation_result_{sample_index}.npz'), **results)
-
-def check_if_file_exists(save_path, sample_index):
-    return os.path.exists(os.path.join(save_path, f'simulation_result_{sample_index}.npz'))
+    root = zarr.open(save_path,mode='a')
+    for key in results.keys():
+        root['lbm_results'][key][sample_index] = results[key]
 
 def worker(index, save_path, solid):
     import time
@@ -72,17 +71,14 @@ def main():
     data_type = sys.argv[2]
 
     root_path = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(root_path, "data", f"media_samples_{data_type}", "media_samples.npz")
-    save_path = os.path.join(root_path, "data", f"lbm_simulation_results_{data_type}")
+    data_path = os.path.join(root_path, "data", f"{data_type}.zarr")
+    save_path = os.path.join(root_path, "data", f"{data_type}.zarr")
 
-    images, filled_images = load_media_samples(data_path)
+    filled_image = load_media_samples(data_path,index)
 
-    if check_if_file_exists(save_path, index):
-        print(f"[Sample {index}] Already exists. Skipping.")
-        return
 
-    solid = filled_images[index]
-    worker(index, save_path, solid)
+    # solid = filled_images[index]
+    worker(index, save_path, filled_image)
 
 if __name__ == "__main__":
     main()

@@ -1,99 +1,106 @@
+import time
 from src.porousflow.dispersion import run_dispersion_sim_physical
 import numpy as np
 import os
 import sys
+import zarr
 
-def load_media_samples(image_path):
-    data = np.load(image_path)
-    images = data['images']
-    filled_images = data['filled_images']
-    return images, filled_images
+def load_media_samples(file_path,index):
+    root = zarr.open(file_path,mode='r')
+    filled_images_ds = root['filled_images']['filled_images']
+    solid = filled_images_ds[index]
+    return solid
 
 def load_lbm_results(lbm_path, index):
-    data = np.load(os.path.join(lbm_path, f'simulation_result_{index}.npz'))
-    ux = data['ux_physical']
-    uy = data['uy_physical']
+    # data = np.load(os.path.join(lbm_path, f'simulation_result_{index}.npz'))
+    root = zarr.open(lbm_path,mode='r')
+    ux = root['lbm_results']['ux_physical'][index]
+    uy = root['lbm_results']['uy_physical'][index]
     return ux, uy
 
-def save_simulation_results(save_path, sample_index, results):
-    os.makedirs(save_path, exist_ok=True)
-    np.savez_compressed(os.path.join(save_path, f'simulation_result_{sample_index}.npz'), **results)
+def save_simulation_results(save_path, sample_index, results, Pe_index):
+    root = zarr.open(save_path,mode='a')
+    # for key in results.keys():
+    root['dispersion_results']['Dx'][sample_index][Pe_index] = results['Dx']
+    root['dispersion_results']['Dy'][sample_index][Pe_index] = results['Dy']
 
-def check_if_file_exists(save_path, sample_index):
-    return os.path.exists(os.path.join(save_path, f'simulation_result_{sample_index}.npz'))
 
-def worker(index, save_path, solid, ux, uy):
-    import time
-    start = time.time()
+def worker(index, save_path, solid, ux, uy, Pe, Pe_index):
 
     dx = 1
-    Pe = 200
     L = solid.shape[0]
 
     ux_mean = np.mean(ux[~solid])
     uy_mean = np.mean(uy[~solid])
-    D_m_x = ux_mean * L / Pe
-    D_m_y = uy_mean * L / Pe
-    steps = int(1e5)
-    dt = 2e-2
 
-    # dispersion x
+    Pes = np.array([0,10,50,100,500])
+    alpha = Pe / L
+
+    D_m_x = 1
+    D_m_y = 1
+    steps = int(100 * L**2)
+    dt = 1e-3
+
+
+    # for alpha, Pe in zip(alphas, Pes):
+    start = time.time()
+
     Dx = run_dispersion_sim_physical(
         solid=solid,
-        velocity=ux,
+        velocity=ux / ux_mean,
         steps=steps,
         num_particles=1_000,
-        velocity_strength=1.0,
+        velocity_strength=alpha,
         dt=dt,
         D=D_m_x,
         dx=dx
     )
 
-    # dispersion y
     Dy = run_dispersion_sim_physical(
         solid=solid,
-        velocity=uy,
+        velocity=uy / uy_mean,
         steps=steps,
         num_particles=1_000,
-        velocity_strength=1.0,
+        velocity_strength=alpha,
         dt=dt,
         D=D_m_y,
         dx=dx
     )
 
     results = {'Dx': Dx, 'Dy': Dy}
-    save_simulation_results(save_path, index, results)
 
     end = time.time()
     print(
-        f"[Sample {index}] Finished in {end-start:.2f}s\n"
-        f"  Output path: {save_path}/simulation_result_{index}.npz\n"
+        f"[Sample {index}, Pe {Pe}], Finished in {end-start:.2f}s\n"
         f"     Dx: Dx_xx{Dx[0,0]:.3e}, Dx_xy{Dx[0,1]:.3e}, Dx_yx{Dx[1,0]:.3e}, Dx_yy{Dx[1,1]:.3e}\n"
         f"     Dy: Dy_xx{Dy[0,0]:.3e}, Dy_xy{Dy[0,1]:.3e}, Dy_yx{Dy[1,0]:.3e}, Dy_yy{Dy[1,1]:.3e}\n"
     )
 
+    save_simulation_results(save_path, index, results, Pe_index)
+    # print(f"[Sample {index}] saved to: {save_path}/simulation_result_{index}.npz")
+
+
 def main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         print("Usage: python run_dispersion_sample.py <index> <data_type>")
         sys.exit(1)
 
     index = int(sys.argv[1])
     data_type = sys.argv[2]
+    Pe_index = int(sys.argv[3])
+
+    Pes = [0,10,50,100,500]
+    Pe = Pes[Pe_index]
 
     root_path = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(root_path, f"data/media_samples_{data_type}/media_samples.npz")
-    lbm_path = os.path.join(root_path, f"data/lbm_simulation_results_{data_type}")
-    save_path = os.path.join(root_path, f"data/dispersion_simulation_results_{data_type}")
+    data_path = os.path.join(root_path, f"data/{data_type}.zarr")
+    lbm_path = os.path.join(root_path, f"data/{data_type}.zarr")
+    save_path = os.path.join(root_path, f"data/{data_type}.zarr")
 
-    images, filled_images = load_media_samples(data_path)
+    solid = load_media_samples(data_path,index)
 
-    if check_if_file_exists(save_path, index):
-        print(f"[Sample {index}] Already exists. Skipping.")
-        return
-
-    solid = filled_images[index]
     ux, uy = load_lbm_results(lbm_path, index)
-    worker(index, save_path, solid, ux, uy)
+    worker(index, save_path, solid, ux, uy, Pe, Pe_index)
 
 if __name__ == "__main__":
     main()

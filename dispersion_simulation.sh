@@ -11,18 +11,21 @@ for DATA_TYPE in "${DATA_TYPES[@]}"; do
 
     DATA_PATH="./data/media_samples_${DATA_TYPE}/media_samples.npz"
     LBM_PATH="./data/lbm_simulation_results_${DATA_TYPE}"
-    SAVE_PATH="./data/dispersion_simulation_results_${DATA_TYPE}"
+    SAVE_PATH="./data/${DATA_TYPE}"
 
-    # Create save folder if missing
-    mkdir -p $SAVE_PATH
+    if [[ -d "./data/${DATA_TYPE}.zarr/dispersion_results/Dx" ]]; then
+        echo "Data initet"
+    else
+        python3 data/init_zarr_dataset.py $DATA_TYPE "dispersion" 
+    fi
 
     # Get indices of samples that don't exist yet
     INDICES=$(python3 - <<END
-import numpy as np, os
-data = np.load("$DATA_PATH")
-filled_images = data["filled_images"]
-save_path = "$SAVE_PATH"
-indices = [i for i in range(filled_images.shape[0]) if not os.path.exists(f"{save_path}/simulation_result_{i}.npz")]
+import zarr, numpy as np
+store_path = "./data/${DATA_TYPE}.zarr"
+root = zarr.open(store_path, mode="a")
+Dx_ds = root['dispersion_results']['Dx']
+indices = [i for i in range(Dx_ds.shape[0]) if np.isnan(Dx_ds[i, 0, 0, 0])]
 print(" ".join(map(str, indices)))
 END
 )
@@ -33,5 +36,5 @@ END
     fi
 
     # Run GNU Parallel with live output
-    parallel --jobs $JOBS --line-buffer python3 -u run_dispersion_sample.py {} $DATA_TYPE ::: $INDICES
+    parallel --jobs $JOBS --line-buffer python3 -u run_dispersion_sample.py {1} $DATA_TYPE {2} ::: $INDICES ::: {0..4}
 done

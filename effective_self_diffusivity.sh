@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Set number of parallel jobs (8 physical cores)
-JOBS=8
+JOBS=16
 
 # Define data types
-DATA_TYPES=("train" "validation" "test")
+DATA_TYPES=("validation" "test")
 
 for DATA_TYPE in "${DATA_TYPES[@]}"; do
     echo "Processing $DATA_TYPE dispersion samples..."

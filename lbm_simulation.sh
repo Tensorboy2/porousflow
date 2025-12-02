@@ -9,22 +9,27 @@ DATA_TYPES=("train" "validation" "test")
 for DATA_TYPE in "${DATA_TYPES[@]}"; do
     echo "Processing $DATA_TYPE samples..."
 
-    DATA_PATH="./data/media_samples_${DATA_TYPE}/media_samples.npz"
-    SAVE_PATH="./data/lbm_simulation_results_${DATA_TYPE}"
+    DATA_PATH="./data/${DATA_TYPE}.zarr/filled_images/filled_images"
+    SAVE_PATH="./data/${DATA_TYPE}"
 
-    # Create save folder if missing
-    mkdir -p $SAVE_PATH
+    if [[ -d "./data/${DATA_TYPE}.zarr/lbm_results/K" ]]; then
+        echo "Data initet"
+    else
+        python3 data/init_zarr_dataset.py $DATA_TYPE "lbm" 
+    fi
+
 
     # Get indices of samples that don't exist yet
     INDICES=$(python3 - <<END
-import numpy as np, os
-data = np.load("$DATA_PATH")
-filled_images = data["filled_images"]
-save_path = "$SAVE_PATH"
-indices = [i for i in range(filled_images.shape[0]) if not os.path.exists(f"{save_path}/simulation_result_{i}.npz")]
+import zarr, numpy as np
+store_path = "./data/${DATA_TYPE}.zarr"
+root = zarr.open(store_path, mode="a")
+k_ds = root['lbm_results']['K']
+indices = [i for i in range(k_ds.shape[0]) if np.isnan(k_ds[i, 0, 0])]
 print(" ".join(map(str, indices)))
 END
 )
+
 
     if [ -z "$INDICES" ]; then
         echo "All $DATA_TYPE samples already done. Skipping."

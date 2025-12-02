@@ -2,6 +2,13 @@
 *.npz
 *.csv
 *.gif
+*.pdf
+*.zarray
+*.zattrs
+*.zgroup
+*.zarr/
+*.zarr
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

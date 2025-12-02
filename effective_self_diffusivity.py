@@ -36,15 +36,20 @@ def worker(index, save_path, solid, ux, uy):
     start = time.time()
 
     dx = 1
-    Pe = 200
+    Pe = 0
     L = solid.shape[0]
 
     ux_mean = np.mean(ux[~solid])
     uy_mean = np.mean(uy[~solid])
     D_m_x = 1#ux_mean * L / Pe
     D_m_y = 1#uy_mean * L / Pe
-    steps = int(1e6)
-    dt = 1e-3
+    steps = int(100*L**2)
+    # dt = 1e-3
+    bx=np.max(ux)
+    by=np.max(uy)
+    a = 0.5
+    dtx = ((-1+np.sqrt(1+2*a*bx))**2)/(2*bx**2)
+    dty = ((-1+np.sqrt(1+2*a*bx))**2)/(2*by**2)
 
     # dispersion x
     Mx = run_dispersion_sim_self_diffusivity(
@@ -53,7 +58,7 @@ def worker(index, save_path, solid, ux, uy):
         steps=steps,
         num_particles=1_000,
         velocity_strength=0.0,
-        dt=dt,
+        dt=dtx,
         D=D_m_x,
         dx=dx
     )
@@ -65,7 +70,7 @@ def worker(index, save_path, solid, ux, uy):
         steps=steps,
         num_particles=1_000,
         velocity_strength=0.0,
-        dt=dt,
+        dt=dty,
         D=D_m_y,
         dx=dx
     )
@@ -77,8 +82,8 @@ def worker(index, save_path, solid, ux, uy):
     print(
         f"[Sample {index}] Finished in {end-start:.2f}s\n"
         f"  Output path: {save_path}/simulation_result_{index}.npz\n"
-        f"     Mx: Mx_xx{Mx[0,0]:.3e}, Mx_xy{Mx[0,1]:.3e}, Mx_yx{Mx[1,0]:.3e}, Mx_yy{Mx[1,1]:.3e}\n"
-        f"     My: My_xx{My[0,0]:.3e}, My_xy{My[0,1]:.3e}, My_yx{My[1,0]:.3e}, My_yy{My[1,1]:.3e}\n"
+        # f"     Mx: Mx_xx{Mx[0,0]:.3e}, Mx_xy{Mx[0,1]:.3e}, Mx_yx{Mx[1,0]:.3e}, Mx_yy{Mx[1,1]:.3e}\n"
+        # f"     My: My_xx{My[0,0]:.3e}, My_xy{My[0,1]:.3e}, My_yx{My[1,0]:.3e}, My_yy{My[1,1]:.3e}\n"
     )
 
 def main():

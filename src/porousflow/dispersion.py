@@ -31,7 +31,7 @@ def find_most_central_fluid_point(solid):
 
 @njit(fastmath=True)
 def run_dispersion_sim_physical(solid, velocity, steps=10_000, num_particles=1_000, 
-                       velocity_strength=1.0, dt=1e-3, D=12.0, dx=1.0):
+                       velocity_strength=1.0, dt=1e-3, D=1.0, dx=1.0):
     Nx, Ny = solid.shape
     Lx, Ly = Nx * dx, Ny * dx  # Physical domain size
     
@@ -109,9 +109,37 @@ def run_dispersion_sim_physical(solid, velocity, steps=10_000, num_particles=1_0
         M_t_all[step, 1, 0] = np.sum(fluc_y * fluc_x) / num_particles
         M_t_all[step, 1, 1] = np.sum(fluc_y * fluc_y) / num_particles
 
-    D = M_t_all[-1] / (2.0 * dt * steps)
-    
-    return D#M_t_all, positions_for_plot
+        # --- Build time array t safely ---
+    t = np.empty(steps, dtype=np.float64)
+    for i in range(steps):
+        t[i] = i * dt
+
+    # --- Compute M_t_all[1:] / (2 * t[1:]) safely ---
+    n_rows = steps - 1  # number of usable rows (skip step 0)
+    M = np.empty((n_rows, 2, 2), dtype=np.float64)
+
+    for i in range(n_rows):
+        denom = 2.0 * t[i + 1]
+        for a in range(2):
+            for b in range(2):
+                M[i, a, b] = M_t_all[i + 1, a, b] / denom
+
+    # --- Mean over last 1000 rows safely ---
+    start = 0
+    if n_rows > 1000:
+        start = n_rows - 1000
+    count = n_rows - start
+
+    D = np.zeros((2, 2), dtype=np.float64)
+    for a in range(2):
+        for b in range(2):
+            s = 0.0
+            for i in range(start, n_rows):
+                s += M[i, a, b]
+            D[a, b] = s / count
+
+    return D
+
 
 @njit(fastmath=True)
 def initial_point(u):
@@ -202,7 +230,7 @@ def run_dispersion_sim_self_diffusivity(solid, velocity, steps=10_000, num_parti
 
 @njit(fastmath=True)
 def run_dispersion_sim_physical_test(solid, velocity, steps=10_000, num_particles=1_000, 
-                       velocity_strength=1.0, dt=1e-3, D=12.0, dx=1.0):
+                       velocity_strength=1.0, dt=1e-3, D=1.0, dx=1.0):
     Nx, Ny = solid.shape
     Lx, Ly = Nx * dx, Ny * dx  # Physical domain size
     
@@ -269,8 +297,8 @@ def run_dispersion_sim_physical_test(solid, velocity, steps=10_000, num_particle
                 particles_positions_unwrapped[i, 1] += disp_y
 
             if step % inc == 0 and step > 0:
-                positions_for_plot[i, 0, step//inc] = particles_positions_wrapped[i, 0]
-                positions_for_plot[i, 1, step//inc] = particles_positions_wrapped[i, 1]
+                positions_for_plot[i, 0, step//inc] = particles_positions_unwrapped[i, 0]
+                positions_for_plot[i, 1, step//inc] = particles_positions_unwrapped[i, 1]
         
         # Dispersion tensor (now in physical units²)
         disp = particles_positions_unwrapped - initial_positions
@@ -332,14 +360,18 @@ if __name__ == "__main__":
     dt_diff = dx**2 / (2.0 * D_m)
     dt_adv  = dx / u_mean
     dt = 1e-3#min(dt_diff, dt_adv)
+    b=np.max(u)
+    a = 0.5
+    dt = ((-1+np.sqrt(1+2*a*b))**2)/(2*b**2)
     print("dt_diff =", dt_diff)
     print("dt_adv =", dt_adv)
     print("dt used =", dt)
-    total_steps = int(1e5)
+    total_steps = int(10*L**2)
+    print("steps: ", total_steps)
 
     D, M, positions_for_plot = run_dispersion_sim_physical_test(
-        solid, u, steps=total_steps, num_particles=1_00, 
-        velocity_strength=0.0, dt=dt, D=D_m, dx=dx)
+        solid, u, steps=total_steps, num_particles=1_000, 
+        velocity_strength=1.0, dt=dt, D=D_m, dx=dx)
     
     fig, axes = plt.subplots(1, 2, figsize=(8, 4))
 
