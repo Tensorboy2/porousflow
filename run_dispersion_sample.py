@@ -35,11 +35,20 @@ def worker(index, save_path, solid, ux, uy, Pe, Pe_index):
 
     Pes = np.array([0,10,50,100,500])
     alpha = Pe / L
+    bx=np.max(ux)*alpha
+    by=np.max(uy)*alpha
+    a = 0.2
+    if Pe_index == 0:
+        dtx = a**2/2
+        dty = a**2/2
+    else:
+        dtx = ((-1+np.sqrt(1+2*a*bx))**2)/(2*bx**2)
+        dty = ((-1+np.sqrt(1+2*a*by))**2)/(2*by**2)
 
     D_m_x = 1
     D_m_y = 1
     steps = int(100 * L**2)
-    dt = 1e-3
+    # dt = 1e-3
 
 
     # for alpha, Pe in zip(alphas, Pes):
@@ -51,7 +60,7 @@ def worker(index, save_path, solid, ux, uy, Pe, Pe_index):
         steps=steps,
         num_particles=1_000,
         velocity_strength=alpha,
-        dt=dt,
+        dt=dtx,
         D=D_m_x,
         dx=dx
     )
@@ -62,7 +71,7 @@ def worker(index, save_path, solid, ux, uy, Pe, Pe_index):
         steps=steps,
         num_particles=1_000,
         velocity_strength=alpha,
-        dt=dt,
+        dt=dty,
         D=D_m_y,
         dx=dx
     )
