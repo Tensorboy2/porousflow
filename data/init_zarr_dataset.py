@@ -84,7 +84,7 @@ def init_dispersion_zarr(path):
     disp_results.create_dataset(
         'Dx', 
         shape=(N, 5, 2, 2), 
-        chunks=(1, 2, 2), 
+        chunks=(1, 1, 2, 2), 
         dtype='f4', 
         overwrite=True,
         fill_value=np.nan

@@ -110,35 +110,35 @@ def run_dispersion_sim_physical(solid, velocity, steps=10_000, num_particles=1_0
         M_t_all[step, 1, 1] = np.sum(fluc_y * fluc_y) / num_particles
 
         # --- Build time array t safely ---
-    t = np.empty(steps, dtype=np.float64)
-    for i in range(steps):
-        t[i] = i * dt
+    # t = np.empty(steps, dtype=np.float64)
+    # for i in range(steps):
+    #     t[i] = i * dt
 
-    # --- Compute M_t_all[1:] / (2 * t[1:]) safely ---
-    n_rows = steps - 1  # number of usable rows (skip step 0)
-    M = np.empty((n_rows, 2, 2), dtype=np.float64)
+    # # --- Compute M_t_all[1:] / (2 * t[1:]) safely ---
+    # n_rows = steps - 1  # number of usable rows (skip step 0)
+    # M = np.empty((n_rows, 2, 2), dtype=np.float64)
 
-    for i in range(n_rows):
-        denom = 2.0 * t[i + 1]
-        for a in range(2):
-            for b in range(2):
-                M[i, a, b] = M_t_all[i + 1, a, b] / denom
+    # for i in range(n_rows):
+    #     denom = 2.0 * t[i + 1]
+    #     for a in range(2):
+    #         for b in range(2):
+    #             M[i, a, b] = M_t_all[i + 1, a, b] / denom
 
-    # --- Mean over last 1000 rows safely ---
-    start = 0
-    if n_rows > 1000:
-        start = n_rows - 1000
-    count = n_rows - start
+    # # --- Mean over last 1000 rows safely ---
+    # start = 0
+    # if n_rows > 1000:
+    #     start = n_rows - 1000
+    # count = n_rows - start
 
-    D = np.zeros((2, 2), dtype=np.float64)
-    for a in range(2):
-        for b in range(2):
-            s = 0.0
-            for i in range(start, n_rows):
-                s += M[i, a, b]
-            D[a, b] = s / count
+    # D = np.zeros((2, 2), dtype=np.float64)
+    # for a in range(2):
+    #     for b in range(2):
+    #         s = 0.0
+    #         for i in range(start, n_rows):
+    #             s += M[i, a, b]
+    #         D[a, b] = s / count
 
-    return D
+    return M_t_all
 
 
 @njit(fastmath=True)
