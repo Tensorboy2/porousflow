@@ -99,13 +99,10 @@ def init_dispersion_zarr(path):
         fill_value=np.nan
         )
     
-    # disp_results.create_dataset(
-    #     'Pe',
-    #     data = np.array([0,10,50,100,500]),
-    #     shape=(5,),
-    #     dtype='f4',
-    #     chunks=(1,)
-    # )
+    disp_results.create_dataset('D_m_x', shape=(N, 5), chunks=(1, 1), dtype='f4', overwrite=True)
+    disp_results.create_dataset('D_m_y', shape=(N, 5), chunks=(1, 1), dtype='f4', overwrite=True)
+    disp_results.create_dataset('dt_x', shape=(N, 5), chunks=(1, 1), dtype='f4', overwrite=True)
+    disp_results.create_dataset('dt_y', shape=(N, 5), chunks=(1, 1), dtype='f4', overwrite=True)
     print("Dispersion initialization complete.")
 
 if __name__ == '__main__':

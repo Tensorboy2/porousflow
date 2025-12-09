@@ -25,6 +25,10 @@ def save_simulation_results(save_path, sample_index, results, Pe_index):
     # for key in results.keys():
     root['dispersion_results']['Dx'][sample_index,Pe_index] = results['Dx']
     root['dispersion_results']['Dy'][sample_index,Pe_index] = results['Dy']
+    root['dispersion_results']['D_m_x'][sample_index,Pe_index] = results['D_m_x']
+    root['dispersion_results']['D_m_y'][sample_index,Pe_index] = results['D_m_y']
+    root['dispersion_results']['dt_x'][sample_index,Pe_index] = results['dt_x']
+    root['dispersion_results']['dt_y'][sample_index,Pe_index] = results['dt_y']
 
 
 def worker_old(index, save_path, solid, ux, uy, Pe, Pe_index):
@@ -98,6 +102,8 @@ def worker_old(index, save_path, solid, ux, uy, Pe, Pe_index):
     save_simulation_results(save_path, index, results, Pe_index)
     print(
         f"[Sample {index}, Pe {Pe}], Finished in {end-start:.2f}s, saved to: {save_path}\n"
+        f"     D_m_x: {D_m_x:.3e}, dtx={dtx:.3e}\n"
+        f"     D_m_y: {D_m_y:.3e}, dty={dty:.3e}\n"
         f"     Dx: Dx_xx{Dx[0,0]:.3e}, Dx_xy{Dx[0,1]:.3e}, Dx_yx{Dx[1,0]:.3e}, Dx_yy{Dx[1,1]:.3e}\n"
         f"     Dy: Dy_xx{Dy[0,0]:.3e}, Dy_xy{Dy[0,1]:.3e}, Dy_yx{Dy[1,0]:.3e}, Dy_yy{Dy[1,1]:.3e}\n"
     )
@@ -133,8 +139,8 @@ def worker(index, save_path, solid, ux, uy, Pe, Pe_index, K, nu):
 
     # --- 1. Normalize velocity fields ---
     fluid_mask = ~solid
-    ux_mean = np.mean(np.abs(ux[fluid_mask]))
-    uy_mean = np.mean(np.abs(uy[fluid_mask]))
+    # ux_mean = np.mean(np.abs(ux[fluid_mask]))
+    # uy_mean = np.mean(np.abs(uy[fluid_mask]))
 
     ux_norm = u_x_aligned#ux / ux_mean
     uy_norm = u_y_aligned#uy / uy_mean
@@ -190,6 +196,8 @@ def worker(index, save_path, solid, ux, uy, Pe, Pe_index, K, nu):
         "Dy": Dy_norm,
         "D_m_x": D_m,
         "D_m_y": D_m,
+        "dt_x": dt_x,
+        "dt_y": dt_y
     }
 
     end = time.time()
