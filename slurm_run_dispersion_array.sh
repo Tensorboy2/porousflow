@@ -20,7 +20,7 @@ PE_COUNT=5
 
 mkdir -p slurm_out
 cd ~/porousflow
-source ~/porousflow/bin/activate
+source ~/porousflow_venv/bin/activate
 
 # ------------- Chunk calculation -------------
 ARRAY_MAX=1001                     # your cluster's limit
