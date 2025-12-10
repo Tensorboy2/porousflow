@@ -179,30 +179,56 @@ def resnet152(in_channels=3, num_classes=1000):
     return ResNet(Bottleneck, [3, 8, 36, 3], in_channels, num_classes)
 
 
-def load_resnet_model(size='18', in_channels=3, num_classes=1000):
+def load_resnet_model(config_or_size='18', in_channels=3, num_classes=1000, pretrained_path: str = None, **kwargs):
     """
-    Load a ResNet model with specified number of blocks and output classes.
-    
-    Args:
-        size (str): ResNet size to choose from ('18', '34', '50', '101', '152').
-        in_channels (int): Number of input channels (e.g., 3 for RGB, 1 for grayscale).
-        num_classes (int): Number of output classes for classification/regression.
-        
-    Returns:
-        ResNet: An instance of the ResNet model.
+    Flexible loader for ResNet models.
+
+    Accepts either a config dictionary (from generated YAML) or the original args.
+
+    Recognized config keys: `size` (one of '18','34','50','101','152'), `in_channels`,
+    `num_classes`, and `pretrained_path`.
     """
+    # Parse config dict if provided
+    if isinstance(config_or_size, dict):
+        cfg = config_or_size
+        size = str(cfg.get('size', '18'))
+        in_channels = cfg.get('in_channels', in_channels)
+        num_classes = cfg.get('num_classes', num_classes)
+        pretrained_path = cfg.get('pretrained_path', pretrained_path)
+    else:
+        size = str(config_or_size)
+
+    # Create model
     if size == '18':
-        return resnet18(in_channels, num_classes)
+        model = resnet18(in_channels, num_classes)
     elif size == '34':
-        return resnet34(in_channels, num_classes)
+        model = resnet34(in_channels, num_classes)
     elif size == '50':
-        return resnet50(in_channels, num_classes)
+        model = resnet50(in_channels, num_classes)
     elif size == '101':
-        return resnet101(in_channels, num_classes)
+        model = resnet101(in_channels, num_classes)
     elif size == '152':
-        return resnet152(in_channels, num_classes)
+        model = resnet152(in_channels, num_classes)
     else:
         raise ValueError(f"Invalid size '{size}'. Choose from '18', '34', '50', '101', or '152'.")
+
+    # Optionally load pretrained weights
+    if pretrained_path:
+        if not os.path.exists(pretrained_path):
+            raise FileNotFoundError(f"Pretrained model not found at: {pretrained_path}")
+
+        checkpoint = torch.load(pretrained_path, map_location='cpu')
+        if 'model_state_dict' in checkpoint:
+            state_dict = checkpoint['model_state_dict']
+        elif 'state_dict' in checkpoint:
+            state_dict = checkpoint['state_dict']
+        else:
+            state_dict = checkpoint
+
+        model.load_state_dict(state_dict, strict=False)
+        print(f"Loaded pretrained weights from: {pretrained_path}")
+
+    return model
 
 
 if __name__ == "__main__":
@@ -210,18 +236,18 @@ if __name__ == "__main__":
     print("Testing ResNet models...")
     
     # Test ResNet-18 (BasicBlock)
-    x = torch.randn(2, 3, 224, 224)
-    model18 = load_resnet_model(size='18', in_channels=3, num_classes=4)
+    x = torch.randn(2, 1, 128, 128)
+    model18 = load_resnet_model(size='18', in_channels=1, num_classes=4)
     output18 = model18(x)
     print(f"ResNet-18 output shape: {output18.shape}")
     
     # Test ResNet-50 (Bottleneck)
-    model50 = load_resnet_model(size='50', in_channels=3, num_classes=4)
+    model50 = load_resnet_model(size='50', in_channels=1, num_classes=4)
     output50 = model50(x)
     print(f"ResNet-50 output shape: {output50.shape}")
     
     # Test with grayscale input
-    x_gray = torch.randn(2, 1, 224, 224)
+    x_gray = torch.randn(2, 1, 128, 128)
     model_gray = load_resnet_model(size='34', in_channels=1, num_classes=4)
     output_gray = model_gray(x_gray)
     print(f"ResNet-34 (grayscale) output shape: {output_gray.shape}")

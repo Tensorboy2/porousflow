@@ -206,138 +206,117 @@ class ViT(nn.Module):
         """Get number of parameters"""
         return sum(p.numel() for p in self.parameters())
 
+VIT_CONFIGS = {
+    'tiny': {'embed_dim': 192, 'num_layers': 12, 'num_heads': 3},
+    'small': {'embed_dim': 384, 'num_layers': 12, 'num_heads': 6},
+    'base': {'embed_dim': 768, 'num_layers': 12, 'num_heads': 12},
+    'large': {'embed_dim': 1024, 'num_layers': 24, 'num_heads': 16},
+}
 
-def load_vit_model(size='T16', in_channels=1, mode='permeability', pretrained_path=None):
+def load_vit_model(config_or_size='T16', in_channels: int = 1, mode: str = 'permeability', pretrained_path: str = None, **kwargs):
     """
-    Load a ViT model with specified version, size, input channels, and output classes.
-    
-    Args:
-        size (str): Model size variant (currently supports 'T16')
-        in_channels (int): Number of input channels
-        mode (str): Task mode - 'permeability' (4 classes) or other (8 classes)
-        pretrained_path (str): Path to pretrained model weights file
-    
-    Returns:
-        ViT: An instance of the ViT model
+    Flexible loader for ViT models.
+
+    Accepts either:
+    - a config dictionary (as produced by `generate_configs.py`), or
+    - the original argument signature (size, in_channels, mode, pretrained_path).
+
+    Recognized config keys: `size`, `in_channels`, `mode`, `pretrained_path`, `num_classes`,
+    and other ViT kwargs (e.g. `img_size`, `patch_size`, `embed_dim`, `num_layers`, `num_heads`).
     """
-    if mode == 'permeability':
-        num_classes = 4
+    # Default mapping from mode to num_classes
+    def _num_classes_from_mode(m):
+        return 4 if m == 'permeability' else 8
+
+    # Extract from config dict or use provided args
+    if isinstance(config_or_size, dict):
+        cfg = config_or_size
+        size = cfg.get('size', cfg.get('name', 'T16'))
+        in_channels = cfg.get('in_channels', in_channels)
+        mode = cfg.get('mode', mode)
+        pretrained_path = cfg.get('pretrained_path', pretrained_path)
+        num_classes = cfg.get('num_classes', _num_classes_from_mode(mode))
+        img_size = cfg.get('img_size', cfg.get('image_size', 128))
+        patch_size = cfg.get('patch_size', 16)
+        embed_dim = cfg.get('embed_dim', None)
+        num_layers = cfg.get('num_layers', None)
+        num_heads = cfg.get('num_heads', None)
+        mlp_ratio = cfg.get('mlp_ratio', 4.0)
+        dropout = cfg.get('dropout', 0.1)
     else:
-        num_classes = 8
-    
-    if size == 'T16':
-        model = ViT(
-            img_size=128,
-            patch_size=16,
-            in_channels=in_channels,  # Use the parameter instead of hardcoded 1
-            num_classes=num_classes,
-            embed_dim=768,   # Base embedding size
-            num_layers=12,   # Base depth
-            num_heads=12,    # Base heads
-            mlp_ratio=4.0,
-            dropout=0.1,
-            mode=mode
-        )
-    
+        size = config_or_size
+        num_classes = kwargs.pop('num_classes', _num_classes_from_mode(mode))
+        img_size = kwargs.pop('img_size', 128)
+        patch_size = kwargs.pop('patch_size', 16)
+        embed_dim = kwargs.pop('embed_dim', None)
+        num_layers = kwargs.pop('num_layers', None)
+        num_heads = kwargs.pop('num_heads', None)
+        mlp_ratio = kwargs.pop('mlp_ratio', 4.0)
+        dropout = kwargs.pop('dropout', 0.1)
+
+    # If a named size (tiny/small/base/large) is provided and any of embed_dim/num_layers/num_heads are missing,
+    # fill them from VIT_CONFIGS
+    size_key = str(size).lower()
+    if size_key in VIT_CONFIGS:
+        cfg_map = VIT_CONFIGS[size_key]
+        if embed_dim is None:
+            embed_dim = cfg_map.get('embed_dim', 768)
+        if num_layers is None:
+            num_layers = cfg_map.get('num_layers', 12)
+        if num_heads is None:
+            num_heads = cfg_map.get('num_heads', 12)
+    else:
+        # Fallback defaults
+        embed_dim = embed_dim or 768
+        num_layers = num_layers or 12
+        num_heads = num_heads or 12
+
+    # Create model
+    model = ViT(
+        img_size=img_size,
+        patch_size=patch_size,
+        in_channels=in_channels,
+        num_classes=num_classes,
+        embed_dim=embed_dim,
+        num_layers=num_layers,
+        num_heads=num_heads,
+        mlp_ratio=mlp_ratio,
+        dropout=dropout,
+        mode=mode,
+    )
+
+    # Load pretrained weights if requested
     if pretrained_path:
-        
         if not os.path.exists(pretrained_path):
             raise FileNotFoundError(f"Pretrained model not found at: {pretrained_path}")
-        
-        # Load the checkpoint
+
         checkpoint = torch.load(pretrained_path, map_location='cpu')
-        
-        # Handle different checkpoint formats
         if 'model_state_dict' in checkpoint:
             state_dict = checkpoint['model_state_dict']
         elif 'state_dict' in checkpoint:
             state_dict = checkpoint['state_dict']
         else:
             state_dict = checkpoint
-        
-        # Load weights with strict=False to allow partial loading
-        # This is useful if the pretrained model has different num_classes
+
         model.load_state_dict(state_dict, strict=False)
         print(f"Loaded pretrained weights from: {pretrained_path}")
-    
+
     return model
-    # if not pretrained_path:
-    #     return ConvNeXt(version=version, size=size, in_channels=in_channels, num_classes=num_classes)
-    # else:
-    #     model = ConvNeXt(version=version, size=size, in_channels=in_channels, num_classes=num_classes)
-    #     model.load_state_dict(torch.load(pretrained_path,map_location='cpu'))
-    #     return model
-
-# For your specific use case (permeability and dispersion)
-# def vit_permeability(img_size=128, num_classes=4, mode='permeability', **kwargs):
-#     """Lightweight ViT for permeability and dispersion predictions"""
-#     return ModularViT(
-#         img_size=img_size,
-#         patch_size=8,  # Smaller patches for 128x128 images
-#         in_channels=1,  # Assuming grayscale input
-#         embed_dim=128,  # Smaller embedding dimension
-#         num_layers=6,   # Fewer layers for efficiency
-#         num_heads=8,
-#         mlp_ratio=2.0,
-#         num_classes=num_classes,
-#         mode=mode,
-#         dropout=0.0,
-#         **kwargs
-#     )
-# def vit_b16(num_classes=4, mode='permeability'):
-#     """ViT-Base with 16x16 patches"""
-#     return ModularViT(
-#         img_size=128,
-#         patch_size=16,
-#         in_channels=1,
-#         num_classes=num_classes,
-#         embed_dim=768,   # Base embedding size
-#         num_layers=12,   # Base depth
-#         num_heads=12,    # Base heads
-#         mlp_ratio=4.0,
-#         dropout=0.1,
-#         mode=mode
-#     )
-# def vit_b8(num_classes=4, mode='permeability'):
-#     """ViT-Base with 16x16 patches"""
-#     return ModularViT(
-#         img_size=128,
-#         patch_size=8,
-#         in_channels=1,
-#         num_classes=num_classes,
-#         embed_dim=768,   # Base embedding size
-#         num_layers=12,   # Base depth
-#         num_heads=12,    # Base heads
-#         mlp_ratio=4.0,
-#         dropout=0.1,
-#         mode=mode
-#     )
-
-# def vit_s8(num_classes=4, mode='permeability'):
-#     """ViT-Small with 8x8 patches"""
-#     return ModularViT(
-#         img_size=128,
-#         patch_size=8,
-#         in_channels=1,
-#         num_classes=num_classes,
-#         embed_dim=384,   # Smaller embedding
-#         num_layers=12,   # Same depth, smaller width
-#         num_heads=6,     # Fewer heads
-#         mlp_ratio=4.0,
-#         dropout=0.1,
-#         mode=mode
-#     )
+    
 
 
-
-if __name__ == '__main__':
-    models = {
-        "ViT-B/16": vit_b16(),
-        "ViT-B/8": vit_b8(),
-        "ViT-S/8": vit_s8(),
-        "Lightweight-ViT": vit_permeability(img_size=128, num_classes=4, mode='dispersion')
-    }
-
-    for name, model in models.items():
-        n_params = model.get_num_params()
-        print(f"{name:25s} | Params: {n_params/1e6:.2f} M")
+if __name__ == "__main__":    
+    # Example usage
+    print("Testing ViT models...")
+    
+    # Test ViT-Tiny
+    x = torch.randn(2, 1, 128, 128)
+    model_tiny = load_vit_model(config_or_size='tiny', in_channels=1, mode='permeability')
+    output_tiny = model_tiny(x)
+    print(f"ViT-Tiny output shape: {output_tiny.shape}")
+    
+    # Test ViT-Base for dispersion
+    peclet = torch.tensor([10.0, 20.0])
+    model_base = load_vit_model(config_or_size='base', in_channels=1, mode='dispersion')
+    output_base = model_base(x, peclet=peclet)
+    print(f"ViT-Base (dispersion) output shape: {output_base.shape}")

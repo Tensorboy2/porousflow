@@ -229,25 +229,31 @@ class ConvNeXt(nn.Module):
         x = self.fc(x)
         return x
 
-def load_convnext_model(version='v1', size='tiny', in_channels=3, num_classes=1000,pretrained_path=False):
+def load_convnext_model(config_or_version='v1', size='tiny', in_channels=3, num_classes=1000, pretrained_path = None):
     """
-    Load a ConvNeXt model with specified version, size, input channels, and output classes.
-    
-    Args:
-        version (str): 'v1', 'v2', or 'rms'
-        size (str): 'atto', 'femto', 'pico', 'nano', 'tiny', 'small', 'base', 'large'
-        in_channels (int): Number of input channels
-        num_classes (int): Number of output classes
-    
-    Returns:
-        ConvNeXt: An instance of the ConvNeXt model
+    Flexible loader for ConvNeXt models.
+
+    Accepts either a config dictionary or the traditional signature.
+    Recognized config keys: `version`, `size`, `in_channels`, `num_classes`, `pretrained_path`.
     """
-    if not pretrained_path:
-        return ConvNeXt(version=version, size=size, in_channels=in_channels, num_classes=num_classes)
+    if isinstance(config_or_version, dict):
+        cfg = config_or_version
+        version = cfg.get('version', 'v1')
+        size = cfg.get('size', size)
+        in_channels = cfg.get('in_channels', in_channels)
+        num_classes = cfg.get('num_classes', num_classes)
+        pretrained_path = cfg.get('pretrained_path', pretrained_path)
     else:
-        model = ConvNeXt(version=version, size=size, in_channels=in_channels, num_classes=num_classes)
-        model.load_state_dict(torch.load(pretrained_path,map_location='cpu'))
-        return model
+        version = config_or_version
+
+    model = ConvNeXt(version=version, size=size, in_channels=in_channels, num_classes=num_classes)
+
+    if pretrained_path:
+        if not os.path.exists(pretrained_path):
+            raise FileNotFoundError(f"Pretrained model not found at: {pretrained_path}")
+        model.load_state_dict(torch.load(pretrained_path, map_location='cpu'))
+
+    return model
 
 
 def count_parameters(model):
@@ -260,13 +266,13 @@ if __name__ == "__main__":
     # Set seed for reproducibility
     torch.manual_seed(42)
     
-    x = torch.randn(2, 3, 224, 224)
+    x = torch.randn(2, 1, 128, 128)
     
     # Test different versions and sizes
     for version in ['v1', 'v2', 'rms']:
         for size in ['atto', 'pico', 'tiny']:
             try:
-                model = load_convnext_model(version=version, size=size, in_channels=3, num_classes=4)
+                model = load_convnext_model(config_or_version=version, size=size, in_channels=1, num_classes=4)
                 out = model(x)
                 params = count_parameters(model)
                 print(f"ConvNeXt-{version}-{size}: output shape {out.shape}, params {params:,}")
@@ -275,7 +281,7 @@ if __name__ == "__main__":
     
     # Test large model
     try:
-        model = load_convnext_model(version='v2', size='large', in_channels=3, num_classes=4)
+        model = load_convnext_model(config_or_version='v2', size='large', in_channels=1, num_classes=4)
         params = count_parameters(model)
         print(f"\nConvNeXt-v2-large param count: {params:,}")
     except Exception as e:
