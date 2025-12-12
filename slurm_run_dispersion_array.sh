@@ -4,10 +4,11 @@
 #SBATCH --error=slurm_out/disp_%A_%a.err
 #SBATCH --partition=standard
 #SBATCH --nodes=1
+#SBATCH --array=0-1000%36
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=1G
-#SBATCH --array=0-1000%72     # MaxArraySize limit
+
 
 # ---------------------------------------------------------
 # Dataset sizes
