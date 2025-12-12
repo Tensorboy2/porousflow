@@ -40,8 +40,9 @@ class SlurmConfig:
             f"#SBATCH --partition={self.partition}",
             f"#SBATCH --ntasks={self.ntasks}",
             f"#SBATCH --cpus-per-task={self.cpus_per_task}",
-            f"#SBATCH --gres={self.gres}",
         ]
+        if self.gres:
+            lines.append(f"#SBATCH --gres={self.gres}")
         if self.time:
             lines.append(f"#SBATCH --time={self.time}")
         if self.mem:
@@ -58,11 +59,13 @@ class ConfigGenerator:
         output_dir: Path,
         common_config: Dict[str, Any],
         slurm_config: SlurmConfig = None,
+        cpu_mode: bool = False,
     ):
         self.exp_name = exp_name
         self.output_dir = Path(output_dir)
         self.common_config = common_config
         self.slurm_config = slurm_config or SlurmConfig()
+        self.cpu_mode = cpu_mode
         
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.yaml_dir = self.output_dir / exp_name
@@ -72,12 +75,11 @@ class ConfigGenerator:
         """Build experiment configuration for a model."""
         job_name = f"{model.name}_{self.exp_name}"
         
-        # Start with common config
-        # Build a structured model dict so loaders can consume it directly
+        # Infer model type and size from the model name
         model_type = None
         size = None
         name = model.name
-        # Infer type and size from the model name where possible
+        
         if 'vit' in model.name.lower() or 'vit_' in model.name.lower() or model.name.lower().startswith('vit'):
             model_type = 'vit'
             # Example names: ViT_T16, ViT_S16
@@ -86,7 +88,6 @@ class ConfigGenerator:
         elif 'convnext' in model.name.lower():
             model_type = 'convnext'
             # Example names: ConvNeXtTiny, ConvNeXtSmall
-            # take trailing part as size if present
             for s in ['atto','femto','pico','nano','tiny','small','base','large']:
                 if s in model.name.lower():
                     size = s
@@ -96,35 +97,37 @@ class ConfigGenerator:
         elif 'resnet' in model.name.lower():
             model_type = 'resnet'
             # Example: ResNet50
-            # extract digits
             import re
             m = re.search(r"(18|34|50|101|152)", model.name)
             size = m.group(1) if m else '18'
         else:
             model_type = model.name.lower()
 
+        # Build config matching run_model_training.py expectations
         exp = {
             "model": {
                 "type": model_type,
                 "name": name,
                 "size": size,
-                # default grayscale input for porous media
-                "in_channels": 1,
+                "in_channels": 1,  # grayscale for porous media
                 "pretrained_path": None,
             },
-            "save_model_path": f"{job_name}.pth",
-            "save_path": f"{job_name}.csv",
         }
         
-        # Merge common config
+        # Merge common config (will include task, batch_size, etc.)
         exp.update(self.common_config)
         
         # Apply model-specific overrides
-        if "hyperparameters" not in exp:
-            exp["hyperparameters"] = {}
+        exp["clip_grad"] = model.clip_grad
+        if model.custom_params:
+            exp.update(model.custom_params)
         
-        exp["hyperparameters"]["clip_grad"] = model.clip_grad
-        exp["hyperparameters"].update(model.custom_params)
+        # Add CPU-specific settings
+        if self.cpu_mode:
+            exp["device"] = "cpu"
+            # Reduce batch size for CPU testing
+            if "batch_size" in exp:
+                exp["batch_size"] = min(exp["batch_size"], 8)
         
         return exp
     
@@ -132,18 +135,69 @@ class ConfigGenerator:
         """Generate single YAML with all experiments."""
         experiments = [self._build_experiment(m) for m in models]
         
-        yaml_path = self.yaml_dir / f"{self.exp_name}_all.yaml"
+        mode_suffix = "_cpu" if self.cpu_mode else ""
+        yaml_path = self.yaml_dir / f"{self.exp_name}_all{mode_suffix}.yaml"
         with open(yaml_path, "w") as f:
             yaml.dump({"experiments": experiments}, f, default_flow_style=False)
         
         print(f"✓ Generated herbie mode YAML with {len(experiments)} experiments")
+        if self.cpu_mode:
+            print(f"  [CPU MODE] - device set to 'cpu', batch size reduced")
         print(f"  {yaml_path}")
         return yaml_path
+    
+    def generate_cpu_mode(
+        self,
+        models: List[ModelConfig],
+        main_script: str = "run_model_training.py"
+    ) -> tuple[List[Path], Path]:
+        """Generate CPU-only configs and bash scripts for local testing."""
+        yaml_paths = []
+        script_paths = []
+        
+        for model in models:
+            job_name = f"{model.name}_{self.exp_name}_cpu"
+            
+            # Generate YAML
+            exp = self._build_experiment(model)
+            yaml_path = self.yaml_dir / f"{job_name}.yaml"
+            
+            with open(yaml_path, "w") as f:
+                yaml.dump({"experiments": [exp]}, f, default_flow_style=False)
+            yaml_paths.append(yaml_path)
+            
+            # Generate bash script (no SLURM)
+            script_content = f"""#!/bin/bash
+# CPU test for {job_name}
+
+python3 {main_script} --config "{yaml_path}"
+"""
+            script_path = self.yaml_dir / f"{job_name}.sh"
+            with open(script_path, "w") as f:
+                f.write(script_content)
+            script_path.chmod(0o755)  # Make executable
+            script_paths.append(script_path)
+            
+            print(f"✓ Generated CPU test: {job_name}")
+        
+        # Create launcher script
+        launcher_path = self.output_dir / f"run_all_{self.exp_name}_cpu.sh"
+        with open(launcher_path, "w") as f:
+            f.write("#!/bin/bash\n")
+            f.write(f"# Run all CPU tests for experiment: {self.exp_name}\n\n")
+            for script in script_paths:
+                f.write(f"bash {script}\n")
+        
+        launcher_path.chmod(0o755)  # Make executable
+        print(f"\n✓ CPU test launcher: {launcher_path}")
+        print(f"  Run with: bash {launcher_path}")
+        
+        return script_paths, launcher_path
     
     def generate_slurm_mode(
         self, 
         models: List[ModelConfig],
-        main_script: str = "main.py"
+        main_script: str = "run_model_training.py"
     ) -> tuple[List[Path], Path]:
         """Generate individual YAMLs and SLURM scripts."""
         yaml_paths = []
@@ -163,7 +217,7 @@ class ConfigGenerator:
             # Generate SLURM script
             slurm_content = f"""{self.slurm_config.to_header(job_name)}
 
-python {main_script} "{yaml_path}"
+python3 {main_script} --config "{yaml_path}"
 """
             slurm_path = self.yaml_dir / f"{job_name}.sh"
             with open(slurm_path, "w") as f:
@@ -193,9 +247,9 @@ def main():
     )
     parser.add_argument(
         "--mode",
-        choices=["herbie", "slurm"],
+        choices=["herbie", "slurm", "cpu"],
         default="slurm",
-        help="Generation mode: 'herbie' for single YAML, 'slurm' for individual jobs"
+        help="Generation mode: 'herbie' for single YAML, 'slurm' for individual jobs, 'cpu' for local testing"
     )
     parser.add_argument(
         "--exp-name",
@@ -222,26 +276,20 @@ def main():
         ModelConfig("ResNet50", clip_grad=True),
         ModelConfig("ResNet101", clip_grad=True),
         # Add more models with custom params:
-        # ModelConfig("ViT_L16", clip_grad=False, custom_params={"lr": 1e-4}),
+        # ModelConfig("ViT_L16", clip_grad=False, custom_params={"learning_rate": 1e-4}),
     ]
     
-    # Common configuration for all experiments
+    # Common configuration matching run_model_training.py expectations
     common_config = {
-        "hyperparameters": {
-            "epochs": 1000,
-            "batch_size": 64,
-            "lr": 1e-3,
-            "weight_decay": 1e-4,
-            # Add more common hyperparameters
-        },
-        "data": {
-            "dataset": "imagenet",
-            "num_workers": 4,
-            # Add more data config
-        },
+        "task": "permeability",  # or "dispersion"
+        "batch_size": 64,
+        "learning_rate": 1e-3,
+        "weight_decay": 1e-4,
+        "num_epochs": 1000,
+        # Add any other config keys your script expects
     }
     
-    # SLURM configuration
+    # SLURM configuration (not used in CPU mode)
     slurm_config = SlurmConfig(
         partition="normal",
         cpus_per_task=2,
@@ -249,6 +297,20 @@ def main():
         # time="24:00:00",  # Uncomment to set time limit
         # mem="32G",  # Uncomment to set memory limit
     )
+    
+    # Override for CPU mode
+    cpu_mode = args.mode == "cpu"
+    if cpu_mode:
+        # For CPU testing, reduce epochs and use smaller batch
+        common_config["num_epochs"] = 2
+        common_config["batch_size"] = 8
+        slurm_config = SlurmConfig(
+            partition="normal",
+            cpus_per_task=4,
+            gres=None,  # No GPU
+            time="01:00:00",
+            mem="16G",
+        )
     
     # -------------------------
     # Generate configs
@@ -259,10 +321,13 @@ def main():
         output_dir=args.output_dir,
         common_config=common_config,
         slurm_config=slurm_config,
+        cpu_mode=cpu_mode,
     )
     
     if args.mode == "herbie":
         generator.generate_herbie_mode(models)
+    elif args.mode == "cpu":
+        generator.generate_cpu_mode(models)
     else:
         generator.generate_slurm_mode(models)
 

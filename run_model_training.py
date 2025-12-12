@@ -50,6 +50,42 @@ def main(config):
 
     print(f"Loaded model: {model_cfg.get('name', model_type)} | Type: {model_type}")
 
+    # Setup data loaders
+    task = config.get('task', 'permeability')
+    batch_size = config.get('batch_size', 32)
+    if task == 'permeability':
+        train_loader, val_loader, test_loader = get_permeability_dataloader(file_path='data',config=config)
+    elif task == 'dispersion':
+        train_loader, val_loader, test_loader = get_dispersion_dataloader(file_path='data',config=config)
+    else:
+        raise ValueError(f"Unsupported task: {task}")
+    
+    print(f"Data loaders set up for task: {task} | Batch size: {batch_size}")
+
+    # Setup optimizer
+    learning_rate = config.get('learning_rate', 1e-3)
+    weight_decay = config.get('weight_decay', 0.0)
+    optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    print(f"Optimizer: AdamW | LR: {learning_rate} | Weight Decay: {weight_decay}")
+
+    # Initialize Trainer
+    trainer = Trainer(
+        model=model,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        test_loader=test_loader,
+        optimizer=optimizer,
+        config=config,
+        device=device
+    )
+    print("Trainer initialized.")
+
+    # Run training
+    num_epochs = config.get('num_epochs', 10)
+    print(f"Starting training for {num_epochs} epochs...")
+    trainer.train(num_epochs=num_epochs)
+    print("Training completed.")
+
     
 
 if __name__ == "__main__":
@@ -60,4 +96,6 @@ if __name__ == "__main__":
 
     with open(path_to_config, 'r') as f:
         config = yaml.safe_load(f)
-    main(config)
+
+    for exp_config in config.get('experiments', []):
+        main(exp_config)

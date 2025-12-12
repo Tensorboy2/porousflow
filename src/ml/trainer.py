@@ -73,7 +73,7 @@ class Trainer:
         # trues = []
         for inputs, targets in self.train_loader:
             # Move data to device and handle pin_memory if specified
-            if self.config['pin_memory']:
+            if self.config.get('pin_memory', False):
                 inputs, targets = inputs.to(self.device, non_blocking=True), targets.to(self.device, non_blocking=True)
             # Move data to device without pin_memory
             else:
@@ -155,9 +155,12 @@ class Trainer:
 
         epoch_loss = running_loss / len(self.val_loader.dataset)
         
-        preds = torch.cat(preds, dim=0)
-        trues = torch.cat(trues, dim=0)
-        r2 = self.R2_score(trues, preds)
+        # preds = torch.cat(preds, dim=0)
+        # trues = torch.cat(trues, dim=0)
+        # r2 = self.R2_score(trues, preds)
+        r2 = self._compute_r2_from_accumulators(
+            sum_squared_error, sum_targets, sum_targets_squared, count
+        )
 
         self.metrics['R2_val'].append(r2)
         self.metrics['val_loss'].append(epoch_loss)
