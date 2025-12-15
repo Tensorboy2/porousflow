@@ -213,7 +213,7 @@ VIT_CONFIGS = {
     'large': {'embed_dim': 1024, 'num_layers': 24, 'num_heads': 16},
 }
 
-def load_vit_model(config_or_size='T16', in_channels: int = 1, mode: str = 'permeability', pretrained_path: str = None, **kwargs):
+def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeability', pretrained_path: str = None, **kwargs):
     """
     Flexible loader for ViT models.
 
@@ -225,8 +225,12 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, mode: str = 'perm
     and other ViT kwargs (e.g. `img_size`, `patch_size`, `embed_dim`, `num_layers`, `num_heads`).
     """
     # Default mapping from mode to num_classes
-    def _num_classes_from_mode(m):
-        return 4 if m == 'permeability' else 8
+    if task == 'permeability':
+        num_classes = 4
+    elif task == 'dispersion':
+        num_classes = 8
+    else:
+        raise ValueError(f"Unknown task: {cfg['task']}. Supported tasks: ['permeability', 'dispersion']")
 
     # Extract from config dict or use provided args
     if isinstance(config_or_size, dict):
@@ -235,7 +239,7 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, mode: str = 'perm
         in_channels = cfg.get('in_channels', in_channels)
         mode = cfg.get('mode', mode)
         pretrained_path = cfg.get('pretrained_path', pretrained_path)
-        num_classes = cfg.get('num_classes', _num_classes_from_mode(mode))
+        num_classes = cfg.get('num_classes', num_classes)
         img_size = cfg.get('img_size', cfg.get('image_size', 128))
         patch_size = cfg.get('patch_size', 16)
         embed_dim = cfg.get('embed_dim', None)
@@ -245,7 +249,7 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, mode: str = 'perm
         dropout = cfg.get('dropout', 0.1)
     else:
         size = config_or_size
-        num_classes = kwargs.pop('num_classes', _num_classes_from_mode(mode))
+        num_classes = kwargs.pop('num_classes', num_classes)
         img_size = kwargs.pop('img_size', 128)
         patch_size = kwargs.pop('patch_size', 16)
         embed_dim = kwargs.pop('embed_dim', None)
@@ -311,12 +315,12 @@ if __name__ == "__main__":
     
     # Test ViT-Tiny
     x = torch.randn(2, 1, 128, 128)
-    model_tiny = load_vit_model(config_or_size='tiny', in_channels=1, mode='permeability')
+    model_tiny = load_vit_model(config_or_size='tiny', in_channels=1, task='permeability')
     output_tiny = model_tiny(x)
     print(f"ViT-Tiny output shape: {output_tiny.shape}")
     
     # Test ViT-Base for dispersion
     peclet = torch.tensor([10.0, 20.0])
-    model_base = load_vit_model(config_or_size='base', in_channels=1, mode='dispersion')
+    model_base = load_vit_model(config_or_size='base', in_channels=1, task='dispersion')
     output_base = model_base(x, peclet=peclet)
     print(f"ViT-Base (dispersion) output shape: {output_base.shape}")

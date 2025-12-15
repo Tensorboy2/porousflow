@@ -189,7 +189,7 @@ class ConvNeXtEncoder(nn.Module):
         return x
 
 class ConvNeXt(nn.Module):
-    def __init__(self, version='v1', size='tiny', in_channels=3, num_classes=1000):
+    def __init__(self, version='v1', size='tiny', in_channels=1, num_classes=4):
         super().__init__()
         
         # Validate inputs
@@ -208,6 +208,7 @@ class ConvNeXt(nn.Module):
             block_type = ConvNeXtBlockRMS
         else:
             raise ValueError(f"Unknown version: {version}. Available versions: ['v1', 'v2', 'rms']")
+        
         
         self.encoder = ConvNeXtEncoder(in_channels, depths, dims, block_type)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -229,19 +230,26 @@ class ConvNeXt(nn.Module):
         x = self.fc(x)
         return x
 
-def load_convnext_model(config_or_version='v1', size='tiny', in_channels=3, num_classes=1000, pretrained_path = None):
+def load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='permeability',  pretrained_path = None):
     """
     Flexible loader for ConvNeXt models.
 
     Accepts either a config dictionary or the traditional signature.
     Recognized config keys: `version`, `size`, `in_channels`, `num_classes`, `pretrained_path`.
     """
+    if task == 'permeability':
+        num_classes = 4
+    elif task == 'dispersion':
+        num_classes = 8
+    else:
+        raise ValueError(f"Unknown task: {cfg['task']}. Supported tasks: ['permeability', 'dispersion']")
+    
     if isinstance(config_or_version, dict):
         cfg = config_or_version
         version = cfg.get('version', 'v1')
         size = cfg.get('size', size)
         in_channels = cfg.get('in_channels', in_channels)
-        num_classes = cfg.get('num_classes', num_classes)
+        # num_classes = cfg.get('task', num_classes)
         pretrained_path = cfg.get('pretrained_path', pretrained_path)
     else:
         version = config_or_version

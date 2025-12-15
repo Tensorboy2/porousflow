@@ -33,8 +33,9 @@ def main(config):
         raise ValueError("Config must contain a 'model' section")
 
     model_type = model_cfg.get('type')
+    task = config.get('task', 'permeability')
     if model_type == 'convnext':
-        model = load_convnext_model(model_cfg)
+        model = load_convnext_model(model_cfg,task=task)
     elif model_type == 'vit':
         model = load_vit_model(model_cfg)
     elif model_type == 'resnet':
@@ -51,7 +52,6 @@ def main(config):
     print(f"Loaded model: {model_cfg.get('name', model_type)} | Type: {model_type}")
 
     # Setup data loaders
-    task = config.get('task', 'permeability')
     batch_size = config.get('batch_size', 32)
     if task == 'permeability':
         train_loader, val_loader, test_loader = get_permeability_dataloader(file_path='data',config=config)
@@ -84,7 +84,7 @@ def main(config):
     num_epochs = config.get('num_epochs', 10)
     print(f"Starting training for {num_epochs} epochs...")
     trainer.train(num_epochs=num_epochs)
-    print("Training completed.")
+    print("Training completed.\n")
 
     
 

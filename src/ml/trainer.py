@@ -62,6 +62,13 @@ class Trainer:
         use_amp = config.get('use_amp', False)
         self.scaler = GradScaler(enabled=use_amp)    
 
+
+        # Deal with output directories:
+        save_path = config.get('save_model_path', 'results')
+        os.makedirs(save_path, exist_ok=True)
+        self.model_name = config['model'].get('name', 'model')
+
+
     def train_epoch(self):
         self.model.train()
         running_loss = 0.0
@@ -125,7 +132,7 @@ class Trainer:
         self.metrics['R2_train'].append(r2)
         self.metrics['train_loss'].append(epoch_loss)
         
-        return epoch_loss
+        return epoch_loss, r2
     
     def validate(self):
         self.model.eval()
@@ -165,7 +172,7 @@ class Trainer:
         self.metrics['R2_val'].append(r2)
         self.metrics['val_loss'].append(epoch_loss)
         
-        return epoch_loss
+        return epoch_loss,r2
     
     def test(self):
         self.model.eval()
@@ -183,34 +190,46 @@ class Trainer:
                 loss = self.criterion(outputs, targets)
                 running_loss += loss.item() * inputs.size(0)
                 
-                preds.append(outputs.detach().cpu())
-                trues.append(targets.detach().cpu())
-        
+                # preds.append(outputs.detach().cpu())
+                # trues.append(targets.detach().cpu())
+                outputs_cpu = outputs.detach().cpu()
+                targets_cpu = targets.detach().cpu()
+                sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
+                sum_targets += torch.sum(targets_cpu).item()
+                sum_targets_squared += torch.sum(targets_cpu ** 2).item()
+                count += targets_cpu.numel()
         epoch_loss = running_loss / len(self.test_loader.dataset)
         
-        preds = torch.cat(preds, dim=0)
-        trues = torch.cat(trues, dim=0)
-        r2 = self.R2_score(trues, preds)
-
+        # preds = torch.cat(preds, dim=0)
+        # trues = torch.cat(trues, dim=0)
+        # r2 = self.R2_score(trues, preds)
+        r2 = self._compute_r2_from_accumulators(
+            sum_squared_error, sum_targets, sum_targets_squared, count
+        )
         self.metrics['R2_test'].append(r2)
         self.metrics['test_loss'].append(epoch_loss)
         
-        return epoch_loss
+        return epoch_loss, r2
     
     def train(self, num_epochs):
         best_val_loss = float('inf')
         for epoch in range(num_epochs):
-            train_loss = self.train_epoch()
-            val_loss = self.validate()
-            print(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+            train_loss, train_r2 = self.train_epoch()
+            val_loss, val_r2 = self.validate()
+            print(
+                f"Epoch [{epoch+1}/{num_epochs}],\n" 
+                f"      Train Loss: {train_loss:.5f}, Val Loss: {val_loss:.5f}\n"
+                f"      Train R2: {train_r2:.5f},       Val R2: {val_r2:.5f}"
+                )
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
-                self.save_model(os.path.join(self.config.get('save_model_path', '.'), 'best_model.pth'))
+                self.save_model(os.path.join(self.config.get('save_model_path', 'results'), f"{self.config['model']['name']}_{epoch}.pth"))
+                print(f"  Saved best model at epoch {epoch+1} with val loss {val_loss:.5f}")
         #save last model
-        self.save_model(os.path.join(self.config.get('save_model_path', '.'), 'last_model.pth'))
-        self.save_metrics(os.path.join(self.config.get('save_model_path', '.'), 'metrics.zarr'))
-        # test_loss = self.test()
-        # print(f"Final Test Loss: {test_loss:.4f}")
+        self.save_model(os.path.join(self.config.get('save_model_path', 'results'), f"{self.config['model']['name']}_last_model.pth"))
+        self.save_metrics(os.path.join(self.config.get('save_model_path', 'results'), 'metrics.zarr'))
+        # test_loss, test_r2 = self.test()
+        # print(f"Final Test Loss: {test_loss:.4f}, Test R2: {test_r2:.4f}")
 
     def save_model(self, path):
         torch.save(self.model.state_dict(), path)

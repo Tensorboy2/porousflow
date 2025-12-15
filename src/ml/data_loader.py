@@ -84,7 +84,7 @@ class PermeabilityDataset(Dataset):
 
         # turn into torch tensors
         image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
-        K = torch.from_numpy(K).float()
+        K = torch.from_numpy(K).float()*1e9  # convert to mD
         
         # transform if needed
         if self.transform:
@@ -107,8 +107,8 @@ class DispersionDataset(Dataset):
     def __getitem__(self, idx):
         # Fetch numpy versions of the data
         image = self.filled_images_ds[idx]
-        Dx = self.targets_ds_x[idx].flatten()
-        Dy = self.targets_ds_y[idx].flatten()
+        Dx = self.targets_ds_x[idx,0].flatten()
+        Dy = self.targets_ds_y[idx,0].flatten()
 
         # turn into torch tensors
         image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
@@ -238,8 +238,9 @@ if __name__ == "__main__":
     start_mem = proc.memory_info().rss / 1e6  # MB
     start = time.time()
 
-    train_loader, val_loader, test_loader = get_permeability_dataloader('data', config)
+    train_loader, val_loader, test_loader = get_dispersion_dataloader('data', config)
     for i, (image, target) in enumerate(train_loader):
+        print(f"Batch {i}: Image batch shape: {image.shape}, Target batch shape: {target.shape}")
         if i >= 20:  # first 20 batches
             break
 
