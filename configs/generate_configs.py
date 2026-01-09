@@ -863,6 +863,9 @@ python3 {main_script} --config "{yaml_path}"
         session_prefix = f"{self.exp_name}_bf"
 
         job_scripts: List[Path] = []
+        logs_dir = self.output_dir / "slurm_out"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+
         for idx, p in enumerate(yaml_paths):
             gpu = idx % ngpus
             job_name = p.stem
@@ -884,8 +887,9 @@ python3 {main_script} --config "{yaml_path}"
                     "fi",
                     ""
                 ]
-            script_lines += [f"echo 'Starting job: python3 {main_script} --config \"{p}\" (CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES)'",
-                             f"python3 {main_script} --config \"{p}\"",
+            out_file = logs_dir / f"{job_name}.out"
+            script_lines += [f"echo 'Starting job: python3 {main_script} --config \"{p}\" (CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES)' >> \"{out_file}\" 2>&1",
+                             f"python3 {main_script} --config \"{p}\" >> \"{out_file}\" 2>&1",
                              "exec bash"]
 
             with open(job_script, "w") as f:
