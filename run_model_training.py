@@ -37,7 +37,7 @@ def main(config):
     if model_type == 'convnext':
         model = load_convnext_model(model_cfg,task=task)
     elif model_type == 'vit':
-        model = load_vit_model(model_cfg)
+        model = load_vit_model(model_cfg,task=task)
     elif model_type == 'resnet':
         model = load_resnet_model(model_cfg)
     else:

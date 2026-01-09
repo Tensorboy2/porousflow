@@ -12,6 +12,233 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, asdict
 
 
+# ============================================================================
+# CONFIGURATION PRESETS - Edit these to change experiment settings
+# ============================================================================
+
+# Model presets for different experiment scales
+MODEL_PRESETS = {
+    "quick_test": [
+        "ViT-T16",
+        "ConvNeXt-Atto",
+        "ResNet-18",
+    ],
+    "small_sweep": [
+        "ViT-T16",
+        "ViT-S16",
+        "ConvNeXt-Atto",
+        "ConvNeXt-Femto",
+        "ConvNeXt-Pico",
+        "ResNet-18",
+        "ResNet-34",
+    ],
+    "full_vit": [
+        "ViT-T16",
+        "ViT-S16",
+        "ViT-B16",
+        "ViT-L16",
+    ],
+    "full_convnext": [
+        "ConvNeXt-Atto",
+        "ConvNeXt-Femto",
+        "ConvNeXt-Pico",
+        "ConvNeXt-Nano",
+        "ConvNeXt-Tiny",
+        "ConvNeXt-Small",
+        "ConvNeXt-Base",
+    ],
+    "full_resnet": [
+        "ResNet-18",
+        "ResNet-34",
+        "ResNet-50",
+        "ResNet-101",
+        "ResNet-152",
+    ],
+    "all_models": [
+        # All ViT
+        "ViT-T16", "ViT-S16", "ViT-B16", "ViT-L16",
+        # All ConvNeXt
+        "ConvNeXt-Atto", "ConvNeXt-Femto", "ConvNeXt-Pico", "ConvNeXt-Nano",
+        "ConvNeXt-Tiny", "ConvNeXt-Small", "ConvNeXt-Base", "ConvNeXt-Large",
+        # All ResNet
+        "ResNet-18", "ResNet-34", "ResNet-50", "ResNet-101", "ResNet-152",
+    ],
+}
+
+# Default model preset to use
+DEFAULT_MODEL_PRESET = "small_sweep"
+
+# Hyperparameter sweep configurations
+# Each list defines the values to sweep over for that hyperparameter
+HYPERPARAM_SWEEPS = {
+    "learning_rate": {
+        "single": [1e-3],  # Default single value
+        "sweep": [1e-4, 5e-4, 1e-3, 5e-3, 1e-2],
+        "fine": [5e-4, 7e-4, 1e-3, 2e-3, 3e-3],
+        "coarse": [1e-4, 1e-3, 1e-2],
+    },
+    "batch_size": {
+        "single": [64],
+        "sweep": [16, 32, 64, 128, 256],
+        "small": [8, 16, 32],
+        "large": [64, 128, 256, 512],
+    },
+    "weight_decay": {
+        "single": [1e-3],
+        "sweep": [0.0, 1e-4, 1e-3, 1e-2, 1e-1],
+        "light": [0.0, 1e-4, 1e-3],
+    },
+    "num_data_samples": {
+        "single": [None],  # None means use all available data
+        "sweep": [100, 500, 1000, 5000, 10000, None],
+        "small": [100, 500, 1000],
+        "scaling": [100, 200, 500, 1000, 2000, 5000, 10000],
+    },
+    "num_epochs": {
+        "single": [100],
+        "short": [50],
+        "medium": [100],
+        "long": [200, 300],
+    },
+    "decay": {
+        "single": ["cosine"],
+        "sweep": ["cosine", "linear", "exponential", "step"],
+        "common": ["cosine", "linear"],
+    },
+}
+
+# Sweep presets - predefined combinations of sweeps
+SWEEP_PRESETS = {
+    "none": {
+        # No sweeps, use single values for everything
+        "learning_rate": "single",
+        "batch_size": "single",
+        "weight_decay": "single",
+        "num_data_samples": "single",
+        "num_epochs": "single",
+        "decay": "single",
+    },
+    "lr_sweep": {
+        # Sweep only learning rate
+        "learning_rate": "sweep",
+        "batch_size": "single",
+        "weight_decay": "single",
+        "num_data_samples": "single",
+        "num_epochs": "single",
+        "decay": "single",
+    },
+    "bs_sweep": {
+        # Sweep only batch size
+        "learning_rate": "single",
+        "batch_size": "sweep",
+        "weight_decay": "single",
+        "num_data_samples": "single",
+        "num_epochs": "single",
+        "decay": "single",
+    },
+    "data_scaling": {
+        # Sweep number of data samples (data scaling experiment)
+        "learning_rate": "single",
+        "batch_size": "single",
+        "weight_decay": "single",
+        "num_data_samples": "scaling",
+        "num_epochs": "single",
+        "decay": "single",
+    },
+    "lr_bs_sweep": {
+        # Sweep learning rate and batch size together
+        "learning_rate": "sweep",
+        "batch_size": "sweep",
+        "weight_decay": "single",
+        "num_data_samples": "single",
+        "num_epochs": "single",
+        "decay": "single",
+    },
+    "optimizer_sweep": {
+        # Sweep LR, weight decay, and decay schedule
+        "learning_rate": "fine",
+        "batch_size": "single",
+        "weight_decay": "sweep",
+        "num_data_samples": "single",
+        "num_epochs": "single",
+        "decay": "common",
+    },
+    "full_sweep": {
+        # Sweep everything (WARNING: will generate many configs!)
+        "learning_rate": "coarse",
+        "batch_size": "small",
+        "weight_decay": "light",
+        "num_data_samples": "small",
+        "num_epochs": "single",
+        "decay": "common",
+    },
+}
+
+DEFAULT_SWEEP_PRESET = "none"
+
+# Base training configurations by task (used as defaults)
+TASK_CONFIGS = {
+    "permeability": {
+        "learning_rate": 1e-3,
+        "weight_decay": 1e-3,
+        "batch_size": 64,
+        "num_epochs": 100,
+        "decay": "cosine",
+        "warmup_steps": 100,
+        "num_data_samples": None,  # None = use all data
+    },
+    "dispersion": {
+        "learning_rate": 1e-3,
+        "weight_decay": 1e-3,
+        "batch_size": 64,
+        "num_epochs": 100,
+        "decay": "cosine",
+        "warmup_steps": 100,
+        "num_data_samples": None,
+    },
+}
+
+# Device-specific configurations
+DEVICE_CONFIGS = {
+    "gpu": {
+        "slurm": {
+            "partition": "normal",
+            "cpus_per_task": 2,
+            "gres": "gpu:1",
+            "time": None,
+            "mem": None,
+        },
+    },
+    "cpu": {
+        "slurm": {
+            "partition": "normal",
+            "cpus_per_task": 4,
+            "gres": None,
+            "time": "01:00:00",
+            "mem": "16G",
+        },
+        "training_overrides": {
+            "batch_size": 8,
+            "num_epochs": 50,
+        },
+    },
+}
+
+# Experiment naming template
+EXP_NAME_TEMPLATE = "{task}_{device}_run"
+
+# Output directories
+OUTPUT_BASE_DIR = "./experiments"
+RESULTS_BASE_DIR = "./results"
+
+# Main training script name
+MAIN_SCRIPT = "run_model_training.py"
+
+
+# ============================================================================
+# Core classes (unchanged from original)
+# ============================================================================
+
 @dataclass
 class SlurmConfig:
     """SLURM job configuration."""
@@ -333,205 +560,311 @@ class ConfigGenerator:
         self,
         exp_name: str,
         output_dir: Path,
-        common_config: Dict[str, Any],
+        base_config: Dict[str, Any],
         model_registry: ModelRegistry,
         slurm_config: SlurmConfig = None,
-        cpu_mode: bool = False,
+        is_cpu: bool = False,
+        sweep_configs: Dict[str, List[Any]] = None,
     ):
         self.exp_name = exp_name
         self.output_dir = Path(output_dir)
-        self.common_config = common_config
+        self.base_config = base_config
         self.registry = model_registry
         self.slurm_config = slurm_config or SlurmConfig()
-        self.cpu_mode = cpu_mode
+        self.is_cpu = is_cpu
+        self.sweep_configs = sweep_configs or {}
         
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.yaml_dir = self.output_dir / exp_name
         self.yaml_dir.mkdir(exist_ok=True)
     
-    def _build_experiment(self, model_name: str, custom_params: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Build experiment configuration for a model."""
-        # Get model config from registry
+    def _generate_sweep_combinations(self) -> List[Dict[str, Any]]:
+        """Generate all combinations of hyperparameters to sweep."""
+        if not self.sweep_configs:
+            return [{}]
+        
+        import itertools
+        
+        # Get all parameter names and their values
+        param_names = list(self.sweep_configs.keys())
+        param_values = [self.sweep_configs[name] for name in param_names]
+        
+        # Generate all combinations
+        combinations = []
+        for values in itertools.product(*param_values):
+            combo = dict(zip(param_names, values))
+            combinations.append(combo)
+        
+        return combinations
+    
+    def _format_param_value(self, value: Any) -> str:
+        """Format parameter value for use in filenames."""
+        if value is None:
+            return "all"
+        elif isinstance(value, float):
+            return f"{value:.0e}".replace("-", "m").replace("+", "p")
+        else:
+            return str(value)
+    
+    def _build_experiment(self, model_name: str, sweep_params: Dict[str, Any] = None) -> tuple[Dict[str, Any], str]:
+        """Build experiment configuration for a model with optional sweep parameters.
+        
+        Returns:
+            tuple: (experiment_config, unique_suffix)
+        """
         model_cfg = self.registry.get(model_name)
         
-        # Create safe job name (replace slashes and special chars)
-        safe_name = model_name.replace('/', '-').replace(' ', '_')
-        job_name = f"{safe_name}_{self.exp_name}"
-        
-        # Build config matching run_model_training.py expectations
         exp = {
             "model": {
                 "type": model_cfg["type"],
                 "name": model_name,
                 "size": model_cfg["size"],
-                "in_channels": 1,  # grayscale for porous media
+                "in_channels": 1,
                 "pretrained_path": None,
             },
         }
         
-        # Add version if specified (e.g., for ConvNeXt V2)
         if "version" in model_cfg:
             exp["model"]["version"] = model_cfg["version"]
         
-        # Merge common config
-        exp.update(self.common_config)
-        
-        # Add model-specific settings
+        # Start with base config
+        exp.update(self.base_config)
         exp["clip_grad"] = model_cfg.get("clip_grad", True)
         
-        # Apply custom parameter overrides
-        if custom_params:
-            exp.update(custom_params)
+        # Apply sweep parameters and build suffix
+        suffix_parts = []
+        if sweep_params:
+            for param_name, param_value in sweep_params.items():
+                exp[param_name] = param_value
+                # Add to suffix for unique naming
+                short_name = {
+                    "learning_rate": "lr",
+                    "batch_size": "bs",
+                    "weight_decay": "wd",
+                    "num_data_samples": "n",
+                    "num_epochs": "ep",
+                    "decay": "decay",
+                }.get(param_name, param_name[:4])
+                suffix_parts.append(f"{short_name}{self._format_param_value(param_value)}")
         
-        # Add CPU-specific settings
-        if self.cpu_mode:
+        suffix = "_".join(suffix_parts) if suffix_parts else ""
+        
+        if self.is_cpu:
             exp["device"] = "cpu"
-            if "batch_size" in exp:
-                exp["batch_size"] = min(exp["batch_size"], 8)
         
-        return exp
+        return exp, suffix
     
     def generate_herbie_mode(self, model_names: List[str]) -> Path:
-        """Generate single YAML with all experiments."""
-        experiments = [self._build_experiment(name) for name in model_names]
+        """Generate single YAML with all experiments (including sweeps)."""
+        experiments = []
         
-        mode_suffix = "_cpu" if self.cpu_mode else ""
+        # Generate sweep combinations
+        sweep_combos = self._generate_sweep_combinations()
+        
+        # Generate experiment for each model x sweep combination
+        for model_name in model_names:
+            for sweep_params in sweep_combos:
+                exp, _ = self._build_experiment(model_name, sweep_params)
+                experiments.append(exp)
+        
+        mode_suffix = "_cpu" if self.is_cpu else ""
         yaml_path = self.yaml_dir / f"{self.exp_name}_all{mode_suffix}.yaml"
         with open(yaml_path, "w") as f:
             yaml.dump({"experiments": experiments}, f, default_flow_style=False)
         
         print(f"✓ Generated herbie mode YAML with {len(experiments)} experiments")
-        if self.cpu_mode:
-            print(f"  [CPU MODE] - device set to 'cpu', batch size reduced")
+        print(f"  ({len(model_names)} models × {len(sweep_combos)} sweep combinations)")
+        if self.is_cpu:
+            print(f"  [CPU MODE] - device set to 'cpu'")
         print(f"  {yaml_path}")
         return yaml_path
     
-    def generate_cpu_mode(
+    def generate_individual_mode(
         self,
         model_names: List[str],
-        main_script: str = "run_model_training.py"
+        main_script: str = MAIN_SCRIPT
     ) -> tuple[List[Path], Path]:
-        """Generate CPU-only configs and bash scripts for local testing."""
+        """Generate individual YAMLs and execution scripts (including sweeps)."""
         yaml_paths = []
         script_paths = []
         
+        use_slurm = not self.is_cpu
+        sweep_combos = self._generate_sweep_combinations()
+        
         for model_name in model_names:
-            safe_name = model_name.replace('/', '-').replace(' ', '_')
-            job_name = f"{safe_name}_{self.exp_name}_cpu"
-            
-            # Generate YAML
-            exp = self._build_experiment(model_name)
-            yaml_path = self.yaml_dir / f"{job_name}.yaml"
-            
-            with open(yaml_path, "w") as f:
-                yaml.dump({"experiments": [exp]}, f, default_flow_style=False)
-            yaml_paths.append(yaml_path)
-            
-            # Generate bash script (no SLURM)
-            script_content = f"""#!/bin/bash
+            for sweep_params in sweep_combos:
+                exp, suffix = self._build_experiment(model_name, sweep_params)
+                
+                safe_name = model_name.replace('/', '-').replace(' ', '_')
+                job_name = f"{safe_name}_{self.exp_name}"
+                if suffix:
+                    job_name = f"{job_name}_{suffix}"
+                
+                # Generate YAML
+                yaml_path = self.yaml_dir / f"{job_name}.yaml"
+                
+                with open(yaml_path, "w") as f:
+                    yaml.dump({"experiments": [exp]}, f, default_flow_style=False)
+                yaml_paths.append(yaml_path)
+                
+                # Generate script
+                if use_slurm:
+                    script_content = f"""{self.slurm_config.to_header(job_name)}
+
+python3 {main_script} --config "{yaml_path}"
+"""
+                else:
+                    script_content = f"""#!/bin/bash
 # CPU test for {job_name}
 
 python3 {main_script} --config "{yaml_path}"
 """
-            script_path = self.yaml_dir / f"{job_name}.sh"
-            with open(script_path, "w") as f:
-                f.write(script_content)
-            script_path.chmod(0o755)
-            script_paths.append(script_path)
-            
-            print(f"✓ Generated CPU test: {model_name}")
+                
+                script_path = self.yaml_dir / f"{job_name}.sh"
+                with open(script_path, "w") as f:
+                    f.write(script_content)
+                script_path.chmod(0o755)
+                script_paths.append(script_path)
+        
+        print(f"✓ Generated {len(yaml_paths)} individual configs")
+        print(f"  ({len(model_names)} models × {len(sweep_combos)} sweep combinations)")
         
         # Create launcher script
-        launcher_path = self.output_dir / f"run_all_{self.exp_name}_cpu.sh"
+        launcher_name = f"{'submit' if use_slurm else 'run'}_all_{self.exp_name}.sh"
+        launcher_path = self.output_dir / launcher_name
+        
         with open(launcher_path, "w") as f:
             f.write("#!/bin/bash\n")
-            f.write(f"# Run all CPU tests for experiment: {self.exp_name}\n\n")
+            f.write(f"# {'Submit' if use_slurm else 'Run'} all jobs for experiment: {self.exp_name}\n")
+            f.write(f"# Total jobs: {len(script_paths)}\n\n")
             for script in script_paths:
-                f.write(f"bash {script}\n")
-        
-        launcher_path.chmod(0o755)
-        print(f"\n✓ CPU test launcher: {launcher_path}")
-        print(f"  Run with: bash {launcher_path}")
-        
-        return script_paths, launcher_path
-    
-    def generate_slurm_mode(
-        self, 
-        model_names: List[str],
-        main_script: str = "run_model_training.py"
-    ) -> tuple[List[Path], Path]:
-        """Generate individual YAMLs and SLURM scripts."""
-        yaml_paths = []
-        slurm_paths = []
-        
-        for model_name in model_names:
-            safe_name = model_name.replace('/', '-').replace(' ', '_')
-            job_name = f"{safe_name}_{self.exp_name}"
-            
-            # Generate YAML
-            exp = self._build_experiment(model_name)
-            yaml_path = self.yaml_dir / f"{job_name}.yaml"
-            
-            with open(yaml_path, "w") as f:
-                yaml.dump({"experiments": [exp]}, f, default_flow_style=False)
-            yaml_paths.append(yaml_path)
-            
-            # Generate SLURM script
-            slurm_content = f"""{self.slurm_config.to_header(job_name)}
-
-python3 {main_script} --config "{yaml_path}"
-"""
-            slurm_path = self.yaml_dir / f"{job_name}.sh"
-            with open(slurm_path, "w") as f:
-                f.write(slurm_content)
-            slurm_paths.append(slurm_path)
-            
-            print(f"✓ Generated: {model_name}")
-        
-        # Create launcher script
-        launcher_path = self.output_dir / f"submit_all_{self.exp_name}.sh"
-        with open(launcher_path, "w") as f:
-            f.write("#!/bin/bash\n")
-            f.write(f"# Launch all jobs for experiment: {self.exp_name}\n\n")
-            for script in slurm_paths:
-                f.write(f"sbatch {script}\n")
+                cmd = "sbatch" if use_slurm else "bash"
+                f.write(f"{cmd} {script}\n")
         
         launcher_path.chmod(0o755)
         print(f"\n✓ Launcher script: {launcher_path}")
         print(f"  Run with: bash {launcher_path}")
         
-        return slurm_paths, launcher_path
+        return script_paths, launcher_path
+
+
+# ============================================================================
+# Main entry point
+# ============================================================================
+
+def print_presets():
+    """Print available model presets."""
+    print("\n" + "="*70)
+    print("AVAILABLE MODEL PRESETS")
+    print("="*70)
+    for preset_name, models in MODEL_PRESETS.items():
+        print(f"\n{preset_name}:")
+        print(f"  Models: {', '.join(models)}")
+        print(f"  Count: {len(models)}")
+    print("\n" + "="*70 + "\n")
+
+
+def print_sweep_presets():
+    """Print available sweep presets with details."""
+    print("\n" + "="*70)
+    print("AVAILABLE SWEEP PRESETS")
+    print("="*70)
+    
+    for preset_name, preset_config in SWEEP_PRESETS.items():
+        print(f"\n{preset_name}:")
+        total_combinations = 1
+        for param, sweep_type in preset_config.items():
+            values = HYPERPARAM_SWEEPS[param][sweep_type]
+            n_values = len(values)
+            total_combinations *= n_values
+            print(f"  {param:20s}: {sweep_type:15s} ({n_values} values)")
+        print(f"  → Total combinations: {total_combinations}")
+    
+    print("\n" + "="*70 + "\n")
+
+
+def print_hyperparam_sweeps():
+    """Print all available hyperparameter sweep configurations."""
+    print("\n" + "="*70)
+    print("HYPERPARAMETER SWEEP OPTIONS")
+    print("="*70)
+    
+    for param_name, sweep_types in HYPERPARAM_SWEEPS.items():
+        print(f"\n{param_name}:")
+        for sweep_name, values in sweep_types.items():
+            print(f"  {sweep_name:15s}: {values}")
+    
+    print("\n" + "="*70 + "\n")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate training configs and SLURM scripts"
+        description="Generate training configs and execution scripts",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Generate configs for permeability task on GPU
+  python script.py --task permeability --device gpu
+  
+  # Generate configs for dispersion task on CPU
+  python script.py --task dispersion --device cpu
+  
+  # Use herbie mode (single YAML)
+  python script.py --task permeability --device gpu --herbie
+  
+  # List available models or presets
+  python script.py --list-models
+  python script.py --list-presets
+        """
+    )
+    
+    # Main arguments
+    parser.add_argument(
+        "--task",
+        choices=list(TASK_CONFIGS.keys()),
+        default="permeability",
+        help="Task type for experiments"
     )
     parser.add_argument(
-        "--mode",
-        choices=["herbie", "slurm", "cpu"],
-        default="slurm",
-        help="Generation mode: 'herbie' for single YAML, 'slurm' for individual jobs, 'cpu' for local testing"
+        "--device",
+        choices=["gpu", "cpu"],
+        default="gpu",
+        help="Device type (affects batch size, epochs, SLURM config)"
+    )
+    
+    # Mode selection
+    parser.add_argument(
+        "--herbie",
+        action="store_true",
+        help="Generate single YAML with all experiments (herbie mode)"
+    )
+    
+    # Optional overrides
+    parser.add_argument(
+        "--preset",
+        choices=list(MODEL_PRESETS.keys()),
+        default=DEFAULT_MODEL_PRESET,
+        help=f"Model preset to use (default: {DEFAULT_MODEL_PRESET})"
     )
     parser.add_argument(
         "--exp-name",
-        default="all_models_run_5",
-        help="Experiment name"
+        help="Custom experiment name (default: auto-generated)"
     )
     parser.add_argument(
         "--output-dir",
-        default="./experiments",
-        help="Output directory for configs"
+        help=f"Output directory (default: {OUTPUT_BASE_DIR})"
     )
-    parser.add_argument(
-        "--models",
-        nargs="+",
-        help="Specific models to use (default: all small models for testing)"
-    )
+    
+    # Utility commands
     parser.add_argument(
         "--list-models",
         action="store_true",
         help="List all available models and exit"
+    )
+    parser.add_argument(
+        "--list-presets",
+        action="store_true",
+        help="List all model presets and exit"
     )
     parser.add_argument(
         "--save-registry",
@@ -543,22 +876,16 @@ def main():
         type=str,
         help="Load model registry from JSON file"
     )
-    parser.add_argument(
-        "--task",
-        choices=["permeability", "dispersion"],
-        default="permeability",
-        help="Task type for the experiments"
-    )
+    
     args = parser.parse_args()
     
     # -------------------------
-    # Load Model Registry
+    # Handle utility commands
     # -------------------------
     
     registry_path = Path(args.registry) if args.registry else None
     registry = ModelRegistry(registry_path)
     
-    # Handle special commands
     if args.save_registry:
         registry.save(Path(args.save_registry))
         return
@@ -567,76 +894,70 @@ def main():
         registry.print_catalog()
         return
     
+    if args.list_presets:
+        print_presets()
+        return
+    
     # -------------------------
-    # Configuration
+    # Build configuration
     # -------------------------
     
-    # Select models to use
-    if args.models:
-        model_names = args.models
+    # Select models from preset
+    model_names = MODEL_PRESETS[args.preset]
+    
+    # Generate experiment name
+    if args.exp_name:
+        exp_name = args.exp_name
     else:
-        # Default to smaller models for quick testing
-        model_names = [
-            "ViT-T/16",
-            "ViT-S/16",
-            "ConvNeXt-Tiny",
-            "ConvNeXt-Small",
-            "ResNet-50",
-        ]
+        exp_name = EXP_NAME_TEMPLATE.format(task=args.task, device=args.device)
     
-    # Common configuration matching run_model_training.py expectations
-    common_config = {
-        "task": args.task,  # or "dispersion"
-        "batch_size": 64,
-        "learning_rate": 1e-3,
-        "weight_decay": 1e-4,
-        "num_epochs": 1000,
-        "decay": "cosine",
-        "warmup_steps": 100,
-        "save_model_path": "results"+f"/{args.exp_name}",
-    }
+    # Get task configuration
+    common_config = TASK_CONFIGS[args.task].copy()
+    common_config["task"] = args.task
     
-    # SLURM configuration
-    slurm_config = SlurmConfig(
-        partition="normal",
-        cpus_per_task=2,
-        gres="gpu:1",
-        # time="24:00:00",
-        # mem="32G",
-    )
+    # Apply device-specific overrides
+    is_cpu = args.device == "cpu"
+    if is_cpu and "training_overrides" in DEVICE_CONFIGS["cpu"]:
+        common_config.update(DEVICE_CONFIGS["cpu"]["training_overrides"])
     
-    # Override for CPU mode
-    cpu_mode = args.mode == "cpu"
-    if cpu_mode:
-        common_config["num_epochs"] = 8
-        common_config["batch_size"] = 8
-        slurm_config = SlurmConfig(
-            partition="normal",
-            cpus_per_task=4,
-            gres=None,
-            time="01:00:00",
-            mem="16G",
-        )
+    # Set save path
+    common_config["save_model_path"] = f"{RESULTS_BASE_DIR}/{exp_name}"
+    
+    # Get SLURM configuration
+    slurm_dict = DEVICE_CONFIGS[args.device]["slurm"]
+    slurm_config = SlurmConfig(**slurm_dict)
+    
+    # Get output directory
+    output_dir = args.output_dir or OUTPUT_BASE_DIR
     
     # -------------------------
     # Generate configs
     # -------------------------
     
+    print("\n" + "="*70)
+    print("CONFIGURATION SUMMARY")
+    print("="*70)
+    print(f"Task: {args.task}")
+    print(f"Device: {args.device}")
+    print(f"Preset: {args.preset} ({len(model_names)} models)")
+    print(f"Experiment: {exp_name}")
+    print(f"Mode: {'herbie (single YAML)' if args.herbie else 'individual (separate jobs)'}")
+    print(f"Output: {output_dir}")
+    print("="*70 + "\n")
+    
     generator = ConfigGenerator(
-        exp_name=args.exp_name,
-        output_dir=args.output_dir,
-        common_config=common_config,
+        exp_name=exp_name,
+        output_dir=output_dir,
+        base_config=common_config,
         model_registry=registry,
         slurm_config=slurm_config,
-        cpu_mode=cpu_mode,
+        is_cpu=is_cpu,
     )
     
-    if args.mode == "herbie":
+    if args.herbie:
         generator.generate_herbie_mode(model_names)
-    elif args.mode == "cpu":
-        generator.generate_cpu_mode(model_names)
     else:
-        generator.generate_slurm_mode(model_names)
+        generator.generate_individual_mode(model_names)
 
 
 if __name__ == "__main__":

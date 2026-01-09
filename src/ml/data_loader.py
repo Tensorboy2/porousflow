@@ -107,12 +107,12 @@ class DispersionDataset(Dataset):
     def __getitem__(self, idx):
         # Fetch numpy versions of the data
         image = self.filled_images_ds[idx]
-        Dx = self.targets_ds_x[idx,0].flatten()
-        Dy = self.targets_ds_y[idx,0].flatten()
+        Dx = self.targets_ds_x[idx].reshape(5,4) # shape (1,5,2,2)
+        Dy = self.targets_ds_y[idx].reshape(5,4)
 
         # turn into torch tensors
         image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
-        target = torch.cat((torch.from_numpy(Dx).float(), torch.from_numpy(Dy).float()), dim=0)
+        target = torch.cat((torch.from_numpy(Dx).float(), torch.from_numpy(Dy).float()), dim=1)
 
         # transform if needed
         if self.transform:

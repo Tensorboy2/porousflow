@@ -189,7 +189,7 @@ class ConvNeXtEncoder(nn.Module):
         return x
 
 class ConvNeXt(nn.Module):
-    def __init__(self, version='v1', size='tiny', in_channels=1, num_classes=4):
+    def __init__(self, version='v1', size='tiny', in_channels=1, num_classes=4, task='permeability'):
         super().__init__()
         
         # Validate inputs
@@ -203,16 +203,25 @@ class ConvNeXt(nn.Module):
         if version == 'v1':
             block_type = ConvNeXtBlockV1
         elif version == 'v2':
-            block_type = ConvNeXtBlockV2
+            block_type = ConvNeXtBlockV2 
         elif version == 'rms':
             block_type = ConvNeXtBlockRMS
         else:
             raise ValueError(f"Unknown version: {version}. Available versions: ['v1', 'v2', 'rms']")
         
-        
+        self.task = task  # Store task type
         self.encoder = ConvNeXtEncoder(in_channels, depths, dims, block_type)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(dims[-1], num_classes)
+        
+        # Configure head based on task
+        if task == 'permeability':
+            self.fc = nn.Linear(dims[-1], num_classes)
+        elif task == 'dispersion':
+            self.fc = nn.Linear(dims[-1] + 1, num_classes)
+        elif task == 'dispersion_direction':
+            self.fc = nn.Linear(dims[-1] + 2, num_classes)
+        else:
+            raise ValueError(f"Unknown task: {task}. Available tasks: ['permeability', 'dispersion', 'dispersion_direction']")
         
         # self._initialize_weights()
     
@@ -223,10 +232,23 @@ class ConvNeXt(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
     
-    def forward(self, x):
+    def forward(self, x, Pe=None):
+        """
+        Args:
+            x: Input tensor (B, C, H, W)
+            Pe: Peclet number (B, 1) or (B,) - only required for dispersion task
+        """
         x = self.encoder(x)
         x = self.avgpool(x)
-        x = torch.flatten(x, 1)
+        x = torch.flatten(x, 1)  # (B, dims[-1])
+        
+        if self.task == 'dispersion':
+            if Pe is None:
+                raise ValueError("Pe must be provided for dispersion task")
+            Pe = torch.ones(x.size(0), 1, device=x.device) * Pe  # Ensure Pe shape is (B, 1)
+            
+            x = torch.cat([x, Pe], dim=1)  # (B, dims[-1] + 1)
+        
         x = self.fc(x)
         return x
 
@@ -254,7 +276,7 @@ def load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task
     else:
         version = config_or_version
 
-    model = ConvNeXt(version=version, size=size, in_channels=in_channels, num_classes=num_classes)
+    model = ConvNeXt(version=version, size=size, in_channels=in_channels, num_classes=num_classes, task=task)
 
     if pretrained_path:
         if not os.path.exists(pretrained_path):

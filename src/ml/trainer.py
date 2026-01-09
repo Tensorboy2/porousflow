@@ -68,8 +68,22 @@ class Trainer:
         os.makedirs(save_path, exist_ok=True)
         self.model_name = config['model'].get('name', 'model')
 
+        self.Pes = torch.tensor([0.1,10,50,100,500])
 
-    def train_epoch(self):
+        task = config.get('task','permeability')
+        if task == 'dispersion':
+            self.train_epoch = self.train_epoch_dispersion
+            self.validate_epoch = self.validate_dispersion
+            self.test_epoch = self.test_dispersion
+        else:
+            self.train_epoch = self.train_epoch_permeability
+            self.validate_epoch = self.validate_permeability
+            self.test_epoch = self.test_permeability
+    
+    # '''
+    # Defining training methods:
+    # '''
+    def train_epoch_permeability(self):
         self.model.train()
         running_loss = 0.0
         sum_squared_error = 0.0
@@ -89,7 +103,7 @@ class Trainer:
             self.optimizer.zero_grad(set_to_none=True)
 
             # Mixed precision context
-            with autocast(device_type= self.device,enabled=self.scaler.is_enabled()):
+            with autocast(device_type= self.device):
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, targets)
                 running_loss += loss.item() * inputs.size(0)
@@ -134,24 +148,83 @@ class Trainer:
         
         return epoch_loss, r2
     
-    def validate(self):
+    def train_epoch_dispersion(self):
+        self.model.train()
+        running_loss = 0.0
+        sum_squared_error = 0.0
+        sum_targets = 0.0
+        sum_targets_squared = 0.0
+        count = 0
+        for inputs, targets in self.train_loader:
+            B, Pe, _ = targets.shape
+            for i in range(Pe):
+                D = targets[:,i]
+                # print(D.shape)
+                if self.config.get('pin_memory', False):
+                    inputs, D = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True)
+                else:
+                    inputs, D = inputs.to(self.device), D.to(self.device)
+
+                self.optimizer.zero_grad(set_to_none=True)
+
+                with autocast(device_type= self.device,enabled=self.scaler.is_enabled()):
+                    outputs = self.model(inputs,self.Pes[i])
+                    # print(outputs.shape)
+                    # print(D.shape)
+                    outputs_scaled = torch.arcsinh(0.2*outputs)
+                    D_scaled = torch.arcsinh(0.2*D)
+                    loss = self.criterion(outputs_scaled, D_scaled)
+                    running_loss += loss.item() * inputs.size(0)
+
+                self.scaler.scale(loss).backward()
+
+                if self.clip_grad:
+                    self.scaler.unscale_(self.optimizer)
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+
+                # Optimizer step
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+                
+                with torch.no_grad():
+                    outputs_cpu = outputs.detach().cpu()
+                    targets_cpu = D.detach().cpu()
+                    
+                    sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
+                    sum_targets += torch.sum(targets_cpu).item()
+                    sum_targets_squared += torch.sum(targets_cpu ** 2).item()
+                    count += targets_cpu.numel()
+
+                self.scheduler.step()
+            
+        
+        epoch_loss = running_loss / len(self.train_loader.dataset)
+        
+        r2 = self._compute_r2_from_accumulators(
+            sum_squared_error, sum_targets, sum_targets_squared, count
+        )
+
+        self.metrics['R2_train'].append(r2)
+        self.metrics['train_loss'].append(epoch_loss)
+        
+        return epoch_loss, r2
+    
+    def validate_permeability(self):
         self.model.eval()
         running_loss = 0.0
         sum_squared_error = 0.0
         sum_targets = 0.0
         sum_targets_squared = 0.0
         count = 0
-        # preds = []
-        # trues = []
         with torch.no_grad():
             for inputs, targets in self.val_loader:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
                 outputs = self.model(inputs)
+                # outputs = torch.arcsinh(0.2*outputs)
+                # D = torch.arcsinh(0.2*D)
                 loss = self.criterion(outputs, targets)
                 running_loss += loss.item() * inputs.size(0)
                 
-                # preds.append(outputs.detach().cpu())
-                # trues.append(targets.detach().cpu())
                 outputs_cpu = outputs.detach().cpu()
                 targets_cpu = targets.detach().cpu()
                 
@@ -161,28 +234,60 @@ class Trainer:
                 count += targets_cpu.numel()
 
         epoch_loss = running_loss / len(self.val_loader.dataset)
-        
-        # preds = torch.cat(preds, dim=0)
-        # trues = torch.cat(trues, dim=0)
-        # r2 = self.R2_score(trues, preds)
-        r2 = self._compute_r2_from_accumulators(
-            sum_squared_error, sum_targets, sum_targets_squared, count
-        )
+        r2 = self._compute_r2_from_accumulators(sum_squared_error, sum_targets, sum_targets_squared, count)
 
         self.metrics['R2_val'].append(r2)
         self.metrics['val_loss'].append(epoch_loss)
-        
+
         return epoch_loss,r2
     
-    def test(self):
+    def validate_dispersion(self):
+        '''
+        Docstring for validate_dispersion
+        
+        :param self: Description
+        '''
         self.model.eval()
         running_loss = 0.0
         sum_squared_error = 0.0
         sum_targets = 0.0
         sum_targets_squared = 0.0
         count = 0
-        # preds = []
-        # trues = []
+        with torch.no_grad():
+            for inputs, targets in self.val_loader:
+                B, Pe, _ = targets.shape
+                for i in range(Pe):
+                    D = targets[:,i]
+                    inputs, D = inputs.to(self.device), D.to(self.device)
+                    outputs = self.model(inputs,self.Pes[i])
+                    outputs_scaled = torch.arcsinh(0.2*outputs)
+                    D_scaled = torch.arcsinh(0.2*D)
+                    loss = self.criterion(outputs_scaled, D_scaled)
+                    running_loss += loss.item() * inputs.size(0)
+                    
+                    outputs_cpu = outputs.detach().cpu()
+                    targets_cpu = D.detach().cpu()
+                    
+                    sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
+                    sum_targets += torch.sum(targets_cpu).item()
+                    sum_targets_squared += torch.sum(targets_cpu ** 2).item()
+                    count += targets_cpu.numel()
+
+        epoch_loss = running_loss / len(self.val_loader.dataset)
+        r2 = self._compute_r2_from_accumulators(sum_squared_error, sum_targets, sum_targets_squared, count)
+
+        self.metrics['R2_val'].append(r2)
+        self.metrics['val_loss'].append(epoch_loss)
+
+        return epoch_loss,r2
+    
+    def test_permeability(self):
+        self.model.eval()
+        running_loss = 0.0
+        sum_squared_error = 0.0
+        sum_targets = 0.0
+        sum_targets_squared = 0.0
+        count = 0
         with torch.no_grad():
             for inputs, targets in self.test_loader:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
@@ -190,8 +295,6 @@ class Trainer:
                 loss = self.criterion(outputs, targets)
                 running_loss += loss.item() * inputs.size(0)
                 
-                # preds.append(outputs.detach().cpu())
-                # trues.append(targets.detach().cpu())
                 outputs_cpu = outputs.detach().cpu()
                 targets_cpu = targets.detach().cpu()
                 sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
@@ -200,9 +303,37 @@ class Trainer:
                 count += targets_cpu.numel()
         epoch_loss = running_loss / len(self.test_loader.dataset)
         
-        # preds = torch.cat(preds, dim=0)
-        # trues = torch.cat(trues, dim=0)
-        # r2 = self.R2_score(trues, preds)
+        r2 = self._compute_r2_from_accumulators(
+            sum_squared_error, sum_targets, sum_targets_squared, count
+        )
+        self.metrics['R2_test'].append(r2)
+        self.metrics['test_loss'].append(epoch_loss)
+        
+        return epoch_loss, r2
+    
+    def test_dispersion(self):
+        self.model.eval()
+        running_loss = 0.0
+        sum_squared_error = 0.0
+        sum_targets = 0.0
+        sum_targets_squared = 0.0
+        count = 0
+        with torch.no_grad():
+            for inputs, targets in self.test_loader:
+                for i, D in enumerate(targets):
+                    inputs, D = inputs.to(self.device), D.to(self.device)
+                    outputs = self.model(inputs)
+                    loss = self.criterion(outputs, D)
+                    running_loss += loss.item() * inputs.size(0)
+                    
+                    outputs_cpu = outputs.detach().cpu()
+                    targets_cpu = D.detach().cpu()
+                    sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
+                    sum_targets += torch.sum(targets_cpu).item()
+                    sum_targets_squared += torch.sum(targets_cpu ** 2).item()
+                    count += targets_cpu.numel()
+        epoch_loss = running_loss / len(self.test_loader.dataset)
+        
         r2 = self._compute_r2_from_accumulators(
             sum_squared_error, sum_targets, sum_targets_squared, count
         )
@@ -215,7 +346,7 @@ class Trainer:
         best_val_loss = float('inf')
         for epoch in range(num_epochs):
             train_loss, train_r2 = self.train_epoch()
-            val_loss, val_r2 = self.validate()
+            val_loss, val_r2 = self.validate_epoch()
             print(
                 f"Epoch [{epoch+1}/{num_epochs}],\n" 
                 f"      Train Loss: {train_loss:.5f}, Val Loss: {val_loss:.5f}\n"

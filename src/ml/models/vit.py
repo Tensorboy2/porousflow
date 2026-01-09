@@ -120,7 +120,7 @@ class ViT(nn.Module):
         num_heads: int = 12,
         mlp_ratio: float = 4.0,
         dropout: float = 0.1,
-        mode: str = 'permeability'
+        task: str = 'permeability'
     ):
         super().__init__()
         
@@ -128,7 +128,7 @@ class ViT(nn.Module):
         self.patch_size = patch_size
         self.num_classes = num_classes
         self.embed_dim = embed_dim
-        self.mode = mode
+        self.task = task
         
         # Patch embedding
         self.patch_embed = PatchEmbedding(img_size, patch_size, in_channels, embed_dim)
@@ -146,10 +146,10 @@ class ViT(nn.Module):
         
         # Classification head
         self.norm = nn.LayerNorm(embed_dim)
-        
-        if self.mode=='permeability':
+
+        if self.task=='permeability':
             self.head = nn.Linear(embed_dim, num_classes)
-        elif self.mode =='dispersion':
+        elif self.task =='dispersion':
             self.head = nn.Linear(embed_dim+1, num_classes)
         
         # Initialize weights
@@ -170,10 +170,10 @@ class ViT(nn.Module):
                 nn.init.constant_(m.bias, 0)
                 nn.init.constant_(m.weight, 1.0)
     
-    def forward(self, x, peclet=None):
+    def forward(self, x, Pe=None):
         # Validate inputs
-        if self.mode == 'dispersion' and peclet is None:
-            raise ValueError("peclet number must be provided when mode='dispersion'")
+        if self.task == 'dispersion' and Pe is None:
+            raise ValueError("Pe number must be provided when mode='dispersion'")
         
         batch_size = x.shape[0]
         
@@ -191,12 +191,14 @@ class ViT(nn.Module):
         x = self.norm(x)
         x = x.mean(dim=1)  # Global average pooling -> (batch_size, embed_dim)
         
+        x = x.view(batch_size, -1)  # (batch_size, embed_dim)
         # Concatenate Péclet number for dispersion mode
-        if self.mode == 'dispersion':
-            # Ensure peclet is the right shape (batch_size, 1)
-            if peclet.dim() == 1:
-                peclet = peclet.unsqueeze(1)
-            x = torch.cat((peclet, x), dim=1)  # (batch_size, embed_dim+1)
+        if self.task == 'dispersion':
+            if Pe is None:
+                raise ValueError("Pe must be provided for dispersion task")
+            Pe = torch.ones(x.size(0), 1, device=x.device) * Pe  # Ensure Pe shape is (B, 1)
+            
+            x = torch.cat([x, Pe], dim=1)  # (batch_size, embed_dim+1)
         
         x = self.head(x)
         
@@ -237,9 +239,9 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeabil
         cfg = config_or_size
         size = cfg.get('size', cfg.get('name', 'T16'))
         in_channels = cfg.get('in_channels', in_channels)
-        mode = cfg.get('mode', mode)
+        task = cfg.get('task', task)
         pretrained_path = cfg.get('pretrained_path', pretrained_path)
-        num_classes = cfg.get('num_classes', num_classes)
+        num_classes = num_classes
         img_size = cfg.get('img_size', cfg.get('image_size', 128))
         patch_size = cfg.get('patch_size', 16)
         embed_dim = cfg.get('embed_dim', None)
@@ -249,7 +251,7 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeabil
         dropout = cfg.get('dropout', 0.1)
     else:
         size = config_or_size
-        num_classes = kwargs.pop('num_classes', num_classes)
+        num_classes = num_classes
         img_size = kwargs.pop('img_size', 128)
         patch_size = kwargs.pop('patch_size', 16)
         embed_dim = kwargs.pop('embed_dim', None)
@@ -286,7 +288,7 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeabil
         num_heads=num_heads,
         mlp_ratio=mlp_ratio,
         dropout=dropout,
-        mode=mode,
+        task=task,
     )
 
     # Load pretrained weights if requested
