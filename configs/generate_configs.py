@@ -654,7 +654,7 @@ class ConfigGenerator:
         
         return exp, suffix
     
-    def generate_herbie_mode(self, model_names: List[str], main_script: str = MAIN_SCRIPT) -> Path:
+    def generate_herbie_mode(self, model_names: List[str], main_script: str = MAIN_SCRIPT, conda_env: Optional[str] = None) -> Path:
         """Generate single YAML with all experiments (including sweeps).
 
         Also create a simple launcher script that starts the job inside a
@@ -693,9 +693,14 @@ class ConfigGenerator:
                 f"# Launch herbie-mode experiment in a detached screen session: {session_name}",
                 "# Requires `screen` to be installed on the system.",
                 "",
+                # Export CONDA_ENV if requested
+                *( [f"CONDA_ENV={conda_env}", "export CONDA_ENV", ""] if conda_env else [] ),
+                "",
                 f"echo 'Starting screen session: {session_name}'",
                 # Use bash -lc so that quotes and envs behave similar to interactive runs
-                f"screen -dmS {session_name} bash -lc 'python3 {main_script} --config \"{yaml_path}\"; exec bash'",
+                f"screen -dmS {session_name} bash -lc '" + \
+                ("if [ -n \"$CONDA_ENV\" ]; then if command -v conda >/dev/null 2>&1; then eval \"$(conda shell.bash hook)\" && conda activate \"$CONDA_ENV\"; elif [ -f \"$HOME/miniconda3/etc/profile.d/conda.sh\" ]; then . \"$HOME/miniconda3/etc/profile.d/conda.sh\" && conda activate \"$CONDA_ENV\"; else echo \"conda not found; continuing\"; fi; fi; ")
+                + f"python3 {main_script} --config \"{yaml_path}\"; exec bash'",
                 "",
                 "echo 'To attach: screen -r '" + session_name
             ]
@@ -708,6 +713,9 @@ class ConfigGenerator:
                 "#!/bin/bash",
                 f"# Launch herbie-mode experiment in a detached screen session: {session_name}",
                 "# Requires `screen` and `nvidia-smi` (optional) to be installed.",
+                "",
+                # Export CONDA_ENV if requested
+                *( [f"CONDA_ENV={conda_env}", "export CONDA_ENV", ""] if conda_env else [] ),
                 "",
                 "# If CUDA_VISIBLE_DEVICES is not set, default to GPU 0 (change if needed)",
                 ": ${CUDA_VISIBLE_DEVICES:=0}",
@@ -723,7 +731,9 @@ class ConfigGenerator:
                 "",
                 f"echo 'Starting screen session: {session_name} (CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES)'",
                 # Use bash -lc so that the exported env is visible inside the session
-                f"screen -dmS {session_name} bash -lc 'python3 {main_script} --config \"{yaml_path}\"; exec bash'",
+                f"screen -dmS {session_name} bash -lc '" + \
+                ("if [ -n \"$CONDA_ENV\" ]; then if command -v conda >/dev/null 2>&1; then eval \"$(conda shell.bash hook)\" && conda activate \"$CONDA_ENV\"; elif [ -f \"$HOME/miniconda3/etc/profile.d/conda.sh\" ]; then . \"$HOME/miniconda3/etc/profile.d/conda.sh\" && conda activate \"$CONDA_ENV\"; else echo \"conda not found; continuing\"; fi; fi; ")
+                + f"python3 {main_script} --config \"{yaml_path}\"; exec bash'",
                 "",
                 "echo 'To attach: screen -r '" + session_name
             ]
