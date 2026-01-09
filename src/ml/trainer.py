@@ -103,7 +103,7 @@ class Trainer:
             self.optimizer.zero_grad(set_to_none=True)
 
             # Mixed precision context
-            with autocast(device_type= self.device):
+            with autocast(device_type= 'cuda',enabled=self.scaler.is_enabled()):
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, targets)
                 running_loss += loss.item() * inputs.size(0)
