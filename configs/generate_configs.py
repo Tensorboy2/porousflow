@@ -685,17 +685,48 @@ class ConfigGenerator:
         # `screen` session so users can mimic SLURM submission locally.
         launcher_path = self.output_dir / f"run_herbie_{self.exp_name}.sh"
         session_name = f"{self.exp_name}_herbie"
-        launcher_lines = [
-            "#!/bin/bash",
-            f"# Launch herbie-mode experiment in a detached screen session: {session_name}",
-            "# Requires `screen` to be installed on the system.",
-            "",
-            f"echo 'Starting screen session: {session_name}'",
-            # Use bash -lc so that quotes and envs behave similar to interactive runs
-            f"screen -dmS {session_name} bash -lc 'CUDA_VISIBLE_DEVICES=0 python3 {main_script} --config \"{yaml_path}\"; exec bash'",
-            "",
-            "echo 'To attach: screen -r '" + session_name
-        ]
+        # Build launcher lines differently for CPU vs GPU to avoid surprising
+        # behavior when users expect SLURM to allocate devices.
+        if self.is_cpu:
+            launcher_lines = [
+                "#!/bin/bash",
+                f"# Launch herbie-mode experiment in a detached screen session: {session_name}",
+                "# Requires `screen` to be installed on the system.",
+                "",
+                f"echo 'Starting screen session: {session_name}'",
+                # Use bash -lc so that quotes and envs behave similar to interactive runs
+                f"screen -dmS {session_name} bash -lc 'python3 {main_script} --config \"{yaml_path}\"; exec bash'",
+                "",
+                "echo 'To attach: screen -r '" + session_name
+            ]
+        else:
+            # For GPU runs, don't assume SLURM will allocate GPUs. Provide a
+            # conservative default and a simple nvidia-smi check. The script
+            # prefers an existing CUDA_VISIBLE_DEVICES environment variable,
+            # otherwise it defaults to 0.
+            launcher_lines = [
+                "#!/bin/bash",
+                f"# Launch herbie-mode experiment in a detached screen session: {session_name}",
+                "# Requires `screen` and `nvidia-smi` (optional) to be installed.",
+                "",
+                "# If CUDA_VISIBLE_DEVICES is not set, default to GPU 0 (change if needed)",
+                ": ${CUDA_VISIBLE_DEVICES:=0}",
+                "export CUDA_VISIBLE_DEVICES",
+                "",
+                "# Quick sanity check (non-fatal): print selected GPU(s)",
+                "if command -v nvidia-smi >/dev/null 2>&1; then",
+                "  echo 'nvidia-smi available; showing selected devices:'",
+                "  nvidia-smi --query-gpu=index,name,uuid,memory.total --format=csv -i $CUDA_VISIBLE_DEVICES || true",
+                "else",
+                "  echo 'nvidia-smi not found; ensure CUDA drivers are available on this machine'",
+                "fi",
+                "",
+                f"echo 'Starting screen session: {session_name} (CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES)'",
+                # Use bash -lc so that the exported env is visible inside the session
+                f"screen -dmS {session_name} bash -lc 'python3 {main_script} --config \"{yaml_path}\"; exec bash'",
+                "",
+                "echo 'To attach: screen -r '" + session_name
+            ]
 
         with open(launcher_path, "w") as f:
             f.write("\n".join(launcher_lines) + "\n")
