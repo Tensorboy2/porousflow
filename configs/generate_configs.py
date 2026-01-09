@@ -884,11 +884,15 @@ python3 {main_script} --config "{yaml_path}"
             "  gpu=$(( i % NGPUS ))",
             "  session_name=%s_$i" % session_prefix,
             "  echo \"Starting $session_name on GPU $gpu (job=$job)\"",
-            "  screen -dmS $session_name bash -lc 'export CUDA_VISIBLE_DEVICES=$gpu; "
-            "if [ -n \"$CONDA_ENV\" ]; then if command -v conda >/dev/null 2>&1; then eval \"$(conda shell.bash hook)\" && conda activate \"$CONDA_ENV\"; elif [ -f \"$HOME/miniconda3/etc/profile.d/conda.sh\" ]; then . \"$HOME/miniconda3/etc/profile.d/conda.sh\" && conda activate \"$CONDA_ENV\"; else echo \"conda not found; continuing\"; fi; fi; '"]
-        )
-        launcher_lines.append("  # start the python process inside the session")
-        launcher_lines.append("  screen -S $session_name -X stuff \"python3 %s --config \\\"$job\\\"\\n\"" % main_script)
+        ])
+
+        # Build the command to run inside the screen session. Include conda
+        # activation if requested, then run python and keep the shell open.
+        launcher_lines.append("  cmd=\"export CUDA_VISIBLE_DEVICES=$gpu; \"")
+        if conda_env:
+            launcher_lines.append("  cmd=\"$cmd if [ -n \"$CONDA_ENV\" ]; then if command -v conda >/dev/null 2>&1; then eval \"$(conda shell.bash hook)\" && conda activate \"$CONDA_ENV\"; elif [ -f \"$HOME/miniconda3/etc/profile.d/conda.sh\" ]; then . \"$HOME/miniconda3/etc/profile.d/conda.sh\" && conda activate \"$CONDA_ENV\"; else echo \"conda not found; continuing\"; fi; fi; \"\"")
+        launcher_lines.append(f"  cmd=\"$cmd python3 {main_script} --config \\\"$job\\\"; exec bash\"\"")
+        launcher_lines.append("  screen -dmS $session_name bash -lc \"$cmd\"")
         launcher_lines.append("  i=$((i+1))")
         launcher_lines.append("done")
 
