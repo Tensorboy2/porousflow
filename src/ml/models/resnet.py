@@ -204,7 +204,7 @@ def resnet152(in_channels=3, num_classes=1000, task='permeability'):
     return ResNet(Bottleneck, [3, 8, 36, 3], in_channels, num_classes, task=task)
 
 
-def load_resnet_model(config_or_size='18', in_channels=3, num_classes=1000, pretrained_path: str = None, task: str = 'permeability', **kwargs):
+def load_resnet_model(config_or_size='18', in_channels=1, num_classes=4, pretrained_path: str = None, task: str = 'permeability', **kwargs):
     """
     Flexible loader for ResNet models.
 
@@ -222,6 +222,14 @@ def load_resnet_model(config_or_size='18', in_channels=3, num_classes=1000, pret
         pretrained_path = cfg.get('pretrained_path', pretrained_path)
     else:
         size = str(config_or_size)
+    
+    if task == 'permeability':
+        num_classes = 4
+    elif task == 'dispersion':
+        num_classes = 8
+    else:
+        raise ValueError(f"Unknown task: {cfg['task']}. Supported tasks: ['permeability', 'dispersion']")
+    
 
     # Create model
     if size == '18':
