@@ -213,16 +213,6 @@ def load_resnet_model(config_or_size='18', in_channels=1, num_classes=4, pretrai
     Recognized config keys: `size` (one of '18','34','50','101','152'), `in_channels`,
     `num_classes`, and `pretrained_path`.
     """
-    # Parse config dict if provided
-    if isinstance(config_or_size, dict):
-        cfg = config_or_size
-        size = str(cfg.get('size', '18'))
-        in_channels = cfg.get('in_channels', in_channels)
-        num_classes = cfg.get('num_classes', num_classes)
-        pretrained_path = cfg.get('pretrained_path', pretrained_path)
-    else:
-        size = str(config_or_size)
-    
     if task == 'permeability':
         num_classes = 4
     elif task == 'dispersion':
@@ -230,7 +220,15 @@ def load_resnet_model(config_or_size='18', in_channels=1, num_classes=4, pretrai
     else:
         raise ValueError(f"Unknown task: {cfg['task']}. Supported tasks: ['permeability', 'dispersion']")
     
-
+    # Parse config dict if provided
+    if isinstance(config_or_size, dict):
+        cfg = config_or_size
+        size = str(cfg.get('size', '18'))
+        in_channels = cfg.get('in_channels', in_channels)
+        pretrained_path = cfg.get('pretrained_path', pretrained_path)
+    else:
+        size = str(config_or_size)
+    
     # Create model
     if size == '18':
         model = resnet18(in_channels, num_classes, task=task)

@@ -630,6 +630,31 @@ class ConfigGenerator:
         
         # Start with base config
         exp.update(self.base_config)
+        # Apply model-specific training overrides if present in the registry.
+        # Support `training_overrides` dict which may include a numeric
+        # `batch_multiplier` (applied against the already-computed
+        # `exp['batch_size']`). An explicit `batch_size` in overrides or at
+        # model top-level will overwrite the value.
+        overrides = model_cfg.get("training_overrides") or {}
+        if isinstance(overrides, dict):
+            # Handle multiplier first so explicit batch_size can still override
+            mult = overrides.pop("batch_multiplier", None)
+            if mult is not None:
+                try:
+                    exp["batch_size"] = int(exp.get("batch_size", 1) * float(mult))
+                except Exception:
+                    pass
+            # Apply remaining explicit overrides
+            exp.update(overrides)
+
+        # Backwards-compatible top-level keys on the model entry
+        if "batch_multiplier" in model_cfg and "training_overrides" not in model_cfg:
+            try:
+                exp["batch_size"] = int(exp.get("batch_size", 1) * float(model_cfg["batch_multiplier"]))
+            except Exception:
+                pass
+        elif "batch_size" in model_cfg:
+            exp["batch_size"] = model_cfg["batch_size"]
         exp["clip_grad"] = model_cfg.get("clip_grad", True)
         
         # Apply sweep parameters and build suffix
