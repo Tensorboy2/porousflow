@@ -654,8 +654,12 @@ class ConfigGenerator:
         
         return exp, suffix
     
-    def generate_herbie_mode(self, model_names: List[str]) -> Path:
-        """Generate single YAML with all experiments (including sweeps)."""
+    def generate_herbie_mode(self, model_names: List[str], main_script: str = MAIN_SCRIPT) -> Path:
+        """Generate single YAML with all experiments (including sweeps).
+
+        Also create a simple launcher script that starts the job inside a
+        detached `screen` session (useful for mocking SLURM on a single node).
+        """
         experiments = []
         
         # Generate sweep combinations
@@ -677,6 +681,29 @@ class ConfigGenerator:
         if self.is_cpu:
             print(f"  [CPU MODE] - device set to 'cpu'")
         print(f"  {yaml_path}")
+        # Create a simple launcher that runs the main script inside a detached
+        # `screen` session so users can mimic SLURM submission locally.
+        launcher_path = self.output_dir / f"run_herbie_{self.exp_name}.sh"
+        session_name = f"{self.exp_name}_herbie"
+        launcher_lines = [
+            "#!/bin/bash",
+            f"# Launch herbie-mode experiment in a detached screen session: {session_name}",
+            "# Requires `screen` to be installed on the system.",
+            "",
+            f"echo 'Starting screen session: {session_name}'",
+            # Use bash -lc so that quotes and envs behave similar to interactive runs
+            f"screen -dmS {session_name} bash -lc 'python3 {main_script} --config \"{yaml_path}\"; exec bash'",
+            "",
+            "echo 'To attach: screen -r '" + session_name
+        ]
+
+        with open(launcher_path, "w") as f:
+            f.write("\n".join(launcher_lines) + "\n")
+        launcher_path.chmod(0o755)
+
+        print(f"\n✓ Launcher script: {launcher_path}")
+        print(f"  Start with: bash {launcher_path}")
+
         return yaml_path
     
     def generate_individual_mode(
