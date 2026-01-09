@@ -856,51 +856,65 @@ python3 {main_script} --config "{yaml_path}"
         if ngpus <= 0:
             ngpus = 1
 
-        # Create launcher that assigns GPUs round-robin and starts sessions
+        # Create per-job runner scripts (embed fixed GPU assignment) to avoid
+        # complex quoting when starting screen sessions. Then create a simple
+        # launcher that starts each runner in its own detached screen session.
         launcher_path = self.output_dir / f"bigfacet_submit_{self.exp_name}.sh"
         session_prefix = f"{self.exp_name}_bf"
 
+        job_scripts: List[Path] = []
+        for idx, p in enumerate(yaml_paths):
+            gpu = idx % ngpus
+            job_name = p.stem
+            job_script = self.yaml_dir / f"{job_name}_run.sh"
+            script_lines = ["#!/bin/bash"]
+            if conda_env:
+                script_lines += [f"CONDA_ENV={conda_env}", "export CONDA_ENV", "",
+                                 "# try to activate conda env if available"]
+            script_lines += [f"export CUDA_VISIBLE_DEVICES={gpu}", "",
+                             "# optional conda activation (non-fatal)"]
+            if conda_env:
+                script_lines += [
+                    "if command -v conda >/dev/null 2>&1; then",
+                    "  eval \"$(conda shell.bash hook)\" && conda activate \"$CONDA_ENV\"",
+                    "elif [ -f \"$HOME/miniconda3/etc/profile.d/conda.sh\" ]; then",
+                    "  . \"$HOME/miniconda3/etc/profile.d/conda.sh\" && conda activate \"$CONDA_ENV\"",
+                    "else",
+                    "  echo 'conda not found; continuing without activation'",
+                    "fi",
+                    ""
+                ]
+            script_lines += [f"echo 'Starting job: python3 {main_script} --config \"{p}\" (CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES)'",
+                             f"python3 {main_script} --config \"{p}\"",
+                             "exec bash"]
+
+            with open(job_script, "w") as f:
+                f.write("\n".join(script_lines) + "\n")
+            job_script.chmod(0o755)
+            job_scripts.append(job_script)
+
+        # Build launcher that starts each job script in a detached screen session
         launcher_lines = [
             "#!/bin/bash",
             f"# BigFacet launcher for {self.exp_name}",
             f"# Detected GPUs: {ngpus}",
             "# Requires `screen` to be installed.",
             "",
-            "JOBS=(",
         ]
 
-        for p in yaml_paths:
-            launcher_lines.append(f'  "{p}"')
-        launcher_lines.append(")")
-        launcher_lines.append("")
-        launcher_lines.append("NGPUS=%d" % ngpus)
-        launcher_lines.append("i=0")
-        launcher_lines.append("for job in \"${JOBS[@]}\"; do")
-        # optionally export CONDA_ENV
-        if conda_env:
-            launcher_lines.append(f"  CONDA_ENV={conda_env}")
-            launcher_lines.append("  export CONDA_ENV")
-        launcher_lines.extend([
-            "  gpu=$(( i % NGPUS ))",
-            "  session_name=%s_$i" % session_prefix,
-            "  echo \"Starting $session_name on GPU $gpu (job=$job)\"",
-        ])
-
-        # Build the command to run inside the screen session. Include conda
-        # activation if requested, then run python and keep the shell open.
-        launcher_lines.append("  cmd=\"export CUDA_VISIBLE_DEVICES=$gpu; \"")
-        if conda_env:
-            launcher_lines.append("  cmd=\"$cmd if [ -n \"$CONDA_ENV\" ]; then if command -v conda >/dev/null 2>&1; then eval \"$(conda shell.bash hook)\" && conda activate \"$CONDA_ENV\"; elif [ -f \"$HOME/miniconda3/etc/profile.d/conda.sh\" ]; then . \"$HOME/miniconda3/etc/profile.d/conda.sh\" && conda activate \"$CONDA_ENV\"; else echo \"conda not found; continuing\"; fi; fi; \"\"")
-        launcher_lines.append(f"  cmd=\"$cmd python3 {main_script} --config \\\"$job\\\"; exec bash\"\"")
-        launcher_lines.append("  screen -dmS $session_name bash -lc \"$cmd\"")
-        launcher_lines.append("  i=$((i+1))")
-        launcher_lines.append("done")
+        for idx, js in enumerate(job_scripts):
+            session_name = f"{session_prefix}_{idx}"
+            launcher_lines += [
+                f"echo 'Starting session: {session_name} -> {js}'",
+                f"screen -dmS {session_name} bash -c '\"{js}\"'",
+                "",
+            ]
 
         with open(launcher_path, "w") as f:
             f.write("\n".join(launcher_lines) + "\n")
         launcher_path.chmod(0o755)
 
-        print(f"\n✓ Generated {len(yaml_paths)} job YAMLs and BigFacet launcher: {launcher_path}")
+        print(f"\n✓ Generated {len(yaml_paths)} job YAMLs, {len(job_scripts)} runner scripts and BigFacet launcher: {launcher_path}")
         print(f"  Detected GPUs: {ngpus}")
 
         return launcher_path
