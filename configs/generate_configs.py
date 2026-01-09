@@ -692,7 +692,7 @@ class ConfigGenerator:
             "",
             f"echo 'Starting screen session: {session_name}'",
             # Use bash -lc so that quotes and envs behave similar to interactive runs
-            f"screen -dmS {session_name} bash -lc 'python3 {main_script} --config \"{yaml_path}\"; exec bash'",
+            f"screen -dmS {session_name} bash -lc 'CUDA_VISIBLE_DEVICES=0 python3 {main_script} --config \"{yaml_path}\"; exec bash'",
             "",
             "echo 'To attach: screen -r '" + session_name
         ]
@@ -831,17 +831,17 @@ def main():
         epilog="""
 Examples:
   # Generate configs for permeability task on GPU
-  python script.py --task permeability --device gpu
+  python configs/generate_configs.py --task permeability --device gpu
   
   # Generate configs for dispersion task on CPU
-  python script.py --task dispersion --device cpu
+  python configs/generate_configs.py --task dispersion --device cpu
   
   # Use herbie mode (single YAML)
-  python script.py --task permeability --device gpu --herbie
+  python configs/generate_configs.py --task permeability --device gpu --herbie
   
   # List available models or presets
-  python script.py --list-models
-  python script.py --list-presets
+  python configs/generate_configs.py --list-models
+  python configs/generate_configs.py --list-presets
         """
     )
     
