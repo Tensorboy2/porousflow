@@ -279,9 +279,9 @@ if __name__ == "__main__":
     
     # Test with grayscale input
     x_gray = torch.randn(2, 1, 128, 128)
-    model_gray = load_resnet_model(size='34', in_channels=1, num_classes=4)
-    output_gray = model_gray(x_gray)
-    print(f"ResNet-34 (grayscale) output shape: {output_gray.shape}")
+    model_gray = load_resnet_model(size='34', in_channels=1, task='dispersion')
+    output_gray = model_gray(x_gray, Pe=100)
+    print(f"ResNet-34 (grayscale) dispersion output shape: {output_gray.shape}")
     
     # Print parameter counts
     def count_parameters(model):

@@ -39,7 +39,7 @@ def main(config):
     elif model_type == 'vit':
         model = load_vit_model(model_cfg,task=task)
     elif model_type == 'resnet':
-        model = load_resnet_model(model_cfg)
+        model = load_resnet_model(model_cfg,task=task)
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
 
