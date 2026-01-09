@@ -89,7 +89,7 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, layers, in_channels=3, num_classes=1000):
+    def __init__(self, block, layers, in_channels=3, num_classes=1000, task='permeability'):
         super(ResNet, self).__init__()
         self.in_channels = 64
         
@@ -107,7 +107,15 @@ class ResNet(nn.Module):
 
         # Final layers
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.task = task
+
+        fc_in = 512 * block.expansion
+        if self.task == 'dispersion':
+            fc_in += 1
+        elif self.task == 'dispersion_direction':
+            fc_in += 2
+
+        self.fc = nn.Linear(fc_in, num_classes)
         
         # Initialize weights
         self._initialize_weights()
@@ -137,7 +145,7 @@ class ResNet(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def forward(self, x):
+    def forward(self, x, Pe=None):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -150,36 +158,53 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
+        # Handle task-specific extra inputs
+        if self.task == 'dispersion':
+            if Pe is None:
+                raise ValueError("Pe must be provided for dispersion task")
+            Pe = torch.ones(x.size(0), 1, device=x.device) * Pe
+            x = torch.cat([x, Pe], dim=1)
+        elif self.task == 'dispersion_direction':
+            if Pe is None:
+                raise ValueError("Pe (and direction) must be provided for dispersion_direction task")
+            # Expect Pe to be a tensor or value with two components per sample
+            # If scalar provided, replicate to two values
+            if isinstance(Pe, (int, float)):
+                Pe = torch.ones(x.size(0), 2, device=x.device) * Pe
+            elif isinstance(Pe, torch.Tensor) and Pe.dim() == 1:
+                Pe = Pe.unsqueeze(1)
+            x = torch.cat([x, Pe], dim=1)
+
         x = self.fc(x)
         return x
 
 
-def resnet18(in_channels=3, num_classes=1000):
+def resnet18(in_channels=3, num_classes=1000, task='permeability'):
     """ResNet-18 model"""
-    return ResNet(BasicBlock, [2, 2, 2, 2], in_channels, num_classes)
+    return ResNet(BasicBlock, [2, 2, 2, 2], in_channels, num_classes, task=task)
 
 
-def resnet34(in_channels=3, num_classes=1000):
+def resnet34(in_channels=3, num_classes=1000, task='permeability'):
     """ResNet-34 model"""
-    return ResNet(BasicBlock, [3, 4, 6, 3], in_channels, num_classes)
+    return ResNet(BasicBlock, [3, 4, 6, 3], in_channels, num_classes, task=task)
 
 
-def resnet50(in_channels=3, num_classes=1000):
+def resnet50(in_channels=3, num_classes=1000, task='permeability'):
     """ResNet-50 model"""
-    return ResNet(Bottleneck, [3, 4, 6, 3], in_channels, num_classes)
+    return ResNet(Bottleneck, [3, 4, 6, 3], in_channels, num_classes, task=task)
 
 
-def resnet101(in_channels=3, num_classes=1000):
+def resnet101(in_channels=3, num_classes=1000, task='permeability'):
     """ResNet-101 model"""
-    return ResNet(Bottleneck, [3, 4, 23, 3], in_channels, num_classes)
+    return ResNet(Bottleneck, [3, 4, 23, 3], in_channels, num_classes, task=task)
 
 
-def resnet152(in_channels=3, num_classes=1000):
+def resnet152(in_channels=3, num_classes=1000, task='permeability'):
     """ResNet-152 model"""
-    return ResNet(Bottleneck, [3, 8, 36, 3], in_channels, num_classes)
+    return ResNet(Bottleneck, [3, 8, 36, 3], in_channels, num_classes, task=task)
 
 
-def load_resnet_model(config_or_size='18', in_channels=3, num_classes=1000, pretrained_path: str = None, **kwargs):
+def load_resnet_model(config_or_size='18', in_channels=3, num_classes=1000, pretrained_path: str = None, task: str = 'permeability', **kwargs):
     """
     Flexible loader for ResNet models.
 
@@ -200,15 +225,15 @@ def load_resnet_model(config_or_size='18', in_channels=3, num_classes=1000, pret
 
     # Create model
     if size == '18':
-        model = resnet18(in_channels, num_classes)
+        model = resnet18(in_channels, num_classes, task=task)
     elif size == '34':
-        model = resnet34(in_channels, num_classes)
+        model = resnet34(in_channels, num_classes, task=task)
     elif size == '50':
-        model = resnet50(in_channels, num_classes)
+        model = resnet50(in_channels, num_classes, task=task)
     elif size == '101':
-        model = resnet101(in_channels, num_classes)
+        model = resnet101(in_channels, num_classes, task=task)
     elif size == '152':
-        model = resnet152(in_channels, num_classes)
+        model = resnet152(in_channels, num_classes, task=task)
     else:
         raise ValueError(f"Invalid size '{size}'. Choose from '18', '34', '50', '101', or '152'.")
 

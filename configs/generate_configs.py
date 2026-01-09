@@ -182,7 +182,7 @@ TASK_CONFIGS = {
     "permeability": {
         "learning_rate": 1e-3,
         "weight_decay": 1e-3,
-        "batch_size": 64,
+        "batch_size": 128,
         "num_epochs": 100,
         "decay": "cosine",
         "warmup_steps": 100,
@@ -191,7 +191,7 @@ TASK_CONFIGS = {
     "dispersion": {
         "learning_rate": 1e-3,
         "weight_decay": 1e-3,
-        "batch_size": 64,
+        "batch_size": 128,
         "num_epochs": 100,
         "decay": "cosine",
         "warmup_steps": 100,
