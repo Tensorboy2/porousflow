@@ -167,7 +167,7 @@ class Trainer:
 
                 self.optimizer.zero_grad(set_to_none=True)
 
-                with autocast(device_type= self.config['device'],enabled=self.scaler.is_enabled()):
+                with autocast(device_type= 'cuda',enabled=self.scaler.is_enabled()):
                     outputs = self.model(inputs,self.Pes[i])
                     # print(outputs.shape)
                     # print(D.shape)
