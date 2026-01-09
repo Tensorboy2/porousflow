@@ -7,6 +7,7 @@ import yaml
 import json
 import argparse
 import os
+import shutil
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, asdict
@@ -815,6 +816,91 @@ python3 {main_script} --config "{yaml_path}"
         
         return script_paths, launcher_path
 
+    def generate_bigfacet_mode(self, model_names: List[str], main_script: str = MAIN_SCRIPT, conda_env: Optional[str] = None) -> Path:
+        """Generate individual YAMLs and a launcher that distributes jobs across GPUs.
+
+        The launcher will detect the number of GPUs (via `nvidia-smi` if
+        available) and start each job in a detached `screen` session, assigning
+        GPUs in round-robin by setting `CUDA_VISIBLE_DEVICES` per session.
+        """
+        yaml_paths = []
+        script_paths = []
+
+        sweep_combos = self._generate_sweep_combinations()
+
+        for model_name in model_names:
+            for sweep_params in sweep_combos:
+                exp, suffix = self._build_experiment(model_name, sweep_params)
+
+                safe_name = model_name.replace('/', '-').replace(' ', '_')
+                job_name = f"{safe_name}_{self.exp_name}"
+                if suffix:
+                    job_name = f"{job_name}_{suffix}"
+
+                # Generate YAML per job
+                yaml_path = self.yaml_dir / f"{job_name}.yaml"
+                with open(yaml_path, "w") as f:
+                    yaml.dump({"experiments": [exp]}, f, default_flow_style=False)
+                yaml_paths.append(yaml_path)
+
+        # Detect GPU count if possible
+        ngpus = 0
+        if shutil.which('nvidia-smi'):
+            try:
+                import subprocess
+                out = subprocess.check_output(['nvidia-smi', '--query-gpu=index', '--format=csv,noheader'])
+                ngpus = len([l for l in out.decode().splitlines() if l.strip()])
+            except Exception:
+                ngpus = 0
+
+        if ngpus <= 0:
+            ngpus = 1
+
+        # Create launcher that assigns GPUs round-robin and starts sessions
+        launcher_path = self.output_dir / f"bigfacet_submit_{self.exp_name}.sh"
+        session_prefix = f"{self.exp_name}_bf"
+
+        launcher_lines = [
+            "#!/bin/bash",
+            f"# BigFacet launcher for {self.exp_name}",
+            f"# Detected GPUs: {ngpus}",
+            "# Requires `screen` to be installed.",
+            "",
+            "JOBS=(",
+        ]
+
+        for p in yaml_paths:
+            launcher_lines.append(f'  "{p}"')
+        launcher_lines.append(")")
+        launcher_lines.append("")
+        launcher_lines.append("NGPUS=%d" % ngpus)
+        launcher_lines.append("i=0")
+        launcher_lines.append("for job in \"${JOBS[@]}\"; do")
+        # optionally export CONDA_ENV
+        if conda_env:
+            launcher_lines.append(f"  CONDA_ENV={conda_env}")
+            launcher_lines.append("  export CONDA_ENV")
+        launcher_lines.extend([
+            "  gpu=$(( i % NGPUS ))",
+            "  session_name=%s_$i" % session_prefix,
+            "  echo \"Starting $session_name on GPU $gpu (job=$job)\"",
+            "  screen -dmS $session_name bash -lc 'export CUDA_VISIBLE_DEVICES=$gpu; "
+            "if [ -n \"$CONDA_ENV\" ]; then if command -v conda >/dev/null 2>&1; then eval \"$(conda shell.bash hook)\" && conda activate \"$CONDA_ENV\"; elif [ -f \"$HOME/miniconda3/etc/profile.d/conda.sh\" ]; then . \"$HOME/miniconda3/etc/profile.d/conda.sh\" && conda activate \"$CONDA_ENV\"; else echo \"conda not found; continuing\"; fi; fi; '"]
+        )
+        launcher_lines.append("  # start the python process inside the session")
+        launcher_lines.append("  screen -S $session_name -X stuff \"python3 %s --config \\\"$job\\\"\\n\"" % main_script)
+        launcher_lines.append("  i=$((i+1))")
+        launcher_lines.append("done")
+
+        with open(launcher_path, "w") as f:
+            f.write("\n".join(launcher_lines) + "\n")
+        launcher_path.chmod(0o755)
+
+        print(f"\n✓ Generated {len(yaml_paths)} job YAMLs and BigFacet launcher: {launcher_path}")
+        print(f"  Detected GPUs: {ngpus}")
+
+        return launcher_path
+
 
 # ============================================================================
 # Main entry point
@@ -905,6 +991,16 @@ Examples:
         "--herbie",
         action="store_true",
         help="Generate single YAML with all experiments (herbie mode)"
+    )
+    parser.add_argument(
+        "--bigfacet",
+        action="store_true",
+        help="Generate YAMLs and launcher that distribute jobs across GPUs (bigfacet mode)"
+    )
+    parser.add_argument(
+        "--conda-env",
+        type=str,
+        help="Optional conda environment name to activate in launcher scripts"
     )
     
     # Optional overrides
@@ -1023,7 +1119,9 @@ Examples:
     )
     
     if args.herbie:
-        generator.generate_herbie_mode(model_names)
+        generator.generate_herbie_mode(model_names, main_script=MAIN_SCRIPT, conda_env=args.conda_env)
+    elif args.bigfacet:
+        generator.generate_bigfacet_mode(model_names, main_script=MAIN_SCRIPT, conda_env=args.conda_env)
     else:
         generator.generate_individual_mode(model_names)
 
