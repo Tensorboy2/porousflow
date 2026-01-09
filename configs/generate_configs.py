@@ -303,7 +303,8 @@ class ModelRegistry:
             "type": "convnext",
             "size": "atto",
             "clip_grad": True,
-            "description": "ConvNeXt Atto (smallest)"
+            "description": "ConvNeXt Atto (smallest)",
+            "training_overrides": {"batch_multiplier": 4}
         },
         "ConvNeXt-Femto": {
             "type": "convnext",
