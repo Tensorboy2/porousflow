@@ -111,7 +111,9 @@ class ResNet(nn.Module):
 
         fc_in = 512 * block.expansion
         if self.task == 'dispersion':
-            fc_in += 1
+            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.GELU(), nn.Linear(16, 16))
+
+            fc_in += 16
         elif self.task == 'dispersion_direction':
             fc_in += 2
 
@@ -173,6 +175,7 @@ class ResNet(nn.Module):
                 Pe = torch.ones(x.size(0), 2, device=x.device) * Pe
             elif isinstance(Pe, torch.Tensor) and Pe.dim() == 1:
                 Pe = Pe.unsqueeze(1)
+            Pe = self.pe_mlp(Pe)  # (B, 16)
             x = torch.cat([x, Pe], dim=1)
 
         x = self.fc(x)

@@ -9,9 +9,10 @@ import zarr
 
 data_path = 'data/train.zarr'
 data = zarr.open(data_path, mode='r')
-Dx = np.arcsinh(data['dispersion_results']['Dx'])
-Dy = np.arcsinh(data['dispersion_results']['Dy'])
-
+Dx = np.arcsinh(data['dispersion_results']['Dx'][:1000]*0.001)
+Dy = np.arcsinh(data['dispersion_results']['Dy'][:1000]*0.001)
+print(np.max(data['dispersion_results']['Dx'][:]))
+print(np.max(data['dispersion_results']['Dy'][:]))
 print(f'Dx shape: {Dx.shape}')
 print(f'Dy shape: {Dy.shape}')
 
@@ -74,7 +75,7 @@ for k, Pe in enumerate(Pe_values):
 
 plt.tight_layout()
 plt.savefig('diagonal_components.pdf', dpi=300, bbox_inches='tight')
-plt.show()
+# plt.show()
 
 
 print("\nSummary Statistics:")

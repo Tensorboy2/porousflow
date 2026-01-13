@@ -150,7 +150,8 @@ class ViT(nn.Module):
         if self.task=='permeability':
             self.head = nn.Linear(embed_dim, num_classes)
         elif self.task =='dispersion':
-            self.head = nn.Linear(embed_dim+1, num_classes)
+            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.GELU(), nn.Linear(16, 16))
+            self.head = nn.Linear(embed_dim+16, num_classes)
         
         # Initialize weights
         self._init_weights()
@@ -197,7 +198,7 @@ class ViT(nn.Module):
             if Pe is None:
                 raise ValueError("Pe must be provided for dispersion task")
             Pe = torch.ones(x.size(0), 1, device=x.device) * Pe  # Ensure Pe shape is (B, 1)
-            
+            Pe = self.pe_mlp(Pe)  # (B, 16)
             x = torch.cat([x, Pe], dim=1)  # (batch_size, embed_dim+1)
         
         x = self.head(x)

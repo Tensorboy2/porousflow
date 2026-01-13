@@ -42,7 +42,7 @@ class Trainer:
         # lr scheduler
         warmup_steps = config.get('warmup_steps', 0)
         total_steps = config.get('total_steps', config.get('num_epochs', 10) * len(train_loader))
-        decay = config.get('decay', 'linear')  # 'linear' or 'cosine'
+        decay = config.get('decay', '')  # 'linear' or 'cosine'
         def lr_lambda(step):
             if step < warmup_steps:
                 return (step + 1)/ warmup_steps
@@ -68,7 +68,8 @@ class Trainer:
         os.makedirs(save_path, exist_ok=True)
         self.model_name = config['model'].get('name', 'model')
 
-        self.Pes = torch.tensor([0.1,10,50,100,500])
+        # Pe values used by the dispersion model. Ensure proper dtype/device.
+        self.Pes = torch.tensor([0.1, 10, 50, 100, 500], dtype=torch.float32, device=self.device)
 
         task = config.get('task','permeability')
         if task == 'dispersion':
@@ -158,6 +159,8 @@ class Trainer:
         sum_targets_squared = 0.0
         gradient_norm = 0.0
         count = 0
+        total_samples = 0
+        grad_steps = 0
         for inputs, targets in self.train_loader:
             B, Pe, _ = targets.shape
             for i in range(Pe):
@@ -174,10 +177,12 @@ class Trainer:
                     outputs = self.model(inputs,self.Pes[i])
                     # print(outputs.shape)
                     # print(D.shape)
-                    outputs_scaled = torch.arcsinh(outputs)
-                    D_scaled = torch.arcsinh(D)
+                    outputs_scaled = torch.arcsinh(outputs/10000)
+                    D_scaled = torch.arcsinh(D/10000)
+                    # loss = self.criterion(outputs, D)
                     loss = self.criterion(outputs_scaled, D_scaled)
-                    running_loss += loss.item() * inputs.size(0)
+                    running_loss += loss.item() * B
+                    total_samples += B
 
                 self.scaler.scale(loss).backward()
 
@@ -188,6 +193,7 @@ class Trainer:
                 # Optimizer step
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
+                grad_steps += 1
                 
                 with torch.no_grad():
                     outputs_cpu = outputs.detach().cpu()
@@ -201,7 +207,7 @@ class Trainer:
                 self.scheduler.step()
             
         
-        epoch_loss = running_loss / len(self.train_loader.dataset)
+        epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
         
         r2 = self._compute_r2_from_accumulators(
             sum_squared_error, sum_targets, sum_targets_squared, count
@@ -209,7 +215,7 @@ class Trainer:
 
         self.metrics['R2_train'].append(r2)
         self.metrics['train_loss'].append(epoch_loss)
-        self.metrics['grad_norm'] = gradient_norm / len(self.train_loader)
+        self.metrics['grad_norm'] = gradient_norm / grad_steps if grad_steps > 0 else 0.0
         
         return epoch_loss, r2
     
@@ -257,27 +263,29 @@ class Trainer:
         sum_targets = 0.0
         sum_targets_squared = 0.0
         count = 0
+        total_samples = 0
         with torch.no_grad():
             for inputs, targets in self.val_loader:
                 B, Pe, _ = targets.shape
                 for i in range(Pe):
                     D = targets[:,i]
                     inputs, D = inputs.to(self.device), D.to(self.device)
-                    outputs = self.model(inputs,self.Pes[i])
-                    outputs_scaled = torch.arcsinh(outputs)
-                    D_scaled = torch.arcsinh(D)
+                    outputs = self.model(inputs, self.Pes[i])
+                    outputs_scaled = torch.arcsinh(0.1*outputs)
+                    D_scaled = torch.arcsinh(0.1*D)
                     loss = self.criterion(outputs_scaled, D_scaled)
                     running_loss += loss.item() * inputs.size(0)
-                    
+                    total_samples += inputs.size(0)
+
                     outputs_cpu = outputs.detach().cpu()
                     targets_cpu = D.detach().cpu()
-                    
+
                     sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
                     sum_targets += torch.sum(targets_cpu).item()
                     sum_targets_squared += torch.sum(targets_cpu ** 2).item()
                     count += targets_cpu.numel()
 
-        epoch_loss = running_loss / len(self.val_loader.dataset)
+        epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
         r2 = self._compute_r2_from_accumulators(sum_squared_error, sum_targets, sum_targets_squared, count)
 
         self.metrics['R2_val'].append(r2)
@@ -322,21 +330,27 @@ class Trainer:
         sum_targets = 0.0
         sum_targets_squared = 0.0
         count = 0
+        total_samples = 0
         with torch.no_grad():
             for inputs, targets in self.test_loader:
-                for i, D in enumerate(targets):
+                B, Pe, _ = targets.shape
+                for i in range(Pe):
+                    D = targets[:, i]
                     inputs, D = inputs.to(self.device), D.to(self.device)
-                    outputs = self.model(inputs)
-                    loss = self.criterion(outputs, D)
+                    outputs = self.model(inputs, self.Pes[i])
+                    outputs_scaled = torch.arcsinh(outputs)
+                    D_scaled = torch.arcsinh(D)
+                    loss = self.criterion(outputs_scaled, D_scaled)
                     running_loss += loss.item() * inputs.size(0)
-                    
+                    total_samples += inputs.size(0)
+
                     outputs_cpu = outputs.detach().cpu()
                     targets_cpu = D.detach().cpu()
                     sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
                     sum_targets += torch.sum(targets_cpu).item()
                     sum_targets_squared += torch.sum(targets_cpu ** 2).item()
                     count += targets_cpu.numel()
-        epoch_loss = running_loss / len(self.test_loader.dataset)
+        epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
         
         r2 = self._compute_r2_from_accumulators(
             sum_squared_error, sum_targets, sum_targets_squared, count

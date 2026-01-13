@@ -217,7 +217,8 @@ class ConvNeXt(nn.Module):
         if task == 'permeability':
             self.fc = nn.Linear(dims[-1], num_classes)
         elif task == 'dispersion':
-            self.fc = nn.Linear(dims[-1] + 1, num_classes)
+            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.GELU(), nn.Linear(16, 16))
+            self.fc = nn.Linear(dims[-1] + 16, num_classes)
         elif task == 'dispersion_direction':
             self.fc = nn.Linear(dims[-1] + 2, num_classes)
         else:
@@ -246,7 +247,7 @@ class ConvNeXt(nn.Module):
             if Pe is None:
                 raise ValueError("Pe must be provided for dispersion task")
             Pe = torch.ones(x.size(0), 1, device=x.device) * Pe  # Ensure Pe shape is (B, 1)
-            
+            Pe = self.pe_mlp(Pe)  # (B, 16)
             x = torch.cat([x, Pe], dim=1)  # (B, dims[-1] + 1)
         
         x = self.fc(x)

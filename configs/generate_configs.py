@@ -184,7 +184,7 @@ TASK_CONFIGS = {
     "permeability": {
         "learning_rate": 1e-3,
         "weight_decay": 1e-3,
-        "batch_size": 256,
+        "batch_size": 16,
         "num_epochs": 100,
         "decay": "cosine",
         "warmup_steps": 1000,
@@ -192,14 +192,16 @@ TASK_CONFIGS = {
         "num_validation_samples": None,
     },
     "dispersion": {
-        "learning_rate": 1e-3,
-        "weight_decay": 1e-3,
+        "learning_rate": 1e-4,
+        "weight_decay": 1e-5,
         "batch_size": 32,
         "num_epochs": 100,
         "decay": "cosine",
         "warmup_steps": 5000,
         "num_training_samples": None,
         "num_validation_samples": None,
+        "prefetch_factor": 2,
+        "pin_memory": True,
     },
 }
 
@@ -223,14 +225,16 @@ DEVICE_CONFIGS = {
             "mem": "16G",
         },
         "training_overrides": {
-            "batch_size": 8,
-            "num_epochs": 50,
-            "warmup_steps": 5,
+            "batch_size": 4,
+            "num_epochs": 500,
+            "warmup_steps": 10,
             "weight_decay": 0.0,
             "decay": "cosine",
-            "learning_rate": 5e-2,
-            "num_training_samples": 10,
-            "num_validation_samples": 10,
+            "learning_rate": 5e-3,
+            "num_training_samples": 32,
+            "num_validation_samples": 4,
+            "prefetch_factor": None,
+            "pin_memory": False,
         },
     },
 }
@@ -1069,9 +1073,9 @@ Examples:
         help="Optional conda environment name to activate in launcher scripts"
     )
     parser.add_argument(
-        "--hardcode",
-        action="store_true",
-        help="Generate the six predefined run plans (hardcoded experiments) and exit"
+        "--experiment",
+        choices=list(SWEEP_PRESETS.keys()),
+        help="Use a named sweep preset (e.g. lr_sweep, bs_sweep) to generate experiments"
     )
     
     # Optional overrides
@@ -1180,36 +1184,61 @@ Examples:
     print(f"Output: {output_dir}")
     print("="*70 + "\n")
     
-    # If user requested hardcoded run plans, generate those and exit.
-    if args.hardcode:
-        # Define the six run plans mapping to sweep keys in HYPERPARAM_SWEEPS
-        runs = [
-            ("batch_size", "batch_size", HYPERPARAM_SWEEPS["batch_size"]["sweep"]),
-            ("learning_rate", "learning_rate", HYPERPARAM_SWEEPS["learning_rate"]["sweep"]),
-            ("weight_decay", "weight_decay", HYPERPARAM_SWEEPS["weight_decay"]["sweep"]),
-            ("num_training_samples", "num_training_samples", HYPERPARAM_SWEEPS["num_training_samples"]["scaling"]),
-            # Combine a few epoch lengths for a broader sweep
-            ("num_epochs", "num_epochs", sorted({*HYPERPARAM_SWEEPS["num_epochs"]["short"], *HYPERPARAM_SWEEPS["num_epochs"]["medium"], *HYPERPARAM_SWEEPS["num_epochs"].get("long", [])})),
-            ("decay", "decay", HYPERPARAM_SWEEPS["decay"]["common"]),
-        ]
+    # If the user requested a named sweep preset, expand it and generate jobs.
+    if args.experiment:
+        preset = SWEEP_PRESETS[args.experiment]
 
-        for idx, (label, param_name, values) in enumerate(runs, start=1):
-            run_exp_name = f"{exp_name}_run{idx}_{label}"
-            print(f"\n--- Generating run {idx}: {label} ({param_name}) with {len(values)} values ---")
-            gen = ConfigGenerator(
-                exp_name=run_exp_name,
-                output_dir=output_dir,
-                base_config=common_config,
-                model_registry=registry,
-                slurm_config=slurm_config,
-                is_cpu=is_cpu,
-                sweep_configs={param_name: values},
-            )
+        # Map preset sweep types to actual lists in HYPERPARAM_SWEEPS.
+        # Allow some common aliases (coarse/fine/small/light -> sweep).
+        SWEEP_ALIAS = {
+            "coarse": "sweep",
+            "fine": "sweep",
+            "small": "sweep",
+            "light": "sweep",
+            "common": "common",
+            "scaling": "scaling",
+            "single": "single",
+            "sweep": "sweep",
+        }
 
-            # Generate individual jobs for this run
-            gen.generate_individual_mode(model_names, main_script=MAIN_SCRIPT)
+        sweep_configs: Dict[str, List[Any]] = {}
+        for param, sweep_type in preset.items():
+            # Resolve alias to a key present in HYPERPARAM_SWEEPS[param]
+            mapped = SWEEP_ALIAS.get(sweep_type, sweep_type)
+            candidates = HYPERPARAM_SWEEPS.get(param, {})
+            values = None
+            if mapped in candidates:
+                values = candidates[mapped]
+            else:
+                # Fallback: prefer 'sweep', then 'scaling', then 'single'
+                for fallback in ("sweep", "scaling", "single"):
+                    if fallback in candidates:
+                        values = candidates[fallback]
+                        break
+            if values is None:
+                raise ValueError(f"No sweep values found for param '{param}' using preset '{args.experiment}'")
 
-        print("\n✓ Hardcoded run plans generated.\n")
+            sweep_configs[param] = values
+
+        print(f"\n--- Generating experiment using preset: {args.experiment} ---")
+        gen = ConfigGenerator(
+            exp_name=exp_name,
+            output_dir=output_dir,
+            base_config=common_config,
+            model_registry=registry,
+            slurm_config=slurm_config,
+            is_cpu=is_cpu,
+            sweep_configs=sweep_configs,
+        )
+
+        # Default to individual mode unless herbie/bigfacet specified
+        if args.herbie:
+            gen.generate_herbie_mode(model_names, main_script=MAIN_SCRIPT, conda_env=args.conda_env)
+        elif args.bigfacet:
+            gen.generate_bigfacet_mode(model_names, main_script=MAIN_SCRIPT, conda_env=args.conda_env)
+        else:
+            gen.generate_individual_mode(model_names)
+
         return
 
     # Default behaviour: generate as before
