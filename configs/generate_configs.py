@@ -13,6 +13,17 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, asdict
 
 
+"""
+Run plans:
+    - The first run is a run over different batch sizes for all models.
+    - The second run is a run over different learning rates for all models.
+    - The third run is a run over different weight decays for all models.
+    - The fourth run is a run over different number of data samples for all models.
+    - The fifth run is a run over different number of epochs for all models.
+    - The sixth run is a run over different decay schedules for all models.
+"""
+
+
 # ============================================================================
 # CONFIGURATION PRESETS - Edit these to change experiment settings
 # ============================================================================
@@ -75,31 +86,22 @@ HYPERPARAM_SWEEPS = {
     "learning_rate": {
         "single": [1e-3],  # Default single value
         "sweep": [1e-4, 5e-4, 1e-3, 5e-3, 1e-2],
-        "fine": [5e-4, 7e-4, 1e-3, 2e-3, 3e-3],
-        "coarse": [1e-4, 1e-3, 1e-2],
     },
     "batch_size": {
         "single": [64],
-        "sweep": [16, 32, 64, 128, 256],
-        "small": [8, 16, 32],
-        "large": [64, 128, 256, 512],
+        "sweep": [64, 128, 256, 512, 1024],
     },
     "weight_decay": {
         "single": [1e-3],
-        "sweep": [0.0, 1e-4, 1e-3, 1e-2, 1e-1],
-        "light": [0.0, 1e-4, 1e-3],
+        "sweep": [0.0, 1e-4, 1e-2, 1e-1, 0.5],
     },
-    "num_data_samples": {
+    "num_training_samples": {
         "single": [None],  # None means use all available data
         "sweep": [100, 500, 1000, 5000, 10000, None],
-        "small": [100, 500, 1000],
-        "scaling": [100, 200, 500, 1000, 2000, 5000, 10000],
     },
     "num_epochs": {
         "single": [100],
-        "short": [50],
-        "medium": [100],
-        "long": [200, 300],
+        "sweep": [100,300,500,700,1000],    
     },
     "decay": {
         "single": ["cosine"],
@@ -318,7 +320,7 @@ class ModelRegistry:
             "size": "pico",
             "clip_grad": True,
             "description": "ConvNeXt Pico",
-            "training_overrides": {"batch_size": 1024}
+            "training_overrides": {"batch_size": 512}
         },
         "ConvNeXt-Nano": {
             "type": "convnext",
@@ -1054,6 +1056,11 @@ Examples:
         type=str,
         help="Optional conda environment name to activate in launcher scripts"
     )
+    parser.add_argument(
+        "--hardcode",
+        action="store_true",
+        help="Generate the six predefined run plans (hardcoded experiments) and exit"
+    )
     
     # Optional overrides
     parser.add_argument(
@@ -1161,6 +1168,39 @@ Examples:
     print(f"Output: {output_dir}")
     print("="*70 + "\n")
     
+    # If user requested hardcoded run plans, generate those and exit.
+    if args.hardcode:
+        # Define the six run plans mapping to sweep keys in HYPERPARAM_SWEEPS
+        runs = [
+            ("batch_size", "batch_size", HYPERPARAM_SWEEPS["batch_size"]["sweep"]),
+            ("learning_rate", "learning_rate", HYPERPARAM_SWEEPS["learning_rate"]["sweep"]),
+            ("weight_decay", "weight_decay", HYPERPARAM_SWEEPS["weight_decay"]["sweep"]),
+            ("num_data_samples", "num_data_samples", HYPERPARAM_SWEEPS["num_data_samples"]["scaling"]),
+            # Combine a few epoch lengths for a broader sweep
+            ("num_epochs", "num_epochs", sorted({*HYPERPARAM_SWEEPS["num_epochs"]["short"], *HYPERPARAM_SWEEPS["num_epochs"]["medium"], *HYPERPARAM_SWEEPS["num_epochs"].get("long", [])})),
+            ("decay", "decay", HYPERPARAM_SWEEPS["decay"]["common"]),
+        ]
+
+        for idx, (label, param_name, values) in enumerate(runs, start=1):
+            run_exp_name = f"{exp_name}_run{idx}_{label}"
+            print(f"\n--- Generating run {idx}: {label} ({param_name}) with {len(values)} values ---")
+            gen = ConfigGenerator(
+                exp_name=run_exp_name,
+                output_dir=output_dir,
+                base_config=common_config,
+                model_registry=registry,
+                slurm_config=slurm_config,
+                is_cpu=is_cpu,
+                sweep_configs={param_name: values},
+            )
+
+            # Generate individual jobs for this run
+            gen.generate_individual_mode(model_names, main_script=MAIN_SCRIPT)
+
+        print("\n✓ Hardcoded run plans generated.\n")
+        return
+
+    # Default behaviour: generate as before
     generator = ConfigGenerator(
         exp_name=exp_name,
         output_dir=output_dir,

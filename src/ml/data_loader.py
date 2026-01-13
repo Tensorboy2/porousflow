@@ -93,13 +93,16 @@ class PermeabilityDataset(Dataset):
         return image, K
     
 class DispersionDataset(Dataset):
-    def __init__(self, file_path, transform=None):
+    def __init__(self, file_path, transform=None, num_training_samples=None):
         self.root = zarr.open(file_path, mode='r')
         self.filled_images_ds = self.root['filled_images']['filled_images']
         self.targets_ds_x = self.root['dispersion_results']['Dx']
         self.targets_ds_y = self.root['dispersion_results']['Dy']
 
         self.transform = transform
+
+        if num_training_samples is not None:
+            self.root.attrs['N'] = min(num_training_samples, self.root.attrs['N'])
 
     def __len__(self):
         return self.root.attrs['N']
@@ -194,7 +197,7 @@ def get_dispersion_dataloader(file_path,config):
     val_path = os.path.join(file_path,'validation.zarr')
     test_path = os.path.join(file_path,'test.zarr')
 
-    train_dataset = DispersionDataset(train_path)
+    train_dataset = DispersionDataset(train_path,num_training_samples=config.get('num_training_samples',None))
     val_dataset = DispersionDataset(val_path)
     test_dataset = DispersionDataset(test_path)
 
