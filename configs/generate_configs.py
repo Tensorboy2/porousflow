@@ -306,21 +306,21 @@ class ModelRegistry:
             "size": "atto",
             "clip_grad": True,
             "description": "ConvNeXt Atto (smallest)",
-            "training_overrides": {"batch_size": 1024}
+            # "training_overrides": {"batch_size": 1024}
         },
         "ConvNeXt-Femto": {
             "type": "convnext",
             "size": "femto",
             "clip_grad": True,
             "description": "ConvNeXt Femto",
-            "training_overrides": {"batch_size": 1024}
+            # "training_overrides": {"batch_size": 1024}
         },
         "ConvNeXt-Pico": {
             "type": "convnext",
             "size": "pico",
             "clip_grad": True,
             "description": "ConvNeXt Pico",
-            "training_overrides": {"batch_size": 512}
+            # "training_overrides": {"batch_size": 512}
         },
         "ConvNeXt-Nano": {
             "type": "convnext",
@@ -475,14 +475,14 @@ class ModelRegistry:
             "size": "18",
             "clip_grad": True,
             "description": "ResNet 18 layers",
-            "training_overrides": {"batch_size": 1024}
+            # "training_overrides": {"batch_size": 1024}
         },
         "ResNet-34": {
             "type": "resnet",
             "size": "34",
             "clip_grad": True,
             "description": "ResNet 34 layers",
-            "training_overrides": {"batch_size": 1024}
+            # "training_overrides": {"batch_size": 1024}
         },
         "ResNet-50": {
             "type": "resnet",
