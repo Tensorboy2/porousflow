@@ -79,6 +79,7 @@ def main(config):
         device=device
     )
     print("Trainer initialized.")
+    print(f"Dataset sizes - Train: {len(train_loader.dataset)}, Val: {len(val_loader.dataset)}, Test: {len(test_loader.dataset)}")
 
     # Run training
     num_epochs = config.get('num_epochs', 10)

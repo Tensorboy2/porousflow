@@ -39,32 +39,71 @@ class PermeabilityTransform:
         K = k_transform(K)
         return image, K
     
+def swap_diag(D):
+    # [Kxx, Kxy, Kyx, Kyy] → [Kyy, Kxy, Kyx, Kxx]
+    return D[:, [3, 1, 2, 0]]
+
 class DispersionTransform:
     def __init__(self):
         self.permutations = [
-            ('I', lambda img: img, lambda K: K),
-            ('R', lambda img: tf.rotate(img, 90),
-                  lambda K: torch.tensor([K[3], -K[2], -K[1], K[0]])),  # 90°
-            ('RR', lambda img: tf.rotate(img, 180),
-                   lambda K: torch.tensor([K[0], K[1], K[2], K[3]])),  # 180°
-            ('RRR', lambda img: tf.rotate(img, 270),
-                    lambda K: torch.tensor([K[3], -K[2], -K[1], K[0]])),  # 270°
-            ('H', lambda img: tf.hflip(img),
-                  lambda K: torch.tensor([K[0], -K[1], -K[2], K[3]])),  # Horizontal flip
-            ('HR', lambda img: tf.rotate(tf.hflip(img), 90),
-                   lambda K: torch.tensor([K[3], K[2], K[1], K[0]])),  # H + 90°
-            ('HRR', lambda img: tf.rotate(tf.hflip(img), 180),
-                    lambda K: torch.tensor([K[0], -K[1], -K[2], K[3]])),  # H + 180°
-            ('HRRR', lambda img: tf.rotate(tf.hflip(img), 270),
-                     lambda K: torch.tensor([K[3], K[2], K[1], K[0]])),  # H + 270°
+            # Identity
+            lambda img, Dx, Dy: (img, Dx, Dy),
+
+            # R90
+            lambda img, Dx, Dy: (
+                tf.rotate(img, 90),
+                swap_diag(Dy),
+                swap_diag(Dx),
+            ),
+
+            # R180
+            lambda img, Dx, Dy: (
+                tf.rotate(img, 180),
+                Dx,
+                Dy,
+            ),
+
+            # R270
+            lambda img, Dx, Dy: (
+                tf.rotate(img, 270),
+                swap_diag(Dy),
+                swap_diag(Dx),
+            ),
+
+            # H
+            lambda img, Dx, Dy: (
+                tf.hflip(img),
+                Dx,
+                Dy,
+            ),
+
+            # H + R90
+            lambda img, Dx, Dy: (
+                tf.rotate(tf.hflip(img), 90),
+                swap_diag(Dy),
+                swap_diag(Dx),
+            ),
+
+            # H + R180
+            lambda img, Dx, Dy: (
+                tf.rotate(tf.hflip(img), 180),
+                Dx,
+                Dy,
+            ),
+
+            # H + R270
+            lambda img, Dx, Dy: (
+                tf.rotate(tf.hflip(img), 270),
+                swap_diag(Dy),
+                swap_diag(Dx),
+            ),
         ]
 
     def __call__(self, image, Dx, Dy):
-        # Randomly choose one of the 8 permutations
-        _, img_transform, D_transform = random.choice(self.permutations)
-        image = img_transform(image)
-        # K = _transform(K)
-        # return image, K
+        t = random.choice(self.permutations)
+        return t(image, Dx, Dy)
+
+
 
 class PermeabilityDataset(Dataset):
     def __init__(self, file_path, transform=None):
@@ -93,7 +132,7 @@ class PermeabilityDataset(Dataset):
         return image, K
     
 class DispersionDataset(Dataset):
-    def __init__(self, file_path, transform=None, num_training_samples=None):
+    def __init__(self, file_path, transform=None, num_samples=None):
         self.root = zarr.open(file_path, mode='r')
         self.filled_images_ds = self.root['filled_images']['filled_images']
         self.targets_ds_x = self.root['dispersion_results']['Dx']
@@ -101,11 +140,11 @@ class DispersionDataset(Dataset):
 
         self.transform = transform
 
-        if num_training_samples is not None:
-            self.root.attrs['N'] = min(num_training_samples, self.root.attrs['N'])
+        if num_samples is not None:
+            self.len = min(num_samples, self.root.attrs['N'])
 
     def __len__(self):
-        return self.root.attrs['N']
+        return self.len if hasattr(self, 'len') else self.filled_images_ds.shape[0]
 
     def __getitem__(self, idx):
         # Fetch numpy versions of the data
@@ -115,11 +154,15 @@ class DispersionDataset(Dataset):
 
         # turn into torch tensors
         image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
-        target = torch.cat((torch.from_numpy(Dx).float(), torch.from_numpy(Dy).float()), dim=1)
-
+        Dx = torch.from_numpy(Dx).float()
+        Dy = torch.from_numpy(Dy).float()
+        
         # transform if needed
         if self.transform:
-            image, target = self.transform(image, target)
+            image, Dx, Dy = self.transform(image, Dx, Dy)
+
+        target = torch.cat((Dx,Dy), dim=1)
+
         return image, target
 
 def get_permeability_dataloader(file_path,config):
@@ -197,8 +240,8 @@ def get_dispersion_dataloader(file_path,config):
     val_path = os.path.join(file_path,'validation.zarr')
     test_path = os.path.join(file_path,'test.zarr')
 
-    train_dataset = DispersionDataset(train_path,num_training_samples=config.get('num_training_samples',None))
-    val_dataset = DispersionDataset(val_path)
+    train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None), transform=DispersionTransform())
+    val_dataset = DispersionDataset(val_path,num_samples=config.get('num_validation_samples',None))
     test_dataset = DispersionDataset(test_path)
 
     train_loader = DataLoader(train_dataset, 

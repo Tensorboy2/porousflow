@@ -117,7 +117,7 @@ SWEEP_PRESETS = {
         "learning_rate": "single",
         "batch_size": "single",
         "weight_decay": "single",
-        "num_data_samples": "single",
+        "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "single",
     },
@@ -126,7 +126,7 @@ SWEEP_PRESETS = {
         "learning_rate": "sweep",
         "batch_size": "single",
         "weight_decay": "single",
-        "num_data_samples": "single",
+        "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "single",
     },
@@ -135,7 +135,7 @@ SWEEP_PRESETS = {
         "learning_rate": "single",
         "batch_size": "sweep",
         "weight_decay": "single",
-        "num_data_samples": "single",
+        "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "single",
     },
@@ -144,7 +144,7 @@ SWEEP_PRESETS = {
         "learning_rate": "single",
         "batch_size": "single",
         "weight_decay": "single",
-        "num_data_samples": "scaling",
+        "num_training_samples": "scaling",
         "num_epochs": "single",
         "decay": "single",
     },
@@ -153,7 +153,7 @@ SWEEP_PRESETS = {
         "learning_rate": "sweep",
         "batch_size": "sweep",
         "weight_decay": "single",
-        "num_data_samples": "single",
+        "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "single",
     },
@@ -162,7 +162,7 @@ SWEEP_PRESETS = {
         "learning_rate": "fine",
         "batch_size": "single",
         "weight_decay": "sweep",
-        "num_data_samples": "single",
+        "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "common",
     },
@@ -171,7 +171,7 @@ SWEEP_PRESETS = {
         "learning_rate": "coarse",
         "batch_size": "small",
         "weight_decay": "light",
-        "num_data_samples": "small",
+        "num_training_samples": "small",
         "num_epochs": "single",
         "decay": "common",
     },
@@ -187,17 +187,19 @@ TASK_CONFIGS = {
         "batch_size": 256,
         "num_epochs": 100,
         "decay": "cosine",
-        "warmup_steps": 100,
-        "num_data_samples": None,  # None = use all data
+        "warmup_steps": 1000,
+        "num_training_samples": None,  # None = use all data
+        "num_validation_samples": None,
     },
     "dispersion": {
         "learning_rate": 1e-3,
         "weight_decay": 1e-3,
         "batch_size": 256,
         "num_epochs": 100,
-        "decay": "cosine",
-        "warmup_steps": 100,
-        "num_data_samples": None,
+        "decay": "",
+        "warmup_steps": 1000,
+        "num_training_samples": None,
+        "num_validation_samples": None,
     },
 }
 
@@ -223,6 +225,12 @@ DEVICE_CONFIGS = {
         "training_overrides": {
             "batch_size": 8,
             "num_epochs": 50,
+            "warmup_steps": 5,
+            "weight_decay": 0.0,
+            "decay": None,
+            "learning_rate": 1e-2,
+            "num_training_samples": 10,
+            "num_validation_samples": 10,
         },
     },
 }
@@ -251,11 +259,13 @@ class SlurmConfig:
     gres: str = "gpu:1"
     time: str = None
     mem: str = None
+    slurm_out_dir: str = "slurm_outputs"
     
     def to_header(self, job_name: str) -> str:
         """Generate SLURM header."""
         lines = [
             "#!/bin/bash",
+            f"#SBATCH --output={self.slurm_out_dir}/%x_%j.out",
             f"#SBATCH --job-name={job_name}",
             f"#SBATCH --partition={self.partition}",
             f"#SBATCH --ntasks={self.ntasks}",
@@ -278,25 +288,25 @@ class ModelRegistry:
         "ViT-T16": {
             "type": "vit",
             "size": "T16",
-            "clip_grad": False,
+            "clip_grad": True,
             "description": "Vision Transformer Tiny with 16x16 patches"
         },
         "ViT-S16": {
             "type": "vit",
             "size": "S16",
-            "clip_grad": False,
+            "clip_grad": True,
             "description": "Vision Transformer Small with 16x16 patches"
         },
         "ViT-B16": {
             "type": "vit",
             "size": "B16",
-            "clip_grad": False,
+            "clip_grad": True,
             "description": "Vision Transformer Base with 16x16 patches"
         },
         "ViT-L16": {
             "type": "vit",
             "size": "L16",
-            "clip_grad": False,
+            "clip_grad": True,
             "description": "Vision Transformer Large with 16x16 patches"
         },
         
@@ -674,7 +684,8 @@ class ConfigGenerator:
                     "learning_rate": "lr",
                     "batch_size": "bs",
                     "weight_decay": "wd",
-                    "num_data_samples": "n",
+                    "num_training_samples": "n",
+                    "num_validation_samples": "nv",
                     "num_epochs": "ep",
                     "decay": "decay",
                 }.get(param_name, param_name[:4])
@@ -1175,7 +1186,7 @@ Examples:
             ("batch_size", "batch_size", HYPERPARAM_SWEEPS["batch_size"]["sweep"]),
             ("learning_rate", "learning_rate", HYPERPARAM_SWEEPS["learning_rate"]["sweep"]),
             ("weight_decay", "weight_decay", HYPERPARAM_SWEEPS["weight_decay"]["sweep"]),
-            ("num_data_samples", "num_data_samples", HYPERPARAM_SWEEPS["num_data_samples"]["scaling"]),
+            ("num_training_samples", "num_training_samples", HYPERPARAM_SWEEPS["num_training_samples"]["scaling"]),
             # Combine a few epoch lengths for a broader sweep
             ("num_epochs", "num_epochs", sorted({*HYPERPARAM_SWEEPS["num_epochs"]["short"], *HYPERPARAM_SWEEPS["num_epochs"]["medium"], *HYPERPARAM_SWEEPS["num_epochs"].get("long", [])})),
             ("decay", "decay", HYPERPARAM_SWEEPS["decay"]["common"]),

@@ -47,8 +47,8 @@ class Trainer:
             if step < warmup_steps:
                 return (step + 1)/ warmup_steps
             else:
-                decay_epochs = total_steps - warmup_steps
-                decay_progress = (step - warmup_steps) / decay_epochs
+                # decay_epochs = total_steps - warmup_steps
+                decay_progress = (step - warmup_steps) / total_steps
                 if decay=="linear":
                     return max(0.0, 1.0 - decay_progress)
                 elif decay=="cosine":
@@ -89,6 +89,7 @@ class Trainer:
         sum_squared_error = 0.0
         sum_targets = 0.0
         sum_targets_squared = 0.0
+        gradient_norm = 0.0
         count = 0
         # preds = []
         # trues = []
@@ -112,7 +113,7 @@ class Trainer:
 
             if self.clip_grad:
                 self.scaler.unscale_(self.optimizer)
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+                gradient_norm += torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
 
             # Optimizer step
             self.scaler.step(self.optimizer)
@@ -145,6 +146,7 @@ class Trainer:
 
         self.metrics['R2_train'].append(r2)
         self.metrics['train_loss'].append(epoch_loss)
+        self.metrics['grad_norm'] = gradient_norm / len(self.train_loader)
         
         return epoch_loss, r2
     
@@ -154,6 +156,7 @@ class Trainer:
         sum_squared_error = 0.0
         sum_targets = 0.0
         sum_targets_squared = 0.0
+        gradient_norm = 0.0
         count = 0
         for inputs, targets in self.train_loader:
             B, Pe, _ = targets.shape
@@ -180,7 +183,7 @@ class Trainer:
 
                 if self.clip_grad:
                     self.scaler.unscale_(self.optimizer)
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+                    gradient_norm += torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
 
                 # Optimizer step
                 self.scaler.step(self.optimizer)
@@ -206,6 +209,7 @@ class Trainer:
 
         self.metrics['R2_train'].append(r2)
         self.metrics['train_loss'].append(epoch_loss)
+        self.metrics['grad_norm'] = gradient_norm / len(self.train_loader)
         
         return epoch_loss, r2
     
@@ -347,10 +351,12 @@ class Trainer:
         for epoch in range(num_epochs):
             train_loss, train_r2 = self.train_epoch()
             val_loss, val_r2 = self.validate_epoch()
+            current_learning_rate = self.scheduler.get_last_lr()[0]
             print(
                 f"Epoch [{epoch+1}/{num_epochs}],\n" 
                 f"      Train Loss: {train_loss:.5f}, Val Loss: {val_loss:.5f}\n"
-                f"      Train R2: {train_r2:.5f},       Val R2: {val_r2:.5f}"
+                f"      Train R2: {train_r2:.5f},       Val R2: {val_r2:.5f}\n"
+                f"      LR: {current_learning_rate:.6f}, Grad Norm: {self.metrics['grad_norm']:.5e}"
                 )
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
