@@ -174,8 +174,8 @@ class Trainer:
                     outputs = self.model(inputs,self.Pes[i])
                     # print(outputs.shape)
                     # print(D.shape)
-                    outputs_scaled = torch.arcsinh(0.2*outputs)
-                    D_scaled = torch.arcsinh(0.2*D)
+                    outputs_scaled = torch.arcsinh(outputs)
+                    D_scaled = torch.arcsinh(D)
                     loss = self.criterion(outputs_scaled, D_scaled)
                     running_loss += loss.item() * inputs.size(0)
 
@@ -264,8 +264,8 @@ class Trainer:
                     D = targets[:,i]
                     inputs, D = inputs.to(self.device), D.to(self.device)
                     outputs = self.model(inputs,self.Pes[i])
-                    outputs_scaled = torch.arcsinh(0.2*outputs)
-                    D_scaled = torch.arcsinh(0.2*D)
+                    outputs_scaled = torch.arcsinh(outputs)
+                    D_scaled = torch.arcsinh(D)
                     loss = self.criterion(outputs_scaled, D_scaled)
                     running_loss += loss.item() * inputs.size(0)
                     
@@ -348,6 +348,7 @@ class Trainer:
     
     def train(self, num_epochs):
         best_val_loss = float('inf')
+        save_path = os.path.join(self.config.get('save_model_path', 'results'), f"{self.config['model']['name']}_lr-{self.config['learning_rate']}_wd-{self.config['weight_decay']}_epochs-{num_epochs}_{self.config.get('decay','no-decay')}_warmup-{self.config.get('warmup_steps',0)}")
         for epoch in range(num_epochs):
             train_loss, train_r2 = self.train_epoch()
             val_loss, val_r2 = self.validate_epoch()
@@ -360,11 +361,11 @@ class Trainer:
                 )
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
-                self.save_model(os.path.join(self.config.get('save_model_path', 'results'), f"{self.config['model']['name']}_{epoch}.pth"))
+                self.save_model(save_path+".pth")
                 print(f"  Saved best model at epoch {epoch+1} with val loss {val_loss:.5f}")
         #save last model
-        self.save_model(os.path.join(self.config.get('save_model_path', 'results'), f"{self.config['model']['name']}_last_model.pth"))
-        self.save_metrics(os.path.join(self.config.get('save_model_path', 'results'), 'metrics.zarr'))
+        self.save_model(save_path+"_last_model.pth")
+        self.save_metrics(save_path+'metrics.zarr')
         # test_loss, test_r2 = self.test()
         # print(f"Final Test Loss: {test_loss:.4f}, Test R2: {test_r2:.4f}")
 
