@@ -67,7 +67,8 @@ def main(config):
     weight_decay = config.get('weight_decay', 0.0)
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     print(f"Optimizer: AdamW | LR: {learning_rate} | Weight Decay: {weight_decay}")
-
+    print(f"Dataset sizes - Train: {len(train_loader.dataset)}, Val: {len(val_loader.dataset)}, Test: {len(test_loader.dataset)}")
+    print(f"Warmup Steps: {config.get('warmup_steps', 0)} | Decay: {config.get('decay', 'None')}")
     # Initialize Trainer
     trainer = Trainer(
         model=model,
@@ -79,7 +80,6 @@ def main(config):
         device=device
     )
     print("Trainer initialized.")
-    print(f"Dataset sizes - Train: {len(train_loader.dataset)}, Val: {len(val_loader.dataset)}, Test: {len(test_loader.dataset)}")
 
     # Run training
     num_epochs = config.get('num_epochs', 10)

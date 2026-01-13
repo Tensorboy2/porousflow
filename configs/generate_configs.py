@@ -227,7 +227,7 @@ DEVICE_CONFIGS = {
             "num_epochs": 50,
             "warmup_steps": 5,
             "weight_decay": 0.0,
-            "decay": None,
+            "decay": "cosine",
             "learning_rate": 1e-2,
             "num_training_samples": 10,
             "num_validation_samples": 10,
@@ -266,6 +266,7 @@ class SlurmConfig:
         lines = [
             "#!/bin/bash",
             f"#SBATCH --output={self.slurm_out_dir}/%x_%j.out",
+            f"#SBATCH --error={self.slurm_out_dir}/%x_%j.err",
             f"#SBATCH --job-name={job_name}",
             f"#SBATCH --partition={self.partition}",
             f"#SBATCH --ntasks={self.ntasks}",
