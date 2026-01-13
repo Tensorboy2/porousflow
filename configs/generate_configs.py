@@ -194,7 +194,7 @@ TASK_CONFIGS = {
     "dispersion": {
         "learning_rate": 1e-3,
         "weight_decay": 1e-3,
-        "batch_size": 256,
+        "batch_size": 32,
         "num_epochs": 100,
         "decay": "cosine",
         "warmup_steps": 5000,
@@ -228,7 +228,7 @@ DEVICE_CONFIGS = {
             "warmup_steps": 5,
             "weight_decay": 0.0,
             "decay": "cosine",
-            "learning_rate": 1e-2,
+            "learning_rate": 5e-2,
             "num_training_samples": 10,
             "num_validation_samples": 10,
         },
