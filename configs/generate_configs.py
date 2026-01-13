@@ -97,7 +97,7 @@ HYPERPARAM_SWEEPS = {
     },
     "num_training_samples": {
         "single": [None],  # None means use all available data
-        "sweep": [100, 500, 1000, 5000, 10000, None],
+        "scaling": [100, 500, 1000, 5000, 10000, None],
     },
     "num_epochs": {
         "single": [100],
