@@ -248,7 +248,7 @@ class ConvNeXt(nn.Module):
                 raise ValueError("Pe must be provided for dispersion task")
             Pe = torch.ones(x.size(0), 1, device=x.device) * Pe  # Ensure Pe shape is (B, 1)
             Pe = self.pe_mlp(Pe)  # (B, 16)
-            x = torch.cat([x, Pe], dim=1)  # (B, dims[-1] + 1)
+            x = torch.cat([x, Pe], dim=1)  # (B, dims[-1] + 16)
         
         x = self.fc(x)
         return x
