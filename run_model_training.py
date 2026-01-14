@@ -65,7 +65,8 @@ def main(config):
     # Setup optimizer
     learning_rate = config.get('learning_rate', 1e-3)
     weight_decay = config.get('weight_decay', 0.0)
-    optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay, betas=(0.9, 0.999))
+    # optimizer = optim.SGD(model.parameters(), lr=learning_rate, weight_decay=weight_decay, momentum=0.9)
     print(f"Optimizer: AdamW | LR: {learning_rate} | Weight Decay: {weight_decay}")
     print(f"Dataset sizes - Train: {len(train_loader.dataset)}, Val: {len(val_loader.dataset)}, Test: {len(test_loader.dataset)}")
     print(f"Warmup Steps: {config.get('warmup_steps', 0)} | Decay: {config.get('decay', 'None')}")

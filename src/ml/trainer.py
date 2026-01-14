@@ -40,8 +40,8 @@ class Trainer:
         self.max_grad_norm = config.get('max_grad_norm', 1.0)
 
         # lr scheduler
-        warmup_steps = config.get('warmup_steps', 0)
-        total_steps = config.get('total_steps', config.get('num_epochs', 10) * len(train_loader))
+        warmup_steps = config.get('warmup_steps', 0)*5
+        total_steps = config.get('total_steps', config.get('num_epochs', 10) * len(train_loader))*5
         decay = config.get('decay', '')  # 'linear' or 'cosine'
         def lr_lambda(step):
             if step < warmup_steps:
@@ -185,8 +185,10 @@ class Trainer:
                     # D_scaled = torch.sign(D)*torch.log(1 + torch.abs(D))
                     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
                     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
-                    D_scaled = D/10000
-                    outputs_scaled = outputs/10000
+                    D_scaled = D/1000
+                    # D_scaled = D_scaled/1000
+                    outputs_scaled = outputs/1000
+                    # outputs_scaled = outputs_scaled/1000
                     # loss = self.criterion(outputs, D)
                     loss = self.criterion(outputs_scaled, D_scaled)
                     running_loss += loss.item() * B
@@ -294,8 +296,8 @@ class Trainer:
                     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
                     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
                     
-                    D_scaled = D/10000
-                    outputs_scaled = outputs/10000
+                    D_scaled = D/1000
+                    outputs_scaled = outputs/1000
                     loss = self.criterion(outputs_scaled, D_scaled)
                     running_loss += loss.item() * inputs.size(0)
                     total_samples += inputs.size(0)
