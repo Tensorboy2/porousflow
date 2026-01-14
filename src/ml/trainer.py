@@ -185,12 +185,12 @@ class Trainer:
                     # D_scaled = torch.sign(D)*torch.log(1 + torch.abs(D))
                     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
                     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
-                    D_scaled = D/1000
+                    D = D/1000
                     # D_scaled = D_scaled/1000
-                    outputs_scaled = outputs/1000
+                    # outputs_scaled = outputs/1000
                     # outputs_scaled = outputs_scaled/1000
                     # loss = self.criterion(outputs, D)
-                    loss = self.criterion(outputs_scaled, D_scaled)
+                    loss = self.criterion(outputs, D)
                     running_loss += loss.item() * B
                     total_samples += B
 
@@ -296,9 +296,9 @@ class Trainer:
                     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
                     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
                     
-                    D_scaled = D/1000
-                    outputs_scaled = outputs/1000
-                    loss = self.criterion(outputs_scaled, D_scaled)
+                    D = D/1000
+                    # outputs_scaled = outputs/1000
+                    loss = self.criterion(outputs, D)
                     running_loss += loss.item() * inputs.size(0)
                     total_samples += inputs.size(0)
 
