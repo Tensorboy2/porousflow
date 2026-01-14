@@ -177,16 +177,16 @@ class Trainer:
                     outputs = self.model(inputs,self.Pes[i])
                     # print(outputs.shape)
                     # print(D.shape)
-                    outputs_scaled = torch.sign(outputs)*torch.log(1 + torch.abs(outputs))
-                    outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
+                    # outputs_scaled = torch.sign(outputs)*torch.log(1 + torch.abs(outputs))
+                    # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
                     # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
                     # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
                     
-                    D_scaled = torch.sign(D)*torch.log(1 + torch.abs(D))
-                    D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
+                    # D_scaled = torch.sign(D)*torch.log(1 + torch.abs(D))
                     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
                     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
-                    
+                    D_scaled = D/10000
+                    outputs_scaled = outputs/10000
                     # loss = self.criterion(outputs, D)
                     loss = self.criterion(outputs_scaled, D_scaled)
                     running_loss += loss.item() * B
@@ -284,16 +284,18 @@ class Trainer:
                     
                     outputs = self.model(inputs, self.Pes[i])
                     
-                    outputs_scaled = torch.sign(outputs)*torch.log(1 + torch.abs(outputs))
-                    outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
+                    # outputs_scaled = torch.sign(outputs)*torch.log(1 + torch.abs(outputs))
+                    # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
                     # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
                     # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
                     
-                    D_scaled = torch.sign(D)*torch.log(1 + torch.abs(D))
-                    D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
+                    # D_scaled = torch.sign(D)*torch.log(1 + torch.abs(D))
+                    # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
                     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
                     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
                     
+                    D_scaled = D/10000
+                    outputs_scaled = outputs/10000
                     loss = self.criterion(outputs_scaled, D_scaled)
                     running_loss += loss.item() * inputs.size(0)
                     total_samples += inputs.size(0)

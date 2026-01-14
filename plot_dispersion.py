@@ -14,17 +14,18 @@ Dy = data['dispersion_results']['Dy']
 metrics = data['metrics']['metrics']
 porosities = metrics['porosity']
 
-Dx = np.sign(data['dispersion_results']['Dx'][:])*np.log(1 + np.abs(data['dispersion_results']['Dx'][:]))
+# Dx = np.sign(data['dispersion_results']['Dx'][:])*np.log(1 + np.abs(data['dispersion_results']['Dx'][:]))
 # Dx = np.sign(Dx)*np.log(1 + np.abs(Dx))
 # Dx = np.sign(Dx)*np.log(1 + np.abs(Dx))
 # Dx = np.sign(Dx)*np.log(1 + np.abs(Dx))
 
-Dy = np.sign(data['dispersion_results']['Dy'][:])*np.log(1 + np.abs(data['dispersion_results']['Dy'][:]))
+# Dy = np.sign(data['dispersion_results']['Dy'][:])*np.log(1 + np.abs(data['dispersion_results']['Dy'][:]))
 # Dy = np.sign(Dy)*np.log(1 + np.abs(Dy))
 # Dy = np.sign(Dy)*np.log(1 + np.abs(Dy))
 # Dy = np.sign(Dy)*np.log(1 + np.abs(Dy))
 # Dy = np.tanh(data['dispersion_results']['Dy'][:]*1e-2)
-
+Dx = Dx[:]/10000
+Dy = Dy[:]/10000
 # Pe_values = [0.1, 10, 50, 100, 500]
 
 # 2D Hist plot of Dispersion value over porosity:

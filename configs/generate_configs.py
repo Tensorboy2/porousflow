@@ -227,10 +227,10 @@ DEVICE_CONFIGS = {
             "mem": "16G",
         },
         "training_overrides": {
-            "batch_size": 4,
-            "num_epochs": 500,
+            "batch_size": 32,
+            "num_epochs": 100,
             "warmup_steps": 10,
-            "weight_decay": 0.0,
+            "weight_decay": 1e-3,
             "decay": "cosine",
             "learning_rate": 1e-3,
             "num_training_samples": 64,
