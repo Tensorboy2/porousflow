@@ -217,7 +217,7 @@ class ConvNeXt(nn.Module):
         if task == 'permeability':
             self.fc = nn.Linear(dims[-1], num_classes)
         elif task == 'dispersion':
-            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.GELU(), nn.Linear(16, 16))
+            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.Linear(16, 16))
             self.fc = nn.Linear(dims[-1] + 16, num_classes)
         elif task == 'dispersion_direction':
             self.fc = nn.Linear(dims[-1] + 2, num_classes)
