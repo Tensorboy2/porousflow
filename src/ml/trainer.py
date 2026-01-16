@@ -40,8 +40,8 @@ class Trainer:
         self.max_grad_norm = config.get('max_grad_norm', 1.0)
 
         # lr scheduler
-        warmup_steps = config.get('warmup_steps', 0)*5
-        total_steps = config.get('total_steps', config.get('num_epochs', 10) * len(train_loader))*5
+        warmup_steps = config.get('warmup_steps', 0)
+        total_steps = config.get('total_steps', config.get('num_epochs', 10) * len(train_loader))
         decay = config.get('decay', '')  # 'linear' or 'cosine'
         def lr_lambda(step):
             if step < warmup_steps:
@@ -161,60 +161,96 @@ class Trainer:
         count = 0
         total_samples = 0
         grad_steps = 0
-        for inputs, targets in self.train_loader:
-            B, Pe, _ = targets.shape
-            for i in range(Pe):
-                D = targets[:,i]
-                # print(D.shape)
-                if self.config.get('pin_memory', False):
-                    inputs, D = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True)
-                else:
-                    inputs, D = inputs.to(self.device), D.to(self.device)
+        for inputs, D in self.train_loader:
+            B = inputs.shape[0]
+            if self.config.get('pin_memory', False):
+                inputs, D = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True)
+            else:
+                inputs, D = inputs.to(self.device), D.to(self.device)
 
-                self.optimizer.zero_grad(set_to_none=True)
+            self.optimizer.zero_grad(set_to_none=True)
 
-                with autocast(device_type= 'cuda',enabled=self.scaler.is_enabled()):
-                    outputs = self.model(inputs,self.Pes[i])
-                    # print(outputs.shape)
-                    # print(D.shape)
-                    # outputs_scaled = torch.sign(outputs)*torch.log(1 + torch.abs(outputs))
-                    # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
-                    # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
-                    # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
-                    
-                    # D_scaled = torch.sign(D)*torch.log(1 + torch.abs(D))
-                    # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
-                    # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
-                    D = D/1000
-                    # D_scaled = D_scaled/1000
-                    # outputs_scaled = outputs/1000
-                    # outputs_scaled = outputs_scaled/1000
-                    # loss = self.criterion(outputs, D)
-                    loss = self.criterion(outputs, D)
-                    running_loss += loss.item() * B
-                    total_samples += B
-
-                self.scaler.scale(loss).backward()
-
-                if self.clip_grad:
-                    self.scaler.unscale_(self.optimizer)
-                    gradient_norm += torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
-
-                # Optimizer step
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-                grad_steps += 1
+            with autocast(device_type= 'cuda',enabled=self.scaler.is_enabled()):
+                outputs = self.model(inputs)
                 
-                with torch.no_grad():
-                    outputs_cpu = outputs.detach().cpu()
-                    targets_cpu = D.detach().cpu()
-                    
-                    sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
-                    sum_targets += torch.sum(targets_cpu).item()
-                    sum_targets_squared += torch.sum(targets_cpu ** 2).item()
-                    count += targets_cpu.numel()
+                loss = self.criterion(outputs, D)
+                running_loss += loss.item() * B
+                total_samples += B
 
-                self.scheduler.step()
+            self.scaler.scale(loss).backward()
+
+            if self.clip_grad:
+                self.scaler.unscale_(self.optimizer)
+                gradient_norm += torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+
+            # Optimizer step
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+            grad_steps += 1
+            
+            with torch.no_grad():
+                outputs_cpu = outputs.detach().cpu()
+                targets_cpu = D.detach().cpu()
+                
+                sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
+                sum_targets += torch.sum(targets_cpu).item()
+                sum_targets_squared += torch.sum(targets_cpu ** 2).item()
+                count += targets_cpu.numel()
+
+            self.scheduler.step()
+            # B, Pe, _ = targets.shape
+            # for i in range(Pe):
+            #     D = targets[:,i]
+            #     # print(D.shape)
+            #     if self.config.get('pin_memory', False):
+            #         inputs, D = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True)
+            #     else:
+            #         inputs, D = inputs.to(self.device), D.to(self.device)
+
+            #     self.optimizer.zero_grad(set_to_none=True)
+
+            #     with autocast(device_type= 'cuda',enabled=self.scaler.is_enabled()):
+            #         outputs = self.model(inputs,self.Pes[i])
+            #         # print(outputs.shape)
+            #         # print(D.shape)
+            #         # outputs_scaled = torch.sign(outputs)*torch.log(1 + torch.abs(outputs))
+            #         # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
+            #         # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
+            #         # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
+                    
+            #         # D_scaled = torch.sign(D)*torch.log(1 + torch.abs(D))
+            #         # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
+            #         # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
+            #         D = D/1000
+            #         # D_scaled = D_scaled/1000
+            #         # outputs_scaled = outputs/1000
+            #         # outputs_scaled = outputs_scaled/1000
+            #         # loss = self.criterion(outputs, D)
+            #         loss = self.criterion(outputs, D)
+            #         running_loss += loss.item() * B
+            #         total_samples += B
+
+            #     self.scaler.scale(loss).backward()
+
+            #     if self.clip_grad:
+            #         self.scaler.unscale_(self.optimizer)
+            #         gradient_norm += torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+
+            #     # Optimizer step
+            #     self.scaler.step(self.optimizer)
+            #     self.scaler.update()
+            #     grad_steps += 1
+                
+            #     with torch.no_grad():
+            #         outputs_cpu = outputs.detach().cpu()
+            #         targets_cpu = D.detach().cpu()
+                    
+            #         sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
+            #         sum_targets += torch.sum(targets_cpu).item()
+            #         sum_targets_squared += torch.sum(targets_cpu ** 2).item()
+            #         count += targets_cpu.numel()
+
+            #     self.scheduler.step()
             
         
         epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
@@ -275,40 +311,57 @@ class Trainer:
         count = 0
         total_samples = 0
         with torch.no_grad():
-            for inputs, targets in self.val_loader:
-                B, Pe, _ = targets.shape
-                for i in range(Pe):
-                    D = targets[:,i]
-                    if self.config.get('pin_memory', False):
-                        inputs, D = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True)
-                    else:
-                        inputs, D = inputs.to(self.device), D.to(self.device)
-                    
-                    outputs = self.model(inputs, self.Pes[i])
-                    
-                    # outputs_scaled = torch.sign(outputs)*torch.log(1 + torch.abs(outputs))
-                    # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
-                    # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
-                    # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
-                    
-                    # D_scaled = torch.sign(D)*torch.log(1 + torch.abs(D))
-                    # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
-                    # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
-                    # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
-                    
-                    D = D/1000
-                    # outputs_scaled = outputs/1000
-                    loss = self.criterion(outputs, D)
-                    running_loss += loss.item() * inputs.size(0)
-                    total_samples += inputs.size(0)
+            for inputs, D in self.val_loader:
+                if self.config.get('pin_memory', False):
+                    inputs, D = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True)
+                else:
+                    inputs, D = inputs.to(self.device), D.to(self.device)
+                
+                outputs = self.model(inputs)
+                
+                loss = self.criterion(outputs, D)
+                running_loss += loss.item() * inputs.size(0)
+                total_samples += inputs.size(0)
 
-                    outputs_cpu = outputs.detach().cpu()
-                    targets_cpu = D.detach().cpu()
+                outputs_cpu = outputs.detach().cpu()
+                targets_cpu = D.detach().cpu()
 
-                    sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
-                    sum_targets += torch.sum(targets_cpu).item()
-                    sum_targets_squared += torch.sum(targets_cpu ** 2).item()
-                    count += targets_cpu.numel()
+                sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
+                sum_targets += torch.sum(targets_cpu).item()
+                sum_targets_squared += torch.sum(targets_cpu ** 2).item()
+                count += targets_cpu.numel()
+                # for i in range(Pe):
+                #     D = targets[:,i]
+                #     if self.config.get('pin_memory', False):
+                #         inputs, D = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True)
+                #     else:
+                #         inputs, D = inputs.to(self.device), D.to(self.device)
+                    
+                #     outputs = self.model(inputs, self.Pes[i])
+                    
+                #     # outputs_scaled = torch.sign(outputs)*torch.log(1 + torch.abs(outputs))
+                #     # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
+                #     # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
+                #     # outputs_scaled = torch.sign(outputs_scaled)*torch.log(1 + torch.abs(outputs_scaled))
+                    
+                #     # D_scaled = torch.sign(D)*torch.log(1 + torch.abs(D))
+                #     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
+                #     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
+                #     # D_scaled = torch.sign(D_scaled)*torch.log(1 + torch.abs(D_scaled))
+                    
+                #     D = D/1000
+                #     # outputs_scaled = outputs/1000
+                #     loss = self.criterion(outputs, D)
+                #     running_loss += loss.item() * inputs.size(0)
+                #     total_samples += inputs.size(0)
+
+                #     outputs_cpu = outputs.detach().cpu()
+                #     targets_cpu = D.detach().cpu()
+
+                #     sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
+                #     sum_targets += torch.sum(targets_cpu).item()
+                #     sum_targets_squared += torch.sum(targets_cpu ** 2).item()
+                #     count += targets_cpu.numel()
 
         epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
         r2 = self._compute_r2_from_accumulators(sum_squared_error, sum_targets, sum_targets_squared, count)

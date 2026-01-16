@@ -136,7 +136,7 @@ class DispersionDataset(Dataset):
         self.root = zarr.open(file_path, mode='r')
         self.filled_images_ds = self.root['filled_images']['filled_images']
         self.targets_ds_x = self.root['dispersion_results']['Dx']
-        self.targets_ds_y = self.root['dispersion_results']['Dy']
+        # self.targets_ds_y = self.root['dispersion_results']['Dy']
 
         self.transform = transform
 
@@ -149,21 +149,37 @@ class DispersionDataset(Dataset):
     def __getitem__(self, idx):
         # Fetch numpy versions of the data
         image = self.filled_images_ds[idx]
-        Dx = self.targets_ds_x[idx].reshape(5,4) # shape (1,5,2,2)
-        Dy = self.targets_ds_y[idx].reshape(5,4)
+        Dx = self.targets_ds_x[idx][1] # shape (1,5,2,2)
+        # Dy = self.targets_ds_y[idx].reshape(5,4)
 
         # turn into torch tensors
         image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
-        Dx = torch.from_numpy(Dx).float()
-        Dy = torch.from_numpy(Dy).float()
+        Dx = torch.from_numpy(Dx).float().flatten()*1e-1
+        # Dy = torch.from_numpy(Dy).float()
         
         # transform if needed
-        if self.transform:
-            image, Dx, Dy = self.transform(image, Dx, Dy)
+        # if self.transform:
+        #     image, Dx, Dy = self.transform(image, Dx, Dy)
 
-        target = torch.cat((Dx,Dy), dim=1)
+        return image, Dx
+    # def __getitem__(self, idx):
+    #     # Fetch numpy versions of the data
+    #     image = self.filled_images_ds[idx]
+    #     Dx = self.targets_ds_x[idx].reshape(5,4) # shape (1,5,2,2)
+    #     Dy = self.targets_ds_y[idx].reshape(5,4)
 
-        return image, target
+    #     # turn into torch tensors
+    #     image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
+    #     Dx = torch.from_numpy(Dx).float()
+    #     Dy = torch.from_numpy(Dy).float()
+        
+    #     # transform if needed
+    #     if self.transform:
+    #         image, Dx, Dy = self.transform(image, Dx, Dy)
+
+    #     target = torch.cat((Dx,Dy), dim=1)
+
+    #     return image, target
 
 def get_permeability_dataloader(file_path,config):
     '''

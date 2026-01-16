@@ -217,8 +217,9 @@ class ConvNeXt(nn.Module):
         if task == 'permeability':
             self.fc = nn.Linear(dims[-1], num_classes)
         elif task == 'dispersion':
-            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.Linear(16, 16))
-            self.fc = nn.Linear(dims[-1] + 16, num_classes)
+            # self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.Linear(16, 16))
+            # self.fc = nn.Linear(dims[-1] + 16, num_classes)
+            self.fc = nn.Linear(dims[-1], num_classes)
         elif task == 'dispersion_direction':
             self.fc = nn.Linear(dims[-1] + 2, num_classes)
         else:
@@ -243,12 +244,12 @@ class ConvNeXt(nn.Module):
         x = self.avgpool(x)
         x = torch.flatten(x, 1)  # (B, dims[-1])
         
-        if self.task == 'dispersion':
-            if Pe is None:
-                raise ValueError("Pe must be provided for dispersion task")
-            Pe = torch.ones(x.size(0), 1, device=x.device) * Pe  # Ensure Pe shape is (B, 1)
-            Pe = self.pe_mlp(Pe)  # (B, 16)
-            x = torch.cat([x, Pe], dim=1)  # (B, dims[-1] + 16)
+        # if self.task == 'dispersion':
+        #     if Pe is None:
+        #         raise ValueError("Pe must be provided for dispersion task")
+        #     Pe = torch.ones(x.size(0), 1, device=x.device) * Pe  # Ensure Pe shape is (B, 1)
+        #     Pe = self.pe_mlp(Pe)  # (B, 16)
+        #     x = torch.cat([x, Pe], dim=1)  # (B, dims[-1] + 16)
         
         x = self.fc(x)
         return x
@@ -263,7 +264,7 @@ def load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task
     if task == 'permeability':
         num_classes = 4
     elif task == 'dispersion':
-        num_classes = 8
+        num_classes = 4
     else:
         raise ValueError(f"Unknown task: {cfg['task']}. Supported tasks: ['permeability', 'dispersion']")
     

@@ -14,18 +14,18 @@ Dy = data['dispersion_results']['Dy']
 metrics = data['metrics']['metrics']
 porosities = metrics['porosity']
 
-Dx = np.sign(data['dispersion_results']['Dx'][:])*np.log(1 + np.abs(data['dispersion_results']['Dx'][:]))
+# Dx = np.sign(data['dispersion_results']['Dx'][:])*np.log(1 + np.abs(data['dispersion_results']['Dx'][:]))
 # Dx = np.sign(Dx)*np.log(1 + np.abs(Dx))
 # Dx = np.sign(Dx)*np.log(1 + np.abs(Dx))
 # Dx = np.sign(Dx)*np.log(1 + np.abs(Dx))
 
-Dy = np.sign(data['dispersion_results']['Dy'][:])*np.log(1 + np.abs(data['dispersion_results']['Dy'][:]))
+# Dy = np.sign(data['dispersion_results']['Dy'][:])*np.log(1 + np.abs(data['dispersion_results']['Dy'][:]))
 # Dy = np.sign(Dy)*np.log(1 + np.abs(Dy))
 # Dy = np.sign(Dy)*np.log(1 + np.abs(Dy))
 # Dy = np.sign(Dy)*np.log(1 + np.abs(Dy))
 # Dy = np.tanh(data['dispersion_results']['Dy'][:]*1e-2)
 Dx = Dx[:]/10
-Dy = Dy[:]/10
+# Dy = Dy[0:1]
 # Pe_values = [0.1, 10, 50, 100, 500]
 
 # 2D Hist plot of Dispersion value over porosity:
@@ -41,12 +41,12 @@ for i in range(2):
         ax = axes[i, j]
 
         # Merge all k into one vector
-        Dx_merged = Dx[:, pe_indices, i, j].reshape(-1)
-        por_merged = np.repeat(porosities, K)
+        # Dx_merged = Dx[:, 1, i, j]
+        # por_merged = np.repeat(porosities, K)
 
         h = ax.hist2d(
-            por_merged,
-            Dx_merged,
+            porosities,
+            Dx[:, 1, i, j],
             bins=100,
             cmap='viridis',
             cmin=1
