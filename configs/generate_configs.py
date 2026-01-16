@@ -83,11 +83,11 @@ DEFAULT_MODEL_PRESET = "small_sweep"
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
         "single": [1e-3],  # Default single value
-        "sweep": [1e-4, 5e-4, 1e-3, 5e-3, 1e-2],
+        "sweep": [1e-4, 5e-4, 1e-3, 5e-3],
     },
     "batch_size": {
         "single": [64],
-        "sweep": [64, 128, 256, 512, 1024],
+        "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
         "single": [1e-3],
@@ -195,9 +195,9 @@ TASK_CONFIGS = {
         "learning_rate": 8e-4,
         "weight_decay": 0.1,
         "batch_size": 128,
-        "num_epochs": 600,
+        "num_epochs": 200,
         "decay": "cosine",
-        "warmup_steps": 0,
+        "warmup_steps": 1000,
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,

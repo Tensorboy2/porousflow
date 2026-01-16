@@ -240,7 +240,7 @@ def get_dispersion_dataloader(file_path,config):
     val_path = os.path.join(file_path,'validation.zarr')
     test_path = os.path.join(file_path,'test.zarr')
 
-    train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None), transform=DispersionTransform())
+    train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None))#, transform=DispersionTransform())
     val_dataset = DispersionDataset(val_path,num_samples=config.get('num_validation_samples',None))
     test_dataset = DispersionDataset(test_path)
 

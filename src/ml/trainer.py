@@ -388,6 +388,9 @@ class Trainer:
     def train(self, num_epochs):
         best_val_loss = float('inf')
         save_path = os.path.join(self.config.get('save_model_path', 'results'), f"{self.config['model']['name']}_lr-{self.config['learning_rate']}_wd-{self.config['weight_decay']}_epochs-{num_epochs}_{self.config.get('decay','no-decay')}_warmup-{self.config.get('warmup_steps',0)}")
+        
+        print(f'Saving state-dicts to: {save_path}.pth and {save_path}_last_model.pth')
+        print(f'Saving metrics to: {save_path}_metrics.zarr')
         for epoch in range(num_epochs):
             train_loss, train_r2 = self.train_epoch()
             val_loss, val_r2 = self.validate_epoch()
@@ -404,7 +407,7 @@ class Trainer:
                 print(f"  Saved best model at epoch {epoch+1} with val loss {val_loss:.5f}")
         #save last model
         self.save_model(save_path+"_last_model.pth")
-        self.save_metrics(save_path+'metrics.zarr')
+        self.save_metrics(save_path+'_metrics.zarr')
         # test_loss, test_r2 = self.test()
         # print(f"Final Test Loss: {test_loss:.4f}, Test R2: {test_r2:.4f}")
 
