@@ -91,7 +91,7 @@ HYPERPARAM_SWEEPS = {
     },
     "weight_decay": {
         "single": [1e-3],
-        "sweep": [0.0, 1e-4, 1e-2, 1e-1, 0.5],
+        "sweep": [0.0, 1e-2, 1e-1, 0.3],
     },
     "num_training_samples": {
         "single": [None],  # None means use all available data
@@ -155,6 +155,15 @@ SWEEP_PRESETS = {
         "num_epochs": "single",
         "decay": "single",
     },
+    "lr_bs_wd_sweep": {
+        # Sweep learning rate, batch size and weight decay together
+        "learning_rate": "sweep",
+        "batch_size": "sweep",
+        "weight_decay": "sweep",
+        "num_training_samples": "single",
+        "num_epochs": "single",
+        "decay": "single",
+    },
     "optimizer_sweep": {
         # Sweep LR, weight decay, and decay schedule
         "learning_rate": "fine",
@@ -197,7 +206,7 @@ TASK_CONFIGS = {
         "batch_size": 128,
         "num_epochs": 200,
         "decay": "cosine",
-        "warmup_steps": 1000,
+        "warmup_steps": 0,
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
@@ -228,11 +237,11 @@ DEVICE_CONFIGS = {
             "batch_size": 4,
             "num_epochs": 600,
             "warmup_steps": 0,
-            "weight_decay": 0.3,
+            "weight_decay": 0.5,
             "decay": "cosine",
             "learning_rate": 2e-4,
-            "num_training_samples": 32,
-            "num_validation_samples": 8,
+            "num_training_samples": 64,
+            "num_validation_samples": 16,
             "prefetch_factor": None,
             "pin_memory": False,
         },

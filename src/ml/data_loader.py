@@ -41,67 +41,67 @@ class PermeabilityTransform:
     
 def swap_diag(D):
     # [Kxx, Kxy, Kyx, Kyy] → [Kyy, Kxy, Kyx, Kxx]
-    return D[:, [3, 1, 2, 0]]
+    return D[[3, 1, 2, 0]]
 
 class DispersionTransform:
     def __init__(self):
         self.permutations = [
             # Identity
-            lambda img, Dx, Dy: (img, Dx, Dy),
+            lambda img, Dx: (img, Dx),
 
             # R90
-            lambda img, Dx, Dy: (
+            lambda img, Dx: (
                 tf.rotate(img, 90),
-                swap_diag(Dy),
+                # swap_diag(Dy),
                 swap_diag(Dx),
             ),
 
             # R180
-            lambda img, Dx, Dy: (
+            lambda img, Dx: (
                 tf.rotate(img, 180),
                 Dx,
-                Dy,
+                # Dy,
             ),
 
             # R270
-            lambda img, Dx, Dy: (
+            lambda img, Dx: (
                 tf.rotate(img, 270),
-                swap_diag(Dy),
+                # swap_diag(Dy),
                 swap_diag(Dx),
             ),
 
             # H
-            lambda img, Dx, Dy: (
+            lambda img, Dx: (
                 tf.hflip(img),
                 Dx,
-                Dy,
+                # Dy,
             ),
 
             # H + R90
-            lambda img, Dx, Dy: (
+            lambda img, Dx: (
                 tf.rotate(tf.hflip(img), 90),
-                swap_diag(Dy),
+                # swap_diag(Dy),
                 swap_diag(Dx),
             ),
 
             # H + R180
-            lambda img, Dx, Dy: (
+            lambda img, Dx: (
                 tf.rotate(tf.hflip(img), 180),
                 Dx,
-                Dy,
+                # Dy,
             ),
 
             # H + R270
-            lambda img, Dx, Dy: (
+            lambda img, Dx: (
                 tf.rotate(tf.hflip(img), 270),
-                swap_diag(Dy),
+                # swap_diag(Dy),
                 swap_diag(Dx),
             ),
         ]
 
-    def __call__(self, image, Dx, Dy):
+    def __call__(self, image, Dx):
         t = random.choice(self.permutations)
-        return t(image, Dx, Dy)
+        return t(image, Dx)
 
 
 
@@ -158,8 +158,8 @@ class DispersionDataset(Dataset):
         # Dy = torch.from_numpy(Dy).float()
         
         # transform if needed
-        # if self.transform:
-        #     image, Dx, Dy = self.transform(image, Dx, Dy)
+        if self.transform:
+            image, Dx = self.transform(image, Dx)
 
         return image, Dx
     # def __getitem__(self, idx):

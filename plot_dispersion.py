@@ -24,7 +24,7 @@ porosities = metrics['porosity']
 # Dy = np.sign(Dy)*np.log(1 + np.abs(Dy))
 # Dy = np.sign(Dy)*np.log(1 + np.abs(Dy))
 # Dy = np.tanh(data['dispersion_results']['Dy'][:]*1e-2)
-Dx = Dx[:]/10
+Dx = Dx[:]/1000
 # Dy = Dy[0:1]
 # Pe_values = [0.1, 10, 50, 100, 500]
 
@@ -46,7 +46,7 @@ for i in range(2):
 
         h = ax.hist2d(
             porosities,
-            Dx[:, 1, i, j],
+            Dx[:, 4, i, j],
             bins=100,
             cmap='viridis',
             cmin=1
@@ -61,36 +61,36 @@ plt.tight_layout()
 plt.savefig('Dx_vs_porosity_scaled.pdf', dpi=300, bbox_inches='tight')
 # plt.show()
 
-pe_indices = [0, 1, 2, 3, 4]   # K
-K = len(pe_indices)
-N = porosities.shape[0]
+# pe_indices = [0, 1, 2, 3, 4]   # K
+# K = len(pe_indices)
+# N = porosities.shape[0]
 
-fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-fig.suptitle('Dy components vs Porosity', fontsize=16, fontweight='bold')
+# fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+# fig.suptitle('Dy components vs Porosity', fontsize=16, fontweight='bold')
 
-for i in range(2):
-    for j in range(2):
-        ax = axes[i, j]
+# for i in range(2):
+#     for j in range(2):
+#         ax = axes[i, j]
 
-        # Merge all k into one vector
-        Dy_merged = Dy[:, pe_indices, i, j].reshape(-1)
-        por_merged = np.repeat(porosities, K)
+#         # Merge all k into one vector
+#         Dy_merged = Dy[:, pe_indices, i, j].reshape(-1)
+#         por_merged = np.repeat(porosities, K)
 
-        h = ax.hist2d(
-            por_merged,
-            Dy_merged,
-            bins=100,
-            cmap='viridis',
-            cmin=1
-        )
+#         h = ax.hist2d(
+#             por_merged,
+#             Dy_merged,
+#             bins=100,
+#             cmap='viridis',
+#             cmin=1
+#         )
 
-        ax.set_title(f'Dy[{i},{j}]')
-        ax.set_xlabel('Porosity')
-        # ax.set_yscale('log')
-        ax.set_ylabel('Dispersion')
+#         ax.set_title(f'Dy[{i},{j}]')
+#         ax.set_xlabel('Porosity')
+#         # ax.set_yscale('log')
+#         ax.set_ylabel('Dispersion')
 
-plt.tight_layout()
-plt.savefig('Dy_vs_porosity_scaled.pdf', dpi=300, bbox_inches='tight')
+# plt.tight_layout()
+# plt.savefig('Dy_vs_porosity_scaled.pdf', dpi=300, bbox_inches='tight')
 # plt.show()
 
 # # Create a separate figure for each Pe value
