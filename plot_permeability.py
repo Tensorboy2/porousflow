@@ -49,13 +49,15 @@ panels = [
     (por_off,  K_off,  r'$K_{xy}, K_{yx}$'),
 ]
 
+panel_labels = ['(a)', '(b)']
+
 for idx, (x, y, title) in enumerate(panels):
     inner = outer[idx].subgridspec(
         2, 2,
         width_ratios=(4, 1),
         height_ratios=(1, 4),
-        wspace=0.01,
-        hspace=0.01
+        wspace=0.001,
+        hspace=0.001
     )
 
     ax_main = fig.add_subplot(inner[1, 0])
@@ -74,9 +76,35 @@ for idx, (x, y, title) in enumerate(panels):
     ax_main.set_xlabel('Porosity')
     ax_main.set_ylabel(f'{title}'+r' ($10^{-10}$ $m^2$)')
 
+    # Top histogram (x-marginal)
+    ax_x.spines['bottom'].set_visible(False)
+    ax_x.tick_params(bottom=False)
+
+    # Right histogram (y-marginal)
+    ax_y.spines['left'].set_visible(False)
+    ax_y.tick_params(left=False)
+
+
+    ax_main.text(
+        0.15, 0.90, panel_labels[idx],
+        transform=ax_main.transAxes,
+        fontsize=14,
+        fontweight='bold',
+        va='top',
+        ha='left'
+    )
+
+    # if idx == 1:
+    #     ax_main.set_yticks([0, ])
+    #     ax_main.set_yticklabels(['0', '1', '2', ''])
+
+
+
+        
+
 cax = fig.add_subplot(outer[2])
 cbar = fig.colorbar(h[3], cax=cax)
 cbar.set_label('Counts')
 
 
-plt.savefig('permeability_vs_porosity_merged.pdf', bbox_inches='tight')
+plt.savefig('permeability_vs_porosity.pdf', bbox_inches='tight')

@@ -70,6 +70,12 @@ MODEL_PRESETS = {
         # All ConvNeXt
         "ConvNeXt-Atto", "ConvNeXt-Femto", "ConvNeXt-Pico", "ConvNeXt-Nano",
         "ConvNeXt-Tiny", "ConvNeXt-Small", "ConvNeXt-Base", "ConvNeXt-Large",
+        # All ConvNeXt V2
+        "ConvNeXt-V2-Atto", "ConvNeXt-V2-Femto", "ConvNeXt-V2-Pico", "ConvNeXt-V2-Nano",
+        "ConvNeXt-V2-Tiny", "ConvNeXt-V2-Small", "ConvNeXt-V2-Base", "ConvNeXt-V2-Large",
+        # All ConvNeXt RMS
+        "ConvNeXt-RMS-Atto", "ConvNeXt-RMS-Femto", "ConvNeXt-RMS-Pico", "ConvNeXt-RMS-Nano",
+        "ConvNeXt-RMS-Tiny", "ConvNeXt-RMS-Small", "ConvNeXt-RMS-Base", "ConvNeXt-RMS-Large",
         # All ResNet
         "ResNet-18", "ResNet-34", "ResNet-50", "ResNet-101", "ResNet-152",
     ],
@@ -189,10 +195,10 @@ DEFAULT_SWEEP_PRESET = "none"
 # Base training configurations by task (used as defaults)
 TASK_CONFIGS = {
     "permeability": {
-        "learning_rate": 1e-3,
-        "weight_decay": 1e-3,
-        "batch_size": 16,
-        "num_epochs": 100,
+        "learning_rate": 8e-4,
+        "weight_decay": 1e-1,
+        "batch_size": 128,
+        "num_epochs": 500,
         "decay": "cosine",
         "warmup_steps": 1000,
         "num_training_samples": None,  # None = use all data

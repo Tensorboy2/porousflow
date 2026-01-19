@@ -149,7 +149,7 @@ class DispersionDataset(Dataset):
     def __getitem__(self, idx):
         # Fetch numpy versions of the data
         image = self.filled_images_ds[idx]
-        Dx = self.targets_ds_x[idx][1] # shape (1,5,2,2)
+        Dx = self.targets_ds_x[idx][0] # shape (1,5,2,2)
         # Dy = self.targets_ds_y[idx].reshape(5,4)
 
         # turn into torch tensors
