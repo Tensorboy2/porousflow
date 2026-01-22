@@ -210,10 +210,10 @@ class ViT(nn.Module):
         return sum(p.numel() for p in self.parameters())
 
 VIT_CONFIGS = {
-    'tiny': {'embed_dim': 192, 'num_layers': 12, 'num_heads': 3},
-    'small': {'embed_dim': 384, 'num_layers': 12, 'num_heads': 6},
-    'base': {'embed_dim': 768, 'num_layers': 12, 'num_heads': 12},
-    'large': {'embed_dim': 1024, 'num_layers': 24, 'num_heads': 16},
+    'T16': {'embed_dim': 192, 'num_layers': 12, 'num_heads': 3},
+    'S16': {'embed_dim': 384, 'num_layers': 12, 'num_heads': 6},
+    'B16': {'embed_dim': 768, 'num_layers': 12, 'num_heads': 12},
+    'L16': {'embed_dim': 1024, 'num_layers': 24, 'num_heads': 16},
 }
 
 def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeability', pretrained_path: str = None, **kwargs):
@@ -238,7 +238,7 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeabil
     # Extract from config dict or use provided args
     if isinstance(config_or_size, dict):
         cfg = config_or_size
-        size = cfg.get('size', cfg.get('name', 'T16'))
+        size = cfg.get('size', 'T16')
         in_channels = cfg.get('in_channels', in_channels)
         task = cfg.get('task', task)
         pretrained_path = cfg.get('pretrained_path', pretrained_path)
@@ -318,12 +318,12 @@ if __name__ == "__main__":
     
     # Test ViT-Tiny
     x = torch.randn(2, 1, 128, 128)
-    model_tiny = load_vit_model(config_or_size='tiny', in_channels=1, task='permeability')
+    model_tiny = load_vit_model(config_or_size='T16', in_channels=1, task='permeability')
     output_tiny = model_tiny(x)
     print(f"ViT-Tiny output shape: {output_tiny.shape}")
     
     # Test ViT-Base for dispersion
     peclet = torch.tensor([10.0, 20.0])
-    model_base = load_vit_model(config_or_size='base', in_channels=1, task='dispersion')
-    output_base = model_base(x, peclet=peclet)
+    model_base = load_vit_model(config_or_size='B16', in_channels=1, task='dispersion')
+    output_base = model_base(x)
     print(f"ViT-Base (dispersion) output shape: {output_base.shape}")
