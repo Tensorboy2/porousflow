@@ -212,7 +212,7 @@ TASK_CONFIGS = {
         "batch_size": 128,
         "num_epochs": 200,
         "decay": "cosine",
-        "warmup_steps": 0,
+        "warmup_steps": 1000,
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,

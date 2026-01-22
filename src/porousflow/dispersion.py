@@ -258,10 +258,10 @@ def run_dispersion_sim_physical_test(solid, velocity, steps=10_000, num_particle
     initial_positions = particles_positions_unwrapped.copy()
     
     M_t_all = np.zeros((steps, 2, 2))
-    inc = steps//1000
-    positions_for_plot = np.zeros((num_particles, 2, steps//inc), dtype=np.float64)
-    positions_for_plot[:, 0, 0] = particles_positions_wrapped[:, 0]
-    positions_for_plot[:, 1, 0] = particles_positions_wrapped[:, 1]
+    inc = 100
+    positions_for_plot = np.zeros((steps//inc,num_particles, 2), dtype=np.float64)
+    positions_for_plot[0,:, 0] = particles_positions_wrapped[:, 0]
+    positions_for_plot[0,:, 1] = particles_positions_wrapped[:, 1]
     
     for step in range(steps):
         for i in range(num_particles):
@@ -297,8 +297,8 @@ def run_dispersion_sim_physical_test(solid, velocity, steps=10_000, num_particle
                 particles_positions_unwrapped[i, 1] += disp_y
 
             if step % inc == 0 and step > 0:
-                positions_for_plot[i, 0, step//inc] = particles_positions_unwrapped[i, 0]
-                positions_for_plot[i, 1, step//inc] = particles_positions_unwrapped[i, 1]
+                positions_for_plot[step//inc,i, 0] = particles_positions_wrapped[i, 0]
+                positions_for_plot[step//inc,i, 1] = particles_positions_wrapped[i, 1]
         
         # Dispersion tensor (now in physical units²)
         disp = particles_positions_unwrapped - initial_positions
