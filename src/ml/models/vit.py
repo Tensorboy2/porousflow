@@ -173,8 +173,8 @@ class ViT(nn.Module):
     
     def forward(self, x, Pe=None):
         # Validate inputs
-        if self.task == 'dispersion' and Pe is None:
-            raise ValueError("Pe number must be provided when mode='dispersion'")
+        # if self.task == 'dispersion' and Pe is None:
+        #     raise ValueError("Pe number must be provided when mode='dispersion'")
         
         batch_size = x.shape[0]
         
