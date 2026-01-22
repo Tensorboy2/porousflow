@@ -261,11 +261,30 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeabil
         mlp_ratio = kwargs.pop('mlp_ratio', 4.0)
         dropout = kwargs.pop('dropout', 0.1)
 
-    # If a named size (tiny/small/base/large) is provided and any of embed_dim/num_layers/num_heads are missing,
-    # fill them from VIT_CONFIGS
-    size_key = str(size).lower()
-    if size_key in VIT_CONFIGS:
-        cfg_map = VIT_CONFIGS[size_key]
+    # If a named size (e.g. 'T16', 'S16', 'B16', 'L16', or 'vit-T16') is provided,
+    # try to resolve it case-insensitively and accept common prefixes.
+    size_str = str(size)
+    size_clean = size_str.lower()
+    if size_clean.startswith("vit-"):
+        size_clean = size_clean[4:]
+
+    matched_key = None
+    for k in VIT_CONFIGS.keys():
+        if k.lower() == size_clean:
+            matched_key = k
+            break
+
+    # Try a few additional common forms
+    if matched_key is None:
+        if size_str in VIT_CONFIGS:
+            matched_key = size_str
+        else:
+            up = size_str.upper()
+            if up in VIT_CONFIGS:
+                matched_key = up
+
+    if matched_key:
+        cfg_map = VIT_CONFIGS[matched_key]
         if embed_dim is None:
             embed_dim = cfg_map.get('embed_dim', 768)
         if num_layers is None:
@@ -310,6 +329,9 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeabil
 
     return model
     
+def count_parameters(model):
+    """Count the number of trainable parameters in a model."""
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
 if __name__ == "__main__":    
@@ -327,3 +349,7 @@ if __name__ == "__main__":
     model_base = load_vit_model(config_or_size='B16', in_channels=1, task='dispersion')
     output_base = model_base(x)
     print(f"ViT-Base (dispersion) output shape: {output_base.shape}")
+
+    # Print number of parameters
+    print(f"ViT-Tiny parameters: {model_tiny.get_num_params()}")
+    print(f"ViT-Base parameters: {model_base.get_num_params()}")
