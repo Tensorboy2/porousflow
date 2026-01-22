@@ -110,12 +110,12 @@ class ResNet(nn.Module):
         self.task = task
 
         fc_in = 512 * block.expansion
-        if self.task == 'dispersion':
-            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.GELU(), nn.Linear(16, 16))
+        # if self.task == 'dispersion':
+        #     self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.GELU(), nn.Linear(16, 16))
 
-            fc_in += 16
-        elif self.task == 'dispersion_direction':
-            fc_in += 2
+        #     fc_in += 16
+        # elif self.task == 'dispersion_direction':
+        #     fc_in += 2
 
         self.fc = nn.Linear(fc_in, num_classes)
         
@@ -161,22 +161,22 @@ class ResNet(nn.Module):
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         # Handle task-specific extra inputs
-        if self.task == 'dispersion':
-            if Pe is None:
-                raise ValueError("Pe must be provided for dispersion task")
-            Pe = torch.ones(x.size(0), 1, device=x.device) * Pe
-            x = torch.cat([x, Pe], dim=1)
-        elif self.task == 'dispersion_direction':
-            if Pe is None:
-                raise ValueError("Pe (and direction) must be provided for dispersion_direction task")
-            # Expect Pe to be a tensor or value with two components per sample
-            # If scalar provided, replicate to two values
-            if isinstance(Pe, (int, float)):
-                Pe = torch.ones(x.size(0), 2, device=x.device) * Pe
-            elif isinstance(Pe, torch.Tensor) and Pe.dim() == 1:
-                Pe = Pe.unsqueeze(1)
-            Pe = self.pe_mlp(Pe)  # (B, 16)
-            x = torch.cat([x, Pe], dim=1)
+        # if self.task == 'dispersion':
+        #     if Pe is None:
+        #         raise ValueError("Pe must be provided for dispersion task")
+        #     Pe = torch.ones(x.size(0), 1, device=x.device) * Pe
+        #     x = torch.cat([x, Pe], dim=1)
+        # elif self.task == 'dispersion_direction':
+        #     if Pe is None:
+        #         raise ValueError("Pe (and direction) must be provided for dispersion_direction task")
+        #     # Expect Pe to be a tensor or value with two components per sample
+        #     # If scalar provided, replicate to two values
+        #     if isinstance(Pe, (int, float)):
+        #         Pe = torch.ones(x.size(0), 2, device=x.device) * Pe
+        #     elif isinstance(Pe, torch.Tensor) and Pe.dim() == 1:
+        #         Pe = Pe.unsqueeze(1)
+        #     Pe = self.pe_mlp(Pe)  # (B, 16)
+        #     x = torch.cat([x, Pe], dim=1)
 
         x = self.fc(x)
         return x
@@ -219,7 +219,7 @@ def load_resnet_model(config_or_size='18', in_channels=1, pretrained_path: str =
     if task == 'permeability':
         num_classes = 4
     elif task == 'dispersion':
-        num_classes = 8
+        num_classes = 4
     else:
         raise ValueError(f"Unknown task: {cfg['task']}. Supported tasks: ['permeability', 'dispersion']")
     

@@ -150,8 +150,8 @@ class ViT(nn.Module):
         if self.task=='permeability':
             self.head = nn.Linear(embed_dim, num_classes)
         elif self.task =='dispersion':
-            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.GELU(), nn.Linear(16, 16))
-            self.head = nn.Linear(embed_dim+16, num_classes)
+            # self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.GELU(), nn.Linear(16, 16))
+            self.head = nn.Linear(embed_dim, num_classes)
         
         # Initialize weights
         self._init_weights()
@@ -194,12 +194,12 @@ class ViT(nn.Module):
         
         x = x.view(batch_size, -1)  # (batch_size, embed_dim)
         # Concatenate Péclet number for dispersion mode
-        if self.task == 'dispersion':
-            if Pe is None:
-                raise ValueError("Pe must be provided for dispersion task")
-            Pe = torch.ones(x.size(0), 1, device=x.device) * Pe  # Ensure Pe shape is (B, 1)
-            Pe = self.pe_mlp(Pe)  # (B, 16)
-            x = torch.cat([x, Pe], dim=1)  # (batch_size, embed_dim+1)
+        # if self.task == 'dispersion':
+        #     if Pe is None:
+        #         raise ValueError("Pe must be provided for dispersion task")
+        #     Pe = torch.ones(x.size(0), 1, device=x.device) * Pe  # Ensure Pe shape is (B, 1)
+        #     Pe = self.pe_mlp(Pe)  # (B, 16)
+        #     x = torch.cat([x, Pe], dim=1)  # (batch_size, embed_dim+1)
         
         x = self.head(x)
         
@@ -231,7 +231,7 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeabil
     if task == 'permeability':
         num_classes = 4
     elif task == 'dispersion':
-        num_classes = 8
+        num_classes = 4
     else:
         raise ValueError(f"Unknown task: {cfg['task']}. Supported tasks: ['permeability', 'dispersion']")
 
