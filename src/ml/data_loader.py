@@ -154,7 +154,7 @@ class DispersionDataset(Dataset):
 
         # turn into torch tensors
         image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
-        Dx = torch.from_numpy(Dx).float().flatten()*1e-1
+        Dx = torch.from_numpy(Dx).float().flatten()
         # Dy = torch.from_numpy(Dy).float()
         
         # transform if needed
