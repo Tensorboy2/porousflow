@@ -32,12 +32,13 @@ class Trainer:
             'test_loss': [],
             'R2_train': [],
             'R2_val': [],
-            'R2_test': []
+            'R2_test': [],
+            'grad_norm': []
         }
 
         # gradient clipping
         self.clip_grad = config.get('clip_grad', False)
-        self.max_grad_norm = config.get('max_grad_norm', 1.0)
+        self.max_grad_norm = config.get('max_grad_norm', 10.0)
 
         # lr scheduler
         warmup_steps = config.get('warmup_steps', 0)
@@ -59,7 +60,7 @@ class Trainer:
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
         # Scaler to Half precision:
-        use_amp = config.get('use_amp', True)
+        use_amp = config.get('use_amp', False)
         self.scaler = GradScaler(enabled=use_amp,device='cuda' if torch.cuda.is_available() else 'cpu')  
 
 
@@ -153,48 +154,73 @@ class Trainer:
     
     def train_epoch_dispersion(self):
         self.model.train()
+
         running_loss = 0.0
         sum_squared_error = 0.0
         sum_targets = 0.0
         sum_targets_squared = 0.0
         gradient_norm = 0.0
-        count = 0
+
         total_samples = 0
+        count = 0
         grad_steps = 0
+
+        use_amp = self.scaler.is_enabled()
+
         for inputs, D, Pe in self.train_loader:
             B = inputs.shape[0]
+
             if self.config.get('pin_memory', False):
-                inputs, D, Pe = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True), Pe.to(self.device, non_blocking=True)
+                inputs = inputs.to(self.device, non_blocking=True)
+                D = D.to(self.device, non_blocking=True)
+                Pe = Pe.to(self.device, non_blocking=True)
             else:
-                inputs, D, Pe = inputs.to(self.device), D.to(self.device), Pe.to(self.device)
+                inputs = inputs.to(self.device)
+                D = D.to(self.device)
+                Pe = Pe.to(self.device)
 
             self.optimizer.zero_grad(set_to_none=True)
 
-            with autocast(device_type= 'cuda',enabled=self.scaler.is_enabled()):
+            # Forward pass (only the model under autocast)
+            with autocast(device_type='cuda', enabled=use_amp):
                 outputs = self.model(inputs, Pe)
-                scaled_outputs = torch.arcsinh(outputs)
-                scaled_D = torch.arcsinh(D)
-                
-                loss = self.criterion(scaled_outputs, scaled_D)   
-                # loss = self.criterion(outputs, D)   
-                running_loss += loss.item() * B
-                total_samples += B
 
-            self.scaler.scale(loss).backward()
+            # Always do scaling + loss in FP32
+            scaled_outputs = torch.arcsinh(outputs)
+            scaled_D = torch.arcsinh(D)
+            loss = self.criterion(scaled_outputs, scaled_D)
 
+            running_loss += loss.item() * B
+            total_samples += B
+
+            # Backward
+            if use_amp:
+                self.scaler.scale(loss).backward()
+            else:
+                loss.backward()
+
+            # Gradient clipping
             if self.clip_grad:
-                self.scaler.unscale_(self.optimizer)
-                gradient_norm += torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+                if use_amp:
+                    self.scaler.unscale_(self.optimizer)
+                gradient_norm += torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), self.max_grad_norm
+                )
 
             # Optimizer step
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
+            if use_amp:
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+            else:
+                self.optimizer.step()
+
             grad_steps += 1
-            
+
+            # Metrics (detach safely after backward)
             with torch.no_grad():
                 outputs_cpu = outputs.detach().cpu()
                 targets_cpu = D.detach().cpu()
-                
+
                 sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
                 sum_targets += torch.sum(targets_cpu).item()
                 sum_targets_squared += torch.sum(targets_cpu ** 2).item()
@@ -203,15 +229,15 @@ class Trainer:
             self.scheduler.step()
 
         epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
-        
+
         r2 = self._compute_r2_from_accumulators(
             sum_squared_error, sum_targets, sum_targets_squared, count
         )
 
-        self.metrics['R2_train'].append(r2)
         self.metrics['train_loss'].append(epoch_loss)
+        self.metrics['R2_train'].append(r2)
         self.metrics['grad_norm'] = gradient_norm / grad_steps if grad_steps > 0 else 0.0
-        
+
         return epoch_loss, r2
     
     def validate_permeability(self):
@@ -247,50 +273,46 @@ class Trainer:
         return epoch_loss,r2
     
     def validate_dispersion(self):
-        '''
-        Docstring for validate_dispersion
-        
-        :param self: Description
-        '''
+        """
+        Validation for dispersion task.
+
+        Returns:
+            epoch_loss (float): mean validation loss
+            r2 (float): R^2 score over validation set
+        """
         self.model.eval()
+
         running_loss = 0.0
         sum_squared_error = 0.0
         sum_targets = 0.0
         sum_targets_squared = 0.0
         count = 0
         total_samples = 0
+
         with torch.no_grad():
             for batch in self.val_loader:
                 # Support datasets that yield either (inputs, D) or (inputs, D, Pe)
                 if len(batch) == 3:
                     inputs, D, Pe = batch
-                else:
-                    inputs, D = batch
-
-                if self.config.get('pin_memory', False):
-                    if 'Pe' in locals():
-                        inputs, D, Pe = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True), Pe.to(self.device, non_blocking=True)
-                    else:
-                        inputs, D = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True)
-                else:
-                    if 'Pe' in locals():
-                        inputs, D, Pe = inputs.to(self.device), D.to(self.device), Pe.to(self.device)
-                    else:
-                        inputs, D = inputs.to(self.device), D.to(self.device)
-
-                # Call model with Pe if available
-                if 'Pe' in locals():
+                    inputs = inputs.to(self.device)
+                    D = D.to(self.device)
+                    Pe = Pe.to(self.device)
                     outputs = self.model(inputs, Pe)
                 else:
+                    inputs, D = batch
+                    inputs = inputs.to(self.device)
+                    D = D.to(self.device)
                     outputs = self.model(inputs)
-                
+
+                # Apply arcsinh transform consistently with training
                 scaled_outputs = torch.arcsinh(outputs)
                 scaled_D = torch.arcsinh(D)
                 loss = self.criterion(scaled_outputs, scaled_D)
-                # loss = self.criterion(outputs, D)
+
                 running_loss += loss.item() * inputs.size(0)
                 total_samples += inputs.size(0)
 
+                # Metrics in original space
                 outputs_cpu = outputs.detach().cpu()
                 targets_cpu = D.detach().cpu()
 
@@ -300,12 +322,14 @@ class Trainer:
                 count += targets_cpu.numel()
 
         epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
-        r2 = self._compute_r2_from_accumulators(sum_squared_error, sum_targets, sum_targets_squared, count)
+        r2 = self._compute_r2_from_accumulators(
+            sum_squared_error, sum_targets, sum_targets_squared, count
+        )
 
-        self.metrics['R2_val'].append(r2)
         self.metrics['val_loss'].append(epoch_loss)
+        self.metrics['R2_val'].append(r2)
 
-        return epoch_loss,r2
+        return epoch_loss, r2
     
     def test_permeability(self):
         self.model.eval()

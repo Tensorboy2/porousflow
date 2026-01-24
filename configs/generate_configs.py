@@ -90,7 +90,7 @@ DEFAULT_MODEL_PRESET = "small_sweep"
 # Each list defines the values to sweep over for that hyperparameter
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
-        "single": [1e-4],  # Default single value
+        "single": [8e-4],  # Default single value
         "sweep": [1e-4, 5e-4, 1e-3, 5e-3],
     },
     "batch_size": {
@@ -98,7 +98,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [1e-1],
+        "single": [1e-2],
         "sweep": [0.0, 1e-2, 1e-1, 0.3],
     },
     "num_training_samples": {
