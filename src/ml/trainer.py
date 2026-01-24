@@ -200,7 +200,7 @@ class Trainer:
                 sum_targets_squared += torch.sum(targets_cpu ** 2).item()
                 count += targets_cpu.numel()
 
-            # self.scheduler.step()
+            self.scheduler.step()
 
         epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
         
