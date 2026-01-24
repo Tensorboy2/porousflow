@@ -92,7 +92,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [1e-4, 5e-4, 1e-3, 5e-3],
     },
     "batch_size": {
-        "single": [64],
+        "single": [512],
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
