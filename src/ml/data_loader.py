@@ -209,7 +209,7 @@ class DispersionDataset_single_view(Dataset):
         # We want to get one of the 5 slices
         # print(f"Base idx: {base_idx}, Slice idx: {slice_idx}")
         # print(f"Dx shape before slicing: {Dx.shape}")
-        Dx_single = Dx[slice_idx].flatten()  # Shape: (1, 2, 2)
+        Dx_single = torch.arcsinh(Dx[slice_idx].flatten())  # Shape: (1, 2, 2)
         Pe = torch.tensor([self.pe_hash[slice_idx]], dtype=torch.float32)  # Peclet number as float tensor
         return image, Dx_single, Pe
 
