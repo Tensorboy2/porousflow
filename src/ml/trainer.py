@@ -161,17 +161,17 @@ class Trainer:
         count = 0
         total_samples = 0
         grad_steps = 0
-        for inputs, D in self.train_loader:
+        for inputs, D, Pe in self.train_loader:
             B = inputs.shape[0]
             if self.config.get('pin_memory', False):
-                inputs, D = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True)
+                inputs, D, Pe = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True), Pe.to(self.device, non_blocking=True)
             else:
-                inputs, D = inputs.to(self.device), D.to(self.device)
+                inputs, D, Pe = inputs.to(self.device), D.to(self.device), Pe.to(self.device)
 
             self.optimizer.zero_grad(set_to_none=True)
 
             with autocast(device_type= 'cuda',enabled=self.scaler.is_enabled()):
-                outputs = self.model(inputs)
+                outputs = self.model(inputs, Pe)
                 
                 loss = self.criterion(outputs, D)
                 running_loss += loss.item() * B
@@ -311,13 +311,29 @@ class Trainer:
         count = 0
         total_samples = 0
         with torch.no_grad():
-            for inputs, D in self.val_loader:
-                if self.config.get('pin_memory', False):
-                    inputs, D = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True)
+            for batch in self.val_loader:
+                # Support datasets that yield either (inputs, D) or (inputs, D, Pe)
+                if len(batch) == 3:
+                    inputs, D, Pe = batch
                 else:
-                    inputs, D = inputs.to(self.device), D.to(self.device)
-                
-                outputs = self.model(inputs)
+                    inputs, D = batch
+
+                if self.config.get('pin_memory', False):
+                    if 'Pe' in locals():
+                        inputs, D, Pe = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True), Pe.to(self.device, non_blocking=True)
+                    else:
+                        inputs, D = inputs.to(self.device, non_blocking=True), D.to(self.device, non_blocking=True)
+                else:
+                    if 'Pe' in locals():
+                        inputs, D, Pe = inputs.to(self.device), D.to(self.device), Pe.to(self.device)
+                    else:
+                        inputs, D = inputs.to(self.device), D.to(self.device)
+
+                # Call model with Pe if available
+                if 'Pe' in locals():
+                    outputs = self.model(inputs, Pe)
+                else:
+                    outputs = self.model(inputs)
                 
                 loss = self.criterion(outputs, D)
                 running_loss += loss.item() * inputs.size(0)

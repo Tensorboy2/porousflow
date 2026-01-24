@@ -368,6 +368,80 @@ def plot_training(runs, metrics_to_plot=None, ylim=None,
     # plt.show()
     plt.savefig("training_metrics.png", dpi=300)
 
+
+def plot_convnext_size_summary(runs, output_path="training_metrics_convnext_sizes.png", metric='R2_val'):
+    """
+    Plot final validation metric (e.g., `R2_val`) across ConvNeXt model sizes,
+    with different ConvNeXt versions in different colours.
+
+    Args:
+        runs: dict of run_name -> path (same as used by `plot_training`).
+        output_path: path to save the generated figure.
+        metric: metric column to summarize (default 'R2_val').
+    """
+    all_dfs = []
+    for run_name, run_path in runs.items():
+        try:
+            df = FetchMetrics(Path(run_path))
+            df = df.assign(run=run_name)
+            all_dfs.append(df)
+        except Exception as e:
+            print(f"Warning: could not fetch metrics for {run_name}: {e}")
+
+    if not all_dfs:
+        print("No metrics found for convnext summary plot.")
+        return
+
+    combined = pd.concat(all_dfs, ignore_index=True)
+
+    families = [f for f in MODEL_FAMILIES.keys() if f.startswith('ConvNeXt')]
+    sizes = MODEL_FAMILIES.get('ConvNeXt', [])
+    x = np.arange(len(sizes))
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    for family in families:
+        means = []
+        stds = []
+        for size in sizes:
+            model_name = f"{family}-{size}"
+            df_model = combined[combined['model'] == model_name]
+            if df_model.empty:
+                means.append(np.nan)
+                stds.append(np.nan)
+                continue
+
+            # For each distinct run/model combination, take the maximum value
+            # of the metric across training (best validation), instead of the final step.
+            last_vals = []
+            for (run, model), grp in df_model.groupby(['run', 'model']):
+                if metric in grp:
+                    max_val = grp[metric].max()
+                else:
+                    max_val = np.nan
+                last_vals.append(max_val)
+
+            means.append(np.nanmean(last_vals) if last_vals else np.nan)
+            stds.append(np.nanstd(last_vals) if last_vals else np.nan)
+
+        cmap_name = MODEL_CMAPS.get(family, 'viridis')
+        color = cm.get_cmap(cmap_name)(0.6)
+
+        ax.plot(x, means, marker='o', label=family, color=color)
+        ax.fill_between(x, np.array(means) - np.array(stds), np.array(means) + np.array(stds),
+                        color=color, alpha=0.2)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(sizes)
+    ax.set_xlabel('Model Size', fontsize=12)
+    ax.set_ylabel(metric, fontsize=12)
+    ax.set_title('ConvNeXt max validation R2 by model size and version')
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300)
+    print(f"Saved {output_path}")
+
 # Usage examples
 if __name__ == "__main__":
     results = "results"
@@ -397,15 +471,18 @@ if __name__ == "__main__":
     #              ])
     plot_training(runs, 
                  metrics_to_plot=['R2'], 
-                 ylim=(0.8, 1.01),
+                 ylim=(0.99, 1.0),
                  subplot_by=[
                     #  ['ConvNeXt-Tiny', 'ResNet-50', 'ViT-S16'],
                     #  ['ConvNeXt-Base', 'ResNet-101', 'ViT-B16']
-                    # ["ConvNeXt-Atto", "ConvNeXt-Femto", "ConvNeXt-Pico", "ConvNeXt-Nano", "ConvNeXt-Tiny", "ConvNeXt-Small", "ConvNeXt-Base", "ConvNeXt-Large"],
-                    # ["ConvNeXt-V2-Atto", "ConvNeXt-V2-Femto", "ConvNeXt-V2-Pico", "ConvNeXt-V2-Nano", "ConvNeXt-V2-Tiny", "ConvNeXt-V2-Small", "ConvNeXt-V2-Base", "ConvNeXt-V2-Large"],
-                    # ["ConvNeXt-RMS-Atto", "ConvNeXt-RMS-Femto", "ConvNeXt-RMS-Pico", "ConvNeXt-RMS-Nano", "ConvNeXt-RMS-Tiny", "ConvNeXt-RMS-Small", "ConvNeXt-RMS-Base", "ConvNeXt-RMS-Large"]
-                    ['ViT-T16'],['ViT-S16'],['ViT-B16'],['ViT-L16']
+                    ["ConvNeXt-Atto", "ConvNeXt-Femto", "ConvNeXt-Pico", "ConvNeXt-Nano", "ConvNeXt-Tiny", "ConvNeXt-Small", "ConvNeXt-Base", "ConvNeXt-Large"],
+                    ["ConvNeXt-V2-Atto", "ConvNeXt-V2-Femto", "ConvNeXt-V2-Pico", "ConvNeXt-V2-Nano", "ConvNeXt-V2-Tiny", "ConvNeXt-V2-Small", "ConvNeXt-V2-Base", "ConvNeXt-V2-Large"],
+                    ["ConvNeXt-RMS-Atto", "ConvNeXt-RMS-Femto", "ConvNeXt-RMS-Pico", "ConvNeXt-RMS-Nano", "ConvNeXt-RMS-Tiny", "ConvNeXt-RMS-Small", "ConvNeXt-RMS-Base", "ConvNeXt-RMS-Large"]
+                    # ['ViT-T16'],['ViT-S16'],['ViT-B16'],['ViT-L16']
                  ])
+
+    # New summary: ConvNeXt sizes across versions
+    plot_convnext_size_summary(runs, output_path="training_metrics_convnext_sizes.png", metric='R2_val')
     
     # Example 5: Filter to only include specific models
     # plot_training(runs, 

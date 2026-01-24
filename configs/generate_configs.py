@@ -112,6 +112,10 @@ HYPERPARAM_SWEEPS = {
         "sweep": ["cosine", "linear", "exponential", "step"],
         "common": ["cosine", "linear"],
     },
+    'pe_encoder': {
+        'single': ['straight'],
+        'sweep': ['straight', 'log', 'vector'],
+    },
 }
 
 # Sweep presets - predefined combinations of sweeps
@@ -124,6 +128,17 @@ SWEEP_PRESETS = {
         "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "single",
+        'pe_encoder': 'single',
+    },
+    "pe_encoder_sweep": {
+        # Sweep only learning rate
+        "learning_rate": "single",
+        "batch_size": "single",
+        "weight_decay": "single",
+        "num_training_samples": "single",
+        "num_epochs": "single",
+        "decay": "single",
+        'pe_encoder': 'sweep',
     },
     "lr_sweep": {
         # Sweep only learning rate
@@ -215,6 +230,7 @@ TASK_CONFIGS = {
         "warmup_steps": 1000,
         "num_training_samples": None,
         "num_validation_samples": None,
+        "pe_encoder": None,
         "prefetch_factor": 4,
         "pin_memory": True,
     },
@@ -241,13 +257,14 @@ DEVICE_CONFIGS = {
         },
         "training_overrides": {
             "batch_size": 4,
-            "num_epochs": 600,
+            "num_epochs": 1,
             "warmup_steps": 0,
             "weight_decay": 0.5,
             "decay": "cosine",
             "learning_rate": 2e-4,
-            "num_training_samples": 64,
-            "num_validation_samples": 16,
+            "num_training_samples": 4,
+            "num_validation_samples": 4,
+            "pe_encoder": None,
             "prefetch_factor": None,
             "pin_memory": False,
         },
@@ -708,6 +725,7 @@ class ConfigGenerator:
                     "num_validation_samples": "nv",
                     "num_epochs": "ep",
                     "decay": "decay",
+                    "pe_encoder": "pe_encoder",
                 }.get(param_name, param_name[:4])
                 suffix_parts.append(f"{short_name}{self._format_param_value(param_value)}")
         

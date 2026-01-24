@@ -34,8 +34,9 @@ def main(config):
 
     model_type = model_cfg.get('type')
     task = config.get('task', 'permeability')
+    pe_encoder = config.get('pe_encoder', None)
     if model_type == 'convnext':
-        model = load_convnext_model(model_cfg,task=task)
+        model = load_convnext_model(model_cfg,task=task,Pe_encoder=pe_encoder)
     elif model_type == 'vit':
         model = load_vit_model(model_cfg,task=task)
     elif model_type == 'resnet':
@@ -59,7 +60,7 @@ def main(config):
         train_loader, val_loader, test_loader = get_dispersion_dataloader(file_path='data',config=config)
     else:
         raise ValueError(f"Unsupported task: {task}")
-    
+    # print(config)
     print(f"Data loaders set up for task: {task} | Batch size: {batch_size}")
 
     # Setup optimizer

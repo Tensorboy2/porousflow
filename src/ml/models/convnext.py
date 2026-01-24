@@ -189,7 +189,7 @@ class ConvNeXtEncoder(nn.Module):
         return x
 
 class ConvNeXt(nn.Module):
-    def __init__(self, version='v1', size='tiny', in_channels=1, num_classes=4, task='permeability'):
+    def __init__(self, version='v1', size='tiny', in_channels=1, num_classes=4, task='permeability',Pe_encoder=None):
         super().__init__()
         
         # Validate inputs
@@ -214,18 +214,71 @@ class ConvNeXt(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         
         # Configure head based on task
-        if task == 'permeability':
-            self.fc = nn.Linear(dims[-1], num_classes)
-        elif task == 'dispersion':
-            # self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.Linear(16, 16))
-            # self.fc = nn.Linear(dims[-1] + 16, num_classes)
-            self.fc = nn.Linear(dims[-1], num_classes)
-        elif task == 'dispersion_direction':
-            self.fc = nn.Linear(dims[-1] + 2, num_classes)
-        else:
-            raise ValueError(f"Unknown task: {task}. Available tasks: ['permeability', 'dispersion', 'dispersion_direction']")
+        # if task == 'permeability':
+        #     self.fc = nn.Linear(dims[-1], num_classes)
+        # elif task == 'dispersion':
+        #     # self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.Linear(16, 16))
+        #     # self.fc = nn.Linear(dims[-1] + 16, num_classes)
+        #     self.fc = nn.Linear(dims[-1], num_classes)
+        # elif task == 'dispersion_direction':
+        #     self.fc = nn.Linear(dims[-1] + 2, num_classes)
+        # else:
+        #     raise ValueError(f"Unknown task: {task}. Available tasks: ['permeability', 'dispersion', 'dispersion_direction']")
         
+        self.Pe_encoder = Pe_encoder
+        if self.Pe_encoder == 'straight':
+            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.Linear(16, 16))
+            self.fc = nn.Linear(dims[-1] + 16, num_classes)
+        elif self.Pe_encoder == 'log':
+            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.Linear(16, 16))
+            self.fc = nn.Linear(dims[-1] + 16, num_classes)
+        elif self.Pe_encoder == 'vector':
+            self.pe_mlp = nn.Sequential(nn.Linear(5, 16), nn.Linear(16, 16))
+            self.fc = nn.Linear(dims[-1] + 16, num_classes)
+        else:
+            # Default head when no Peclet encoder is used
+            self.fc = nn.Linear(dims[-1], num_classes)
+
         # self._initialize_weights()
+
+    def pe_to_vector(self, Pe):
+        """Convert Peclet number to a one-hot vector representation."""
+        # Accept scalar Pe per sample or already a 5-d vector per sample.
+        Pe = Pe.to(device=Pe.device)
+        B = Pe.size(0)
+        vector = torch.zeros((B, 5), device=Pe.device, dtype=Pe.dtype)
+        for i in range(B):
+            val = Pe[i]
+            # If a single-value tensor (e.g., shape (1,)), use its scalar value
+            # if val.numel() == 1:
+            v = float(val.view(-1).item())
+            if v < 1:
+                vector[i, 0] = 1
+            elif v == 10:
+                vector[i, 1] = 1
+            elif v == 50:
+                vector[i, 2] = 1
+            elif v == 100:
+                vector[i, 3] = 1
+            else:
+                vector[i, 4] = 1
+            # If already a 5-element vector, copy it directly (supports one-hot inputs)
+            # elif val.numel() == 5:
+            #     vector[i] = val.view(5)
+            # else:
+            #     # Fallback: reduce to a scalar and categorize
+            #     v = float(val.mean().item())
+            #     if v < 1:
+            #         vector[i, 0] = 1
+            #     elif v == 10:
+            #         vector[i, 1] = 1
+            #     elif v == 50:
+            #         vector[i, 2] = 1
+            #     elif v == 100:
+            #         vector[i, 3] = 1
+            #     else:
+            #         vector[i, 4] = 1
+        return vector
     
     def _initialize_weights(self):
         for m in self.modules():
@@ -240,21 +293,39 @@ class ConvNeXt(nn.Module):
             x: Input tensor (B, C, H, W)
             Pe: Peclet number (B, 1) or (B,) - only required for dispersion task
         """
+        B = x.size(0)
         x = self.encoder(x)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)  # (B, dims[-1])
         
-        # if self.task == 'dispersion':
-        #     if Pe is None:
-        #         raise ValueError("Pe must be provided for dispersion task")
-        #     Pe = torch.ones(x.size(0), 1, device=x.device) * Pe  # Ensure Pe shape is (B, 1)
-        #     Pe = self.pe_mlp(Pe)  # (B, 16)
-        #     x = torch.cat([x, Pe], dim=1)  # (B, dims[-1] + 16)
+        if self.Pe_encoder:
+            # Ensure Pe is on the same device/dtype as x
+            if Pe is None:
+                raise ValueError("Pe must be provided when Pe_encoder is set")
+            Pe = Pe.to(device=x.device, dtype=x.dtype)
+
+            if self.Pe_encoder == 'straight':
+                # Expect scalar per-sample shape (B,1) or (B,)
+                Pe = torch.ones(B, 1, device=x.device, dtype=x.dtype) * Pe
+                Pe = self.pe_mlp(Pe)  # (B, 16)
+            elif self.Pe_encoder == 'log':
+                Pe = torch.ones(B, 1, device=x.device, dtype=x.dtype) * Pe
+                Pe = torch.log1p(Pe)
+                Pe = self.pe_mlp(Pe)  # (B, 16)
+            elif self.Pe_encoder == 'vector':
+                # Accept either scalar Pe (B,1) or already 5-d vectors (B,5)
+                if Pe.dim() == 2 and Pe.size(1) == 5:
+                    vec = Pe
+                else:
+                    vec = self.pe_to_vector(Pe)
+                Pe = self.pe_mlp(vec)  # (B, 16)
+
+            x = torch.cat([x, Pe], dim=1)  # (B, dims[-1] + 16)
         
         x = self.fc(x)
         return x
 
-def load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='permeability',  pretrained_path = None):
+def load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='permeability',  pretrained_path = None, Pe_encoder=None):
     """
     Flexible loader for ConvNeXt models.
 
@@ -278,7 +349,7 @@ def load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task
     else:
         version = config_or_version
 
-    model = ConvNeXt(version=version, size=size, in_channels=in_channels, num_classes=num_classes, task=task)
+    model = ConvNeXt(version=version, size=size, in_channels=in_channels, num_classes=num_classes, task=task, Pe_encoder=Pe_encoder)
 
     if pretrained_path:
         if not os.path.exists(pretrained_path):
@@ -301,20 +372,38 @@ if __name__ == "__main__":
     x = torch.randn(2, 1, 128, 128)
     
     # Test different versions and sizes
-    for version in ['v1', 'v2', 'rms']:
-        for size in ['atto', 'pico', 'tiny']:
-            try:
-                model = load_convnext_model(config_or_version=version, size=size, in_channels=1, num_classes=4)
-                out = model(x)
-                params = count_parameters(model)
-                print(f"ConvNeXt-{version}-{size}: output shape {out.shape}, params {params:,}")
-            except Exception as e:
-                print(f"Error with ConvNeXt-{version}-{size}: {e}")
+    # for version in ['v1', 'v2', 'rms']:
+    #     for size in ['atto', 'pico', 'tiny']:
+    #         try:
+    #             model = load_convnext_model(config_or_version=version, size=size, in_channels=1)
+    #             out = model(x)
+    #             params = count_parameters(model)
+    #             print(f"ConvNeXt-{version}-{size}: output shape {out.shape}, params {params:,}")
+    #         except Exception as e:
+    #             print(f"Error with ConvNeXt-{version}-{size}: {e}")
     
-    # Test large model
-    try:
-        model = load_convnext_model(config_or_version='v2', size='large', in_channels=1, num_classes=4)
-        params = count_parameters(model)
-        print(f"\nConvNeXt-v2-large param count: {params:,}")
-    except Exception as e:
-        print(f"Error with ConvNeXt-v2-large: {e}")
+    # # Test large model
+    # try:
+    #     model = load_convnext_model(config_or_version='v2', size='large', in_channels=1)
+    #     params = count_parameters(model)
+    #     print(f"\nConvNeXt-v2-large param count: {params:,}")
+    # except Exception as e:
+    #     print(f"Error with ConvNeXt-v2-large: {e}")
+
+    # Test with Peclet number input
+    # try:
+    for encoder in [None, 'straight', 'log', 'vector']:
+        model = load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='dispersion', Pe_encoder=encoder)
+        Pe = torch.tensor([[10.0],[100.0]])
+        out = model(x, Pe=Pe)
+        print(f"\nConvNeXt-v1-tiny with Peclet encoder '{encoder}': output shape {out.shape}")
+    # model = load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='dispersion', Pe_encoder='vector')
+    # Pe = torch.tensor([[1,0,0,0,0],[0,1,0,0,0]])
+    # out = model(x, Pe=Pe)
+    # print(f"\nConvNeXt-v1-tiny with Peclet encoder 'vector': output shape {out.shape}")
+    # model = load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='dispersion', Pe_encoder='straight')
+    # Pe = torch.tensor([[10.0],[100.0]])
+    # out = model(x, Pe=Pe)
+    # print(f"\nConvNeXt-v1-tiny with Peclet input: output shape {out.shape}")
+    # except Exception as e:
+    #     print(f"Error with ConvNeXt-v1-tiny with Peclet input: {e}")

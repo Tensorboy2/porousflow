@@ -162,24 +162,58 @@ class DispersionDataset(Dataset):
             image, Dx = self.transform(image, Dx)
 
         return image, Dx
-    # def __getitem__(self, idx):
-    #     # Fetch numpy versions of the data
-    #     image = self.filled_images_ds[idx]
-    #     Dx = self.targets_ds_x[idx].reshape(5,4) # shape (1,5,2,2)
-    #     Dy = self.targets_ds_y[idx].reshape(5,4)
+class DispersionDataset_2(Dataset):
+    def __init__(self, file_path, transform=None, num_samples=None):
+        self.root = zarr.open(file_path, mode='r')
+        self.filled_images_ds = self.root['filled_images']['filled_images']
+        self.targets_ds_x = self.root['dispersion_results']['Dx']
+        self.transform = transform
+        if num_samples is not None:
+            self.len = min(num_samples, len(self.filled_images_ds))
 
-    #     # turn into torch tensors
-    #     image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
-    #     Dx = torch.from_numpy(Dx).float()
-    #     Dy = torch.from_numpy(Dy).float()
+    def __len__(self):
+        return self.len if hasattr(self, 'len') else self.filled_images_ds.shape[0]
+
+    def __getitem__(self, idx):
+        image = self.filled_images_ds[idx]
+        Dx = self.targets_ds_x[idx] # shape (1,5,2,2)
+        image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
+        Dx = torch.from_numpy(Dx).float()
+        return image, Dx
+
+class DispersionDataset_single_view(Dataset):
+    def __init__(self, base_dataset):
+        """
+        Wrapper that expands a dataset where targets come in slices of 5
+        into individual samples (one target per sample).
         
-    #     # transform if needed
-    #     if self.transform:
-    #         image, Dx, Dy = self.transform(image, Dx, Dy)
+        Args:
+            base_dataset: Instance of DispersionDataset_2
+        """
+        self.base_dataset = base_dataset
+        self.samples_per_base = 5  # Number of views/slices per base sample
+        self.pe_hash = [0.1,10,50,100,500]
+        
+    def __len__(self):
+        return len(self.base_dataset) * self.samples_per_base
+    
+    def __getitem__(self, idx):
+        # Calculate which base sample and which slice within that sample
+        base_idx = idx // self.samples_per_base
+        slice_idx = idx % self.samples_per_base
+        
+        # Get the full sample from base dataset
+        image, Dx = self.base_dataset[base_idx]
+        
+        # Extract the single view: Dx has shape (1, 5, 2, 2)
+        # We want to get one of the 5 slices
+        # print(f"Base idx: {base_idx}, Slice idx: {slice_idx}")
+        # print(f"Dx shape before slicing: {Dx.shape}")
+        Dx_single = Dx[slice_idx].flatten()  # Shape: (1, 2, 2)
+        Pe = torch.tensor([self.pe_hash[slice_idx]], dtype=torch.float32)  # Peclet number as float tensor
+        return image, Dx_single, Pe
 
-    #     target = torch.cat((Dx,Dy), dim=1)
 
-    #     return image, target
 
 def get_permeability_dataloader(file_path,config):
     '''
@@ -256,9 +290,18 @@ def get_dispersion_dataloader(file_path,config):
     val_path = os.path.join(file_path,'validation.zarr')
     test_path = os.path.join(file_path,'test.zarr')
 
-    train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None))#, transform=DispersionTransform())
-    val_dataset = DispersionDataset(val_path,num_samples=config.get('num_validation_samples',None))
-    test_dataset = DispersionDataset(test_path)
+    if config.get('pe_encoder',None):
+        print(f"Pe encoder: {config['pe_encoder']}")
+        base_train_dataset = DispersionDataset_2(train_path,num_samples=config.get('num_training_samples',None))
+        base_val_dataset = DispersionDataset_2(val_path,num_samples=config.get('num_validation_samples',None))
+        base_test_dataset = DispersionDataset_2(test_path)
+        train_dataset = DispersionDataset_single_view(base_train_dataset)
+        val_dataset = DispersionDataset_single_view(base_val_dataset)
+        test_dataset = DispersionDataset_single_view(base_test_dataset)
+    else:
+        train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None))#, transform=DispersionTransform())
+        val_dataset = DispersionDataset(val_path,num_samples=config.get('num_validation_samples',None))
+        test_dataset = DispersionDataset(test_path)
 
     train_loader = DataLoader(train_dataset, 
                               batch_size=batch_size, 
