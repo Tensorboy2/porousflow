@@ -32,6 +32,8 @@ Run plans:
 MODEL_PRESETS = {
     "quick_test": [
         "ConvNeXt-Atto",
+        "ConvNeXt-Tiny",
+        "ConvNeXt-Base",
     ],
     "small_sweep": [
         "ViT-T16",
@@ -88,7 +90,7 @@ DEFAULT_MODEL_PRESET = "small_sweep"
 # Each list defines the values to sweep over for that hyperparameter
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
-        "single": [1e-3],  # Default single value
+        "single": [1e-4],  # Default single value
         "sweep": [1e-4, 5e-4, 1e-3, 5e-3],
     },
     "batch_size": {
@@ -96,7 +98,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [1e-3],
+        "single": [1e-1],
         "sweep": [0.0, 1e-2, 1e-1, 0.3],
     },
     "num_training_samples": {
@@ -104,7 +106,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [100, 500, 1000, 5000, 10000, None],
     },
     "num_epochs": {
-        "single": [100],
+        "single": [200],
         "sweep": [100,300,500,700,1000],    
     },
     "decay": {

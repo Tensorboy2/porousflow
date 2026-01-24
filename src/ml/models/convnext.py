@@ -213,28 +213,31 @@ class ConvNeXt(nn.Module):
         self.encoder = ConvNeXtEncoder(in_channels, depths, dims, block_type)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         
-        # Configure head based on task
-        # if task == 'permeability':
-        #     self.fc = nn.Linear(dims[-1], num_classes)
-        # elif task == 'dispersion':
-        #     # self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.Linear(16, 16))
-        #     # self.fc = nn.Linear(dims[-1] + 16, num_classes)
-        #     self.fc = nn.Linear(dims[-1], num_classes)
-        # elif task == 'dispersion_direction':
-        #     self.fc = nn.Linear(dims[-1] + 2, num_classes)
-        # else:
-        #     raise ValueError(f"Unknown task: {task}. Available tasks: ['permeability', 'dispersion', 'dispersion_direction']")
-        
         self.Pe_encoder = Pe_encoder
         if self.Pe_encoder == 'straight':
-            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.Linear(16, 16))
-            self.fc = nn.Linear(dims[-1] + 16, num_classes)
+            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), 
+                                        nn.GELU(),
+                                        nn.LayerNorm(16),
+                                        nn.Linear(16, 16))
+            # self.fc = nn.Linear(dims[-1] + 16, num_classes)
+            self.fc = nn.Sequential(nn.LayerNorm(dims[-1] + 16),
+                                    nn.Linear(dims[-1] + 16, num_classes))
         elif self.Pe_encoder == 'log':
-            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.Linear(16, 16))
-            self.fc = nn.Linear(dims[-1] + 16, num_classes)
+            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), 
+                                        nn.GELU(),
+                                        nn.LayerNorm(16),
+                                        nn.Linear(16, 16))
+            # self.fc = nn.Linear(dims[-1] + 16, num_classes)
+            self.fc = nn.Sequential(nn.LayerNorm(dims[-1] + 16),
+                                    nn.Linear(dims[-1] + 16, num_classes))
         elif self.Pe_encoder == 'vector':
-            self.pe_mlp = nn.Sequential(nn.Linear(5, 16), nn.Linear(16, 16))
-            self.fc = nn.Linear(dims[-1] + 16, num_classes)
+            self.pe_mlp = nn.Sequential(nn.Linear(5, 16), 
+                                        nn.GELU(),
+                                        nn.LayerNorm(16),
+                                        nn.Linear(16, 16))
+            # self.fc = nn.Linear(dims[-1] + 16, num_classes)
+            self.fc = nn.Sequential(nn.LayerNorm(dims[-1] + 16),
+                                    nn.Linear(dims[-1] + 16, num_classes))
         else:
             # Default head when no Peclet encoder is used
             self.fc = nn.Linear(dims[-1], num_classes)
@@ -310,7 +313,7 @@ class ConvNeXt(nn.Module):
                 Pe = self.pe_mlp(Pe)  # (B, 16)
             elif self.Pe_encoder == 'log':
                 Pe = torch.ones(B, 1, device=x.device, dtype=x.dtype) * Pe
-                Pe = torch.log1p(Pe)
+                Pe = torch.log(Pe)
                 Pe = self.pe_mlp(Pe)  # (B, 16)
             elif self.Pe_encoder == 'vector':
                 # Accept either scalar Pe (B,1) or already 5-d vectors (B,5)
