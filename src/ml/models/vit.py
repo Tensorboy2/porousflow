@@ -120,7 +120,8 @@ class ViT(nn.Module):
         num_heads: int = 12,
         mlp_ratio: float = 4.0,
         dropout: float = 0.1,
-        task: str = 'permeability'
+        task: str = 'permeability',
+        Pe_encoder = None,
     ):
         super().__init__()
         
@@ -147,14 +148,42 @@ class ViT(nn.Module):
         # Classification head
         self.norm = nn.LayerNorm(embed_dim)
 
-        if self.task=='permeability':
-            self.head = nn.Linear(embed_dim, num_classes)
-        elif self.task =='dispersion':
-            # self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.GELU(), nn.Linear(16, 16))
-            self.head = nn.Linear(embed_dim, num_classes)
-        
+        # if self.task=='permeability':
+        #     self.head = nn.Linear(embed_dim, num_classes)
+        # elif self.task =='dispersion':
+        #     # self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.GELU(), nn.Linear(16, 16))
+        #     self.head = nn.Linear(embed_dim, num_classes)
+        self.Pe_encoder = Pe_encoder
+        if self.Pe_encoder == 'straight':
+            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), 
+                                        nn.GELU(),
+                                        nn.LayerNorm(16),
+                                        nn.Linear(16, 16))
+            # self.fc = nn.Linear(dims[-1] + 16, num_classes)
+            self.fc = nn.Sequential(nn.LayerNorm(embed_dim + 16),
+                                    nn.Linear(embed_dim + 16, num_classes))
+        elif self.Pe_encoder == 'log':
+            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), 
+                                        nn.GELU(),
+                                        nn.LayerNorm(16),
+                                        nn.Linear(16, 16))
+            # self.fc = nn.Linear(embed_dim + 16, num_classes)
+            self.fc = nn.Sequential(nn.LayerNorm(embed_dim + 16),
+                                    nn.Linear(embed_dim + 16, num_classes))
+        elif self.Pe_encoder == 'vector':
+            self.pe_mlp = nn.Sequential(nn.Linear(5, 16), 
+                                        nn.GELU(),
+                                        nn.LayerNorm(16),
+                                        nn.Linear(16, 16))
+            # self.fc = nn.Linear(embed_dim + 16, num_classes)
+            self.fc = nn.Sequential(nn.LayerNorm(embed_dim + 16),
+                                    nn.Linear(embed_dim + 16, num_classes))
+        else:
+            # Default head when no Peclet encoder is used
+            self.fc = nn.Linear(embed_dim, num_classes)
+
         # Initialize weights
-        self._init_weights()
+        # self._init_weights()
     
     def _init_weights(self):
         """Initialize model weights"""
@@ -170,13 +199,36 @@ class ViT(nn.Module):
             elif isinstance(m, nn.LayerNorm):
                 nn.init.constant_(m.bias, 0)
                 nn.init.constant_(m.weight, 1.0)
+
+    def pe_to_vector(self, Pe):
+        """Convert Peclet number to a one-hot vector representation."""
+        # Accept scalar Pe per sample or already a 5-d vector per sample.
+        Pe = Pe.to(device=Pe.device)
+        B = Pe.size(0)
+        vector = torch.zeros((B, 5), device=Pe.device, dtype=Pe.dtype)
+        for i in range(B):
+            val = Pe[i]
+            # If a single-value tensor (e.g., shape (1,)), use its scalar value
+            # if val.numel() == 1:
+            v = float(val.view(-1).item())
+            if v < 1:
+                vector[i, 0] = 1
+            elif v == 10:
+                vector[i, 1] = 1
+            elif v == 50:
+                vector[i, 2] = 1
+            elif v == 100:
+                vector[i, 3] = 1
+            else:
+                vector[i, 4] = 1
+        return vector
     
     def forward(self, x, Pe=None):
         # Validate inputs
         # if self.task == 'dispersion' and Pe is None:
         #     raise ValueError("Pe number must be provided when mode='dispersion'")
         
-        batch_size = x.shape[0]
+        B = x.shape[0]
         
         # Patch embedding
         x = self.patch_embed(x)  # (batch_size, num_patches, embed_dim)
@@ -192,16 +244,33 @@ class ViT(nn.Module):
         x = self.norm(x)
         x = x.mean(dim=1)  # Global average pooling -> (batch_size, embed_dim)
         
-        x = x.view(batch_size, -1)  # (batch_size, embed_dim)
+        x = x.view(B, -1)  # (batch_size, embed_dim)
         # Concatenate Péclet number for dispersion mode
-        # if self.task == 'dispersion':
-        #     if Pe is None:
-        #         raise ValueError("Pe must be provided for dispersion task")
-        #     Pe = torch.ones(x.size(0), 1, device=x.device) * Pe  # Ensure Pe shape is (B, 1)
-        #     Pe = self.pe_mlp(Pe)  # (B, 16)
-        #     x = torch.cat([x, Pe], dim=1)  # (batch_size, embed_dim+1)
+        if self.Pe_encoder:
+            # Ensure Pe is on the same device/dtype as x
+            if Pe is None:
+                raise ValueError("Pe must be provided when Pe_encoder is set")
+            Pe = Pe.to(device=x.device, dtype=x.dtype)
+
+            if self.Pe_encoder == 'straight':
+                # Expect scalar per-sample shape (B,1) or (B,)
+                Pe = torch.ones(B, 1, device=x.device, dtype=x.dtype) * Pe
+                Pe = self.pe_mlp(Pe)  # (B, 16)
+            elif self.Pe_encoder == 'log':
+                Pe = torch.ones(B, 1, device=x.device, dtype=x.dtype) * Pe
+                Pe = torch.log(Pe)
+                Pe = self.pe_mlp(Pe)  # (B, 16)
+            elif self.Pe_encoder == 'vector':
+                # Accept either scalar Pe (B,1) or already 5-d vectors (B,5)
+                if Pe.dim() == 2 and Pe.size(1) == 5:
+                    vec = Pe
+                else:
+                    vec = self.pe_to_vector(Pe)
+                Pe = self.pe_mlp(vec)  # (B, 16)
+
+            x = torch.cat([x, Pe], dim=1)  # (B, dims[-1] + 16)
         
-        x = self.head(x)
+        x = self.fc(x)
         
         return x
     
@@ -216,7 +285,7 @@ VIT_CONFIGS = {
     'L16': {'embed_dim': 1024, 'num_layers': 24, 'num_heads': 16},
 }
 
-def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeability', pretrained_path: str = None, **kwargs):
+def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeability', pretrained_path: str = None, Pe_encoder = None, **kwargs):
     """
     Flexible loader for ViT models.
 
@@ -309,6 +378,7 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeabil
         mlp_ratio=mlp_ratio,
         dropout=dropout,
         task=task,
+        Pe_encoder=Pe_encoder,
     )
 
     # Load pretrained weights if requested
@@ -345,7 +415,7 @@ if __name__ == "__main__":
     print(f"ViT-Tiny output shape: {output_tiny.shape}")
     
     # Test ViT-Base for dispersion
-    peclet = torch.tensor([10.0, 20.0])
+    peclet = torch.tensor([[10.0], [20.0]])
     model_base = load_vit_model(config_or_size='B16', in_channels=1, task='dispersion')
     output_base = model_base(x)
     print(f"ViT-Base (dispersion) output shape: {output_base.shape}")
@@ -353,3 +423,8 @@ if __name__ == "__main__":
     # Print number of parameters
     print(f"ViT-Tiny parameters: {model_tiny.get_num_params()}")
     print(f"ViT-Base parameters: {model_base.get_num_params()}")
+
+    # Test ViT with Péclet encoding
+    model_disp_pe = load_vit_model(config_or_size='S16', in_channels=1, task='dispersion', Pe_encoder='log')
+    output_disp_pe = model_disp_pe(x, Pe=peclet)
+    print(f"ViT-Small (dispersion with Pe) output shape: {output_disp_pe.shape}")

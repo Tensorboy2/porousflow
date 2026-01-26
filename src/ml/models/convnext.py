@@ -265,22 +265,6 @@ class ConvNeXt(nn.Module):
                 vector[i, 3] = 1
             else:
                 vector[i, 4] = 1
-            # If already a 5-element vector, copy it directly (supports one-hot inputs)
-            # elif val.numel() == 5:
-            #     vector[i] = val.view(5)
-            # else:
-            #     # Fallback: reduce to a scalar and categorize
-            #     v = float(val.mean().item())
-            #     if v < 1:
-            #         vector[i, 0] = 1
-            #     elif v == 10:
-            #         vector[i, 1] = 1
-            #     elif v == 50:
-            #         vector[i, 2] = 1
-            #     elif v == 100:
-            #         vector[i, 3] = 1
-            #     else:
-            #         vector[i, 4] = 1
         return vector
     
     def _initialize_weights(self):

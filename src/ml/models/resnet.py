@@ -89,7 +89,7 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, layers, in_channels=3, num_classes=1000, task='permeability'):
+    def __init__(self, block, layers, in_channels=3, num_classes=1000, task='permeability', Pe_encoder = None):
         super(ResNet, self).__init__()
         self.in_channels = 64
         
@@ -110,18 +110,60 @@ class ResNet(nn.Module):
         self.task = task
 
         fc_in = 512 * block.expansion
-        # if self.task == 'dispersion':
-        #     self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.GELU(), nn.Linear(16, 16))
-
-        #     fc_in += 16
-        # elif self.task == 'dispersion_direction':
-        #     fc_in += 2
-
-        self.fc = nn.Linear(fc_in, num_classes)
+        self.Pe_encoder = Pe_encoder
+        if self.Pe_encoder == 'straight':
+            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), 
+                                        nn.GELU(),
+                                        nn.LayerNorm(16),
+                                        nn.Linear(16, 16))
+            # self.fc = nn.Linear(dims[-1] + 16, num_classes)
+            self.fc = nn.Sequential(nn.LayerNorm(fc_in + 16),
+                                    nn.Linear(fc_in + 16, num_classes))
+        elif self.Pe_encoder == 'log':
+            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), 
+                                        nn.GELU(),
+                                        nn.LayerNorm(16),
+                                        nn.Linear(16, 16))
+            # self.fc = nn.Linear(fc_in + 16, num_classes)
+            self.fc = nn.Sequential(nn.LayerNorm(fc_in + 16),
+                                    nn.Linear(fc_in + 16, num_classes))
+        elif self.Pe_encoder == 'vector':
+            self.pe_mlp = nn.Sequential(nn.Linear(5, 16), 
+                                        nn.GELU(),
+                                        nn.LayerNorm(16),
+                                        nn.Linear(16, 16))
+            # self.fc = nn.Linear(fc_in + 16, num_classes)
+            self.fc = nn.Sequential(nn.LayerNorm(fc_in + 16),
+                                    nn.Linear(fc_in + 16, num_classes))
+        else:
+            # Default head when no Peclet encoder is used
+            self.fc = nn.Linear(fc_in, num_classes)
         
         # Initialize weights
-        self._initialize_weights()
+        # self._initialize_weights()
 
+    def pe_to_vector(self, Pe):
+        """Convert Peclet number to a one-hot vector representation."""
+        # Accept scalar Pe per sample or already a 5-d vector per sample.
+        Pe = Pe.to(device=Pe.device)
+        B = Pe.size(0)
+        vector = torch.zeros((B, 5), device=Pe.device, dtype=Pe.dtype)
+        for i in range(B):
+            val = Pe[i]
+            # If a single-value tensor (e.g., shape (1,)), use its scalar value
+            # if val.numel() == 1:
+            v = float(val.view(-1).item())
+            if v < 1:
+                vector[i, 0] = 1
+            elif v == 10:
+                vector[i, 1] = 1
+            elif v == 50:
+                vector[i, 2] = 1
+            elif v == 100:
+                vector[i, 3] = 1
+            else:
+                vector[i, 4] = 1
+        return vector
     def _make_layer(self, block, out_channels, blocks, stride=1):
         downsample = None
         if stride != 1 or self.in_channels != out_channels * block.expansion:
@@ -148,6 +190,7 @@ class ResNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x, Pe=None):
+        B = x.size(0)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -161,53 +204,60 @@ class ResNet(nn.Module):
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         # Handle task-specific extra inputs
-        # if self.task == 'dispersion':
-        #     if Pe is None:
-        #         raise ValueError("Pe must be provided for dispersion task")
-        #     Pe = torch.ones(x.size(0), 1, device=x.device) * Pe
-        #     x = torch.cat([x, Pe], dim=1)
-        # elif self.task == 'dispersion_direction':
-        #     if Pe is None:
-        #         raise ValueError("Pe (and direction) must be provided for dispersion_direction task")
-        #     # Expect Pe to be a tensor or value with two components per sample
-        #     # If scalar provided, replicate to two values
-        #     if isinstance(Pe, (int, float)):
-        #         Pe = torch.ones(x.size(0), 2, device=x.device) * Pe
-        #     elif isinstance(Pe, torch.Tensor) and Pe.dim() == 1:
-        #         Pe = Pe.unsqueeze(1)
-        #     Pe = self.pe_mlp(Pe)  # (B, 16)
-        #     x = torch.cat([x, Pe], dim=1)
+        if self.Pe_encoder:
+            # Ensure Pe is on the same device/dtype as x
+            if Pe is None:
+                raise ValueError("Pe must be provided when Pe_encoder is set")
+            Pe = Pe.to(device=x.device, dtype=x.dtype)
+
+            if self.Pe_encoder == 'straight':
+                # Expect scalar per-sample shape (B,1) or (B,)
+                Pe = torch.ones(B, 1, device=x.device, dtype=x.dtype) * Pe
+                Pe = self.pe_mlp(Pe)  # (B, 16)
+            elif self.Pe_encoder == 'log':
+                Pe = torch.ones(B, 1, device=x.device, dtype=x.dtype) * Pe
+                Pe = torch.log(Pe)
+                Pe = self.pe_mlp(Pe)  # (B, 16)
+            elif self.Pe_encoder == 'vector':
+                # Accept either scalar Pe (B,1) or already 5-d vectors (B,5)
+                if Pe.dim() == 2 and Pe.size(1) == 5:
+                    vec = Pe
+                else:
+                    vec = self.pe_to_vector(Pe)
+                Pe = self.pe_mlp(vec)  # (B, 16)
+
+            x = torch.cat([x, Pe], dim=1)  # (B, dims[-1] + 16)
 
         x = self.fc(x)
         return x
 
 
-def resnet18(in_channels=3, num_classes=1000, task='permeability'):
+def resnet18(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None):
     """ResNet-18 model"""
-    return ResNet(BasicBlock, [2, 2, 2, 2], in_channels, num_classes, task=task)
+    return ResNet(BasicBlock, [2, 2, 2, 2], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
 
 
-def resnet34(in_channels=3, num_classes=1000, task='permeability'):
+def resnet34(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None):
     """ResNet-34 model"""
-    return ResNet(BasicBlock, [3, 4, 6, 3], in_channels, num_classes, task=task)
+    return ResNet(BasicBlock, [3, 4, 6, 3], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
 
 
-def resnet50(in_channels=3, num_classes=1000, task='permeability'):
+def resnet50(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None):
     """ResNet-50 model"""
-    return ResNet(Bottleneck, [3, 4, 6, 3], in_channels, num_classes, task=task)
+    return ResNet(Bottleneck, [3, 4, 6, 3], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
 
 
-def resnet101(in_channels=3, num_classes=1000, task='permeability'):
+def resnet101(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None):
     """ResNet-101 model"""
-    return ResNet(Bottleneck, [3, 4, 23, 3], in_channels, num_classes, task=task)
+    return ResNet(Bottleneck, [3, 4, 23, 3], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
 
 
-def resnet152(in_channels=3, num_classes=1000, task='permeability'):
+def resnet152(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None):
     """ResNet-152 model"""
-    return ResNet(Bottleneck, [3, 8, 36, 3], in_channels, num_classes, task=task)
+    return ResNet(Bottleneck, [3, 8, 36, 3], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
 
 
-def load_resnet_model(config_or_size='18', in_channels=1, pretrained_path: str = None, task: str = 'permeability', **kwargs):
+def load_resnet_model(config_or_size='18', in_channels=1, pretrained_path: str = None, task: str = 'permeability', Pe_encoder = None, **kwargs):
     """
     Flexible loader for ResNet models.
 
@@ -234,15 +284,15 @@ def load_resnet_model(config_or_size='18', in_channels=1, pretrained_path: str =
     
     # Create model
     if size == '18':
-        model = resnet18(in_channels, num_classes, task=task)
+        model = resnet18(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
     elif size == '34':
-        model = resnet34(in_channels, num_classes, task=task)
+        model = resnet34(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
     elif size == '50':
-        model = resnet50(in_channels, num_classes, task=task)
+        model = resnet50(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
     elif size == '101':
-        model = resnet101(in_channels, num_classes, task=task)
+        model = resnet101(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
     elif size == '152':
-        model = resnet152(in_channels, num_classes, task=task)
+        model = resnet152(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
     else:
         raise ValueError(f"Invalid size '{size}'. Choose from '18', '34', '50', '101', or '152'.")
 
@@ -293,3 +343,10 @@ if __name__ == "__main__":
     print(f"\nParameter counts:")
     print(f"ResNet-18: {count_parameters(model18):,}")
     print(f"ResNet-50: {count_parameters(model50):,}")
+
+    # Test Pe encoder 
+    for encoder in [None, 'straight', 'log', 'vector']:
+        model = load_resnet_model(size='18', in_channels=1, task='dispersion', Pe_encoder=encoder)
+        Pe = torch.tensor([[10.0],[100.0]])
+        out = model(x, Pe=Pe)
+        print(f"\nCResNet-18 with Peclet encoder '{encoder}': output shape {out.shape}")
