@@ -65,7 +65,7 @@ class Trainer:
         use_amp = config.get('use_amp', False)
         self.scaler = GradScaler(enabled=use_amp,device='cuda' if torch.cuda.is_available() else 'cpu')  
 
-
+    
         # Deal with output directories:
         save_path = config.get('save_model_path', 'results')
         os.makedirs(save_path, exist_ok=True)
