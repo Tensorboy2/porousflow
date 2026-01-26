@@ -148,11 +148,12 @@ class Trainer:
             sum_squared_error, sum_targets, sum_targets_squared, count
         )
 
+        grad_norm = gradient_norm / len(self.train_loader)
         self.metrics['R2_train'].append(r2)
         self.metrics['train_loss'].append(epoch_loss)
-        self.metrics['grad_norm'] = gradient_norm / len(self.train_loader)
+        self.metrics['grad_norm'].append(grad_norm)
         
-        return epoch_loss, r2
+        return epoch_loss, r2, grad_norm
     
     def train_epoch_dispersion(self):
         self.model.train()
