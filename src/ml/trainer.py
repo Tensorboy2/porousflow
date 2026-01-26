@@ -190,16 +190,21 @@ class Trainer:
             with autocast(device_type='cuda', enabled=use_amp):
                 outputs = self.model(inputs, Pe)
 
-                # Always do scaling + loss in FP32
-                scaled_outputs = torch.arcsinh(outputs)
-                scaled_D = torch.arcsinh(D)
-                loss = self.criterion(scaled_outputs, scaled_D)
+            # Compute loss in FP32 (outside autocast) to ensure stable scaling
+            outputs_fp32 = outputs.float()
+            D_fp32 = D.float()
+            scaled_outputs = torch.arcsinh(outputs_fp32)
+            scaled_D = torch.arcsinh(D_fp32)
+            loss = self.criterion(scaled_outputs, scaled_D)
 
-                running_loss += loss.item() * B
-                total_samples += B
+            running_loss += loss.item() * B
+            total_samples += B
 
             # Backward
-            self.scaler.scale(loss).backward()
+            if use_amp:
+                self.scaler.scale(loss).backward()
+            else:
+                loss.backward()
 
             # Gradient clipping
             if self.clip_grad:
@@ -210,8 +215,11 @@ class Trainer:
                 )
 
             # Optimizer step
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
+            if use_amp:
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+            else:
+                self.optimizer.step()
 
             grad_steps += 1
 
@@ -306,8 +314,8 @@ class Trainer:
                     outputs = self.model(inputs)
 
                 # Apply arcsinh transform consistently with training
-                scaled_outputs = torch.arcsinh(outputs)
-                scaled_D = torch.arcsinh(D)
+                scaled_outputs = torch.arcsinh(outputs.float())
+                scaled_D = torch.arcsinh(D.float())
                 loss = self.criterion(scaled_outputs, scaled_D)
 
                 running_loss += loss.item() * inputs.size(0)
@@ -378,7 +386,8 @@ class Trainer:
                     inputs, D = inputs.to(self.device), D.to(self.device)
                     outputs = self.model(inputs, self.Pes[i])
                     outputs_scaled = torch.arcsinh(outputs)
-                    D_scaled = torch.arcsinh(D)
+                    outputs_scaled = torch.arcsinh(outputs.float())
+                    D_scaled = torch.arcsinh(D.float())
                     loss = self.criterion(outputs_scaled, D_scaled)
                     running_loss += loss.item() * inputs.size(0)
                     total_samples += inputs.size(0)

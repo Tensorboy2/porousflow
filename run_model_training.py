@@ -27,6 +27,10 @@ def main(config):
     device = config.get('device',torch.device("cuda" if torch.cuda.is_available() else "cpu"))
     print(f"Using device: {device}")
 
+    # clear cache:
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
     # Load model from config dict. The generator emits a structured `config['model']`.
     model_cfg = config.get('model')
     if model_cfg is None:
