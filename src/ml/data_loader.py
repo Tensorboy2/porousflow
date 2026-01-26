@@ -299,8 +299,8 @@ class DispersionDatasetCached(Dataset):
             self.targets_ds_x = torch.from_numpy(np_targets).float()   # Shape (N, 5, ...)
             
             # If images lack channel dim, add it once here
-            if self.images.ndim == 3:  # (N, H, W)
-                self.images = self.images.unsqueeze(1)  # -> (N, 1, H, W)
+            # if self.images.ndim == 3:  # (N, H, W)
+            self.images = self.images.unsqueeze(1)  # -> (N, 1, H, W)
     
             print(f"Cached {(self.images.nbytes + self.targets_ds_x.nbytes) / 1e9:.2f} GB of data")
         else:
@@ -315,23 +315,23 @@ class DispersionDatasetCached(Dataset):
         pe_idx = idx % self.samples_per_image
         
         # Fast numpy array access (from RAM if cached, else from disk)
-        # image = self.images[base_idx]
-        # Dx = self.targets_ds_x[base_idx, pe_idx]
-        
-        # # Convert to tensors
-        # image = torch.from_numpy(image).float().unsqueeze(0)
-        # Dx_single = torch.from_numpy(Dx).float().flatten()
-        # Pe = self.pe_values[pe_idx:pe_idx+1]
-        
-        # if self.transform:
-        #     image = self.transform(image)
-        image = self.images[base_idx]          # View, zero-copy
+        image = self.images[base_idx]
         Dx = self.targets_ds_x[base_idx, pe_idx]
-        Dx_single = Dx.flatten()
+        
+        # Convert to tensors
+        image = torch.from_numpy(image).float().unsqueeze(0)
+        Dx_single = torch.from_numpy(Dx).float().flatten()
         Pe = self.pe_values[pe_idx:pe_idx+1]
-
+        
         if self.transform:
-            image = self.transform(image)      # Transform expects torch tensor
+            image = self.transform(image)
+        # image = self.images[base_idx]          # View, zero-copy
+        # Dx = self.targets_ds_x[base_idx, pe_idx]
+        # Dx_single = Dx.flatten()
+        # Pe = self.pe_values[pe_idx:pe_idx+1]
+
+        # if self.transform:
+        #     image = self.transform(image)      # Transform expects torch tensor
         
         return image, Dx_single, Pe
 
