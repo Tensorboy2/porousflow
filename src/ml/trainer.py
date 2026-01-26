@@ -62,7 +62,7 @@ class Trainer:
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
         # Scaler to Half precision:
-        use_amp = config.get('use_amp', False)
+        use_amp = config.get('use_amp', True)
         self.scaler = GradScaler(enabled=use_amp,device='cuda' if torch.cuda.is_available() else 'cpu')  
 
 
