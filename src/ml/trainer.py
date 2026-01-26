@@ -199,10 +199,7 @@ class Trainer:
                 total_samples += B
 
             # Backward
-            if use_amp:
-                self.scaler.scale(loss).backward()
-            else:
-                loss.backward()
+            self.scaler.scale(loss).backward()
 
             # Gradient clipping
             if self.clip_grad:
@@ -213,11 +210,8 @@ class Trainer:
                 )
 
             # Optimizer step
-            if use_amp:
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-            else:
-                self.optimizer.step()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
 
             grad_steps += 1
 
@@ -233,13 +227,13 @@ class Trainer:
 
             self.scheduler.step()
 
-        epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
+        epoch_loss = running_loss / len(self.train_loader.dataset)
 
         r2 = self._compute_r2_from_accumulators(
             sum_squared_error, sum_targets, sum_targets_squared, count
         )
 
-        grad_norm = gradient_norm / grad_steps if grad_steps!=torch.inf else self.max_grad_norm
+        grad_norm = gradient_norm / len(self.train_loader)
 
         self.metrics['train_loss'].append(epoch_loss)
         self.metrics['R2_train'].append(r2)
