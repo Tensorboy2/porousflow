@@ -349,7 +349,7 @@ def get_dispersion_dataloader(file_path,config):
 
     # Cuda specific options
     persistent_workers = config.get('persistent_workers',False)
-    pin_memory = config.get('pin_memory',False)
+    pin_memory = config.get('pin_memory',True)
     pin_memory_device = config.get('pin_memory_device','')
     prefetch_factor = config.get('prefetch_factor',None)
 
@@ -365,9 +365,9 @@ def get_dispersion_dataloader(file_path,config):
         # train_dataset = DispersionDataset_single_view(base_train_dataset)
         # val_dataset = DispersionDataset_single_view(base_val_dataset)
         # test_dataset = DispersionDataset_single_view(base_test_dataset)
-        train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=True)
-        val_dataset = DispersionDatasetCached(val_path,num_samples=config.get('num_validation_samples',None),cache_images=True)
-        test_dataset = DispersionDatasetCached(test_path,cache_images=True)
+        train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=False)
+        val_dataset = DispersionDatasetCached(val_path,num_samples=config.get('num_validation_samples',None),cache_images=False)
+        test_dataset = DispersionDatasetCached(test_path,cache_images=False)
     else:
         train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None))#, transform=DispersionTransform())
         val_dataset = DispersionDataset(val_path,num_samples=config.get('num_validation_samples',None))
