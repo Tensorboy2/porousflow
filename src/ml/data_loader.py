@@ -132,12 +132,12 @@ class PermeabilityDataset(Dataset):
         return image, K
     
 class DispersionDataset(Dataset):
-    def __init__(self, file_path, transform=None, num_samples=None):
+    def __init__(self, file_path, transform=None, num_samples=None, Pe=0):
         self.root = zarr.open(file_path, mode='r')
         self.filled_images_ds = self.root['filled_images']['filled_images']
         self.targets_ds_x = self.root['dispersion_results']['Dx']
         # self.targets_ds_y = self.root['dispersion_results']['Dy']
-
+        self.Pe = Pe
         self.transform = transform
 
         if num_samples is not None:
@@ -149,7 +149,7 @@ class DispersionDataset(Dataset):
     def __getitem__(self, idx):
         # Fetch numpy versions of the data
         image = self.filled_images_ds[idx]
-        Dx = self.targets_ds_x[idx][0] # shape (1,5,2,2)
+        Dx = self.targets_ds_x[idx][self.Pe] # shape (1,5,2,2)
         # Dy = self.targets_ds_y[idx].reshape(5,4)
 
         # turn into torch tensors
@@ -161,7 +161,7 @@ class DispersionDataset(Dataset):
         if self.transform:
             image, Dx = self.transform(image, Dx)
 
-        return image, Dx
+        return image, Dx, self.Pe 
 class DispersionDataset_2(Dataset):
     def __init__(self, file_path, transform=None, num_samples=None):
         self.root = zarr.open(file_path, mode='r')
@@ -357,7 +357,7 @@ def get_dispersion_dataloader(file_path,config):
     val_path = os.path.join(file_path,'validation.zarr')
     test_path = os.path.join(file_path,'test.zarr')
 
-    if config.get('pe_encoder',None):
+    if config.get('pe_encoder','')!='':
         print(f"Pe encoder: {config['pe_encoder']}")
         # base_train_dataset = DispersionDataset_2(train_path,num_samples=config.get('num_training_samples',None))
         # base_val_dataset = DispersionDataset_2(val_path,num_samples=config.get('num_validation_samples',None))
@@ -369,9 +369,10 @@ def get_dispersion_dataloader(file_path,config):
         val_dataset = DispersionDatasetCached(val_path,num_samples=config.get('num_validation_samples',None),cache_images=False)
         test_dataset = DispersionDatasetCached(test_path,cache_images=False)
     else:
-        train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None))#, transform=DispersionTransform())
-        val_dataset = DispersionDataset(val_path,num_samples=config.get('num_validation_samples',None))
-        test_dataset = DispersionDataset(test_path)
+        Pe = config.get('Pe',0)
+        train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None),Pe=Pe)#, transform=DispersionTransform())
+        val_dataset = DispersionDataset(val_path,num_samples=config.get('num_validation_samples',None),Pe=Pe)
+        test_dataset = DispersionDataset(test_path,Pe=Pe)
 
     train_loader = DataLoader(train_dataset, 
                               batch_size=batch_size, 

@@ -410,7 +410,7 @@ class Trainer:
     
     def train(self, num_epochs):
         best_val_loss = float('inf')
-        save_path = os.path.join(self.config.get('save_model_path', 'results'), f"{self.config['model']['name']}_lr-{self.config['learning_rate']}_wd-{self.config['weight_decay']}_bs-{self.config['batch_size']}_epochs-{num_epochs}_{self.config.get('decay','no-decay')}_warmup-{self.config.get('warmup_steps',0)}_clipgrad-{self.config.get('clip_grad',False)}_pe-encoder-{self.config.get('pe_encoder',None)}")
+        save_path = os.path.join(self.config.get('save_model_path', 'results'), f"{self.config['model']['name']}_lr-{self.config['learning_rate']}_wd-{self.config['weight_decay']}_bs-{self.config['batch_size']}_epochs-{num_epochs}_{self.config.get('decay','no-decay')}_warmup-{self.config.get('warmup_steps',0)}_clipgrad-{self.config.get('clip_grad',False)}_pe-encoder-{self.config.get('pe_encoder',None)}_pe-{self.config.get('Pe',None)}")
         
         print(f'Saving state-dicts to: {save_path}.pth and {save_path}_last_model.pth')
         print(f'Saving metrics to: {save_path}_metrics.zarr')

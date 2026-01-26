@@ -96,7 +96,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [1e-2],
+        "single": [1e-1],
         "sweep": [0.0, 1e-2, 1e-1, 0.3],
     },
     "num_training_samples": {
@@ -113,8 +113,12 @@ HYPERPARAM_SWEEPS = {
         "common": ["cosine", "linear"],
     },
     'pe_encoder': {
-        'single': ['straight'],
+        'single': [''],
         'sweep': ['straight', 'log', 'vector'],
+    },
+    'Pe': {
+        'single': [0],
+        'sweep': [0,1,2,3,4],
     },
 }
 
@@ -129,6 +133,7 @@ SWEEP_PRESETS = {
         "num_epochs": "single",
         "decay": "single",
         'pe_encoder': 'single',
+        'Pe': 'single',
     },
     "pe_encoder_sweep": {
         # Sweep only learning rate
@@ -139,6 +144,18 @@ SWEEP_PRESETS = {
         "num_epochs": "single",
         "decay": "single",
         'pe_encoder': 'sweep',
+        'Pe': 'single',
+    },
+    "Pe_sweep": {
+        # Sweep only learning rate
+        "learning_rate": "single",
+        "batch_size": "single",
+        "weight_decay": "single",
+        # "num_training_samples": "single",
+        "num_epochs": "single",
+        "decay": "single",
+        'pe_encoder': 'single',
+        "Pe": "sweep",
     },
     "lr_sweep": {
         # Sweep only learning rate
@@ -225,14 +242,15 @@ TASK_CONFIGS = {
         "learning_rate": 1e-3,
         "weight_decay": 0.3,
         "batch_size": 128,
-        "num_epochs": 500,
+        "num_epochs": 200,
         "decay": "cosine",
         "warmup_steps": 2000,
         "num_training_samples": None,
         "num_validation_samples": None,
-        "pe_encoder": 'log',
+        "pe_encoder": None,
         "prefetch_factor": 4,
         "pin_memory": True,
+        "Pe": 0,
     },
 }
 
@@ -265,7 +283,7 @@ DEVICE_CONFIGS = {
             "num_training_samples": 32,
             "num_validation_samples": 32,
             "num_test_samples": 3,
-            "pe_encoder": 'log',
+            "pe_encoder": None,
             "prefetch_factor": None,
             "pin_memory": False,
             "pin_memory_device": "",
@@ -728,6 +746,7 @@ class ConfigGenerator:
                     "num_epochs": "ep",
                     "decay": "decay",
                     "pe_encoder": "pe_encoder",
+                    "Pe": "Pe",
                 }.get(param_name, param_name[:4])
                 suffix_parts.append(f"{short_name}{self._format_param_value(param_value)}")
         
