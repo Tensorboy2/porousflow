@@ -214,56 +214,7 @@ class DispersionDataset_single_view(Dataset):
         Pe = torch.tensor([self.pe_hash[slice_idx]], dtype=torch.float32)  # Peclet number as float tensor
         return image, Dx_single, Pe
 
-class DispersionDatasetCached(Dataset):
-    """
-    Ultra-optimized version: cache images in RAM since they're reused 5x.
-    Use this if you have enough RAM (total_images * image_size * 4 bytes).
-    """
-    def __init__(self, file_path, transform=None, num_samples=None, cache_images=True):
-        self.root = zarr.open(file_path, mode='r')
-        self.transform = transform
-        
-        self.pe_values = torch.tensor([0.1, 10, 50, 100, 500], dtype=torch.float32)
-        self.samples_per_image = 5
-        
-        # Determine length
-        base_len = self.root['filled_images']['filled_images'].shape[0]
-        if num_samples is not None:
-            base_len = min(num_samples, base_len)
-        
-        self.base_len = base_len
-        self.total_len = base_len * self.samples_per_image
-        
-        # Cache images in RAM
-        if cache_images:
-            print(f"Caching {base_len} images in RAM...")
-            self.images = self.root['filled_images']['filled_images'][:base_len]
-            self.targets_ds_x = self.root['dispersion_results']['Dx'][:base_len]
-            print(f"Cached {(self.images.nbytes + self.targets_ds_x.nbytes) / 1e9:.2f} GB of data")
-        else:
-            self.images = self.root['filled_images']['filled_images']
-            self.targets_ds_x = self.root['dispersion_results']['Dx']
-    
-    def __len__(self):
-        return self.total_len
-    
-    def __getitem__(self, idx):
-        base_idx = idx // self.samples_per_image
-        pe_idx = idx % self.samples_per_image
-        
-        # Fast numpy array access (from RAM if cached, else from disk)
-        image = self.images[base_idx]
-        Dx = self.targets_ds_x[base_idx, pe_idx]
-        
-        # Convert to tensors
-        image = torch.from_numpy(image).float().unsqueeze(0)
-        Dx_single = torch.from_numpy(Dx).float().flatten()
-        Pe = self.pe_values[pe_idx:pe_idx+1]
-        
-        if self.transform:
-            image = self.transform(image)
-        
-        return image, Dx_single, Pe
+
 
 def get_permeability_dataloader(file_path,config):
     '''
@@ -318,6 +269,57 @@ def get_permeability_dataloader(file_path,config):
     
     return train_loader, val_loader, test_loader
 
+class DispersionDatasetCached(Dataset):
+    """
+    Ultra-optimized version: cache images in RAM since they're reused 5x.
+    Use this if you have enough RAM (total_images * image_size * 4 bytes).
+    """
+    def __init__(self, file_path, transform=None, num_samples=None, cache_images=True):
+        self.root = zarr.open(file_path, mode='r')
+        self.transform = transform
+        
+        self.pe_values = torch.tensor([0.1, 10, 50, 100, 500], dtype=torch.float32)
+        self.samples_per_image = 5
+        
+        # Determine length
+        base_len = self.root['filled_images']['filled_images'].shape[0]
+        if num_samples is not None:
+            base_len = min(num_samples, base_len)
+        
+        self.base_len = base_len
+        self.total_len = base_len * self.samples_per_image
+        
+        # Cache images in RAM
+        if cache_images:
+            print(f"Caching {base_len} images in RAM...")
+            self.images = self.root['filled_images']['filled_images'][:base_len]
+            self.targets_ds_x = self.root['dispersion_results']['Dx'][:base_len]
+            print(f"Cached {(self.images.nbytes + self.targets_ds_x.nbytes) / 1e9:.2f} GB of data")
+        else:
+            self.images = self.root['filled_images']['filled_images']
+            self.targets_ds_x = self.root['dispersion_results']['Dx']
+    
+    def __len__(self):
+        return self.total_len
+    
+    def __getitem__(self, idx):
+        base_idx = idx // self.samples_per_image
+        pe_idx = idx % self.samples_per_image
+        
+        # Fast numpy array access (from RAM if cached, else from disk)
+        image = self.images[base_idx]
+        Dx = self.targets_ds_x[base_idx, pe_idx]
+        
+        # Convert to tensors
+        image = torch.from_numpy(image).float().unsqueeze(0)
+        Dx_single = torch.from_numpy(Dx).float().flatten()
+        Pe = self.pe_values[pe_idx:pe_idx+1]
+        
+        if self.transform:
+            image = self.transform(image)
+        
+        return image, Dx_single, Pe
+
 def get_dispersion_dataloader(file_path,config):
     '''
     Docstring for get_dispersion_dataloader
@@ -367,18 +369,18 @@ def get_dispersion_dataloader(file_path,config):
     val_loader = DataLoader(val_dataset, 
                             batch_size=batch_size, 
                             shuffle=False, 
-                            num_workers=num_workers,
-                            persistent_workers=persistent_workers,
-                            pin_memory=pin_memory,
-                            prefetch_factor=prefetch_factor,
+                            num_workers=0,
+                            persistent_workers=False,
+                            pin_memory=False,
+                            prefetch_factor=None,
                             pin_memory_device=pin_memory_device)
     test_loader = DataLoader(test_dataset, 
                              batch_size=batch_size, 
                              shuffle=False, 
-                             num_workers=num_workers,
-                             persistent_workers=persistent_workers,
-                            pin_memory=pin_memory,
-                            prefetch_factor=prefetch_factor,
+                             num_workers=0,
+                             persistent_workers=False,
+                            pin_memory=False,
+                            prefetch_factor=None,
                             pin_memory_device=pin_memory_device)
     
     return train_loader, val_loader, test_loader
