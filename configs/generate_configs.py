@@ -92,7 +92,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [1e-4, 5e-4, 1e-3, 5e-3],
     },
     "batch_size": {
-        "single": [512],
+        "single": [128],
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
@@ -231,11 +231,11 @@ TASK_CONFIGS = {
         "num_training_samples": None,
         "num_validation_samples": None,
         "pe_encoder": 'log',
-        "num_workers": 2,
-        "prefetch_factor": 4,
-        "pin_memory": True,
+        "num_workers": 0,
+        "prefetch_factor": None,
+        "pin_memory": False,
         "pin_memory_device": "",
-        "persistent_workers": True,
+        "persistent_workers": False,
     },
 }
 
@@ -268,7 +268,7 @@ DEVICE_CONFIGS = {
             "num_training_samples": 32,
             "num_validation_samples": 32,
             "num_test_samples": 3,
-            "pe_encoder": None,
+            "pe_encoder": 'log',
             "prefetch_factor": None,
             "pin_memory": False,
             "pin_memory_device": "",

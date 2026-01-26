@@ -190,13 +190,13 @@ class Trainer:
             with autocast(device_type='cuda', enabled=use_amp):
                 outputs = self.model(inputs, Pe)
 
-            # Always do scaling + loss in FP32
-            scaled_outputs = torch.arcsinh(outputs)
-            scaled_D = torch.arcsinh(D)
-            loss = self.criterion(scaled_outputs, scaled_D)
+                # Always do scaling + loss in FP32
+                scaled_outputs = torch.arcsinh(outputs)
+                scaled_D = torch.arcsinh(D)
+                loss = self.criterion(scaled_outputs, scaled_D)
 
-            running_loss += loss.item() * B
-            total_samples += B
+                running_loss += loss.item() * B
+                total_samples += B
 
             # Backward
             if use_amp:
@@ -230,7 +230,7 @@ class Trainer:
                 sum_targets += torch.sum(targets_cpu).item()
                 sum_targets_squared += torch.sum(targets_cpu ** 2).item()
                 count += targets_cpu.numel()
-    
+
             self.scheduler.step()
 
         epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
