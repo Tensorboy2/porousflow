@@ -34,7 +34,8 @@ class Trainer:
             'R2_train': [],
             'R2_val': [],
             'R2_test': [],
-            'grad_norm': []
+            'grad_norm': [],
+            # 'test_pred': []
         }
 
         # gradient clipping
@@ -411,11 +412,11 @@ class Trainer:
             print(f"\nEpoch [{epoch+1}/{num_epochs}],")
             start_train = time.time()
             train_loss, train_r2, grad_norm = self.train_epoch()
-            print(f"      Train Loss: {train_loss:.5f}, Train R2: {train_r2:.5f}, Time: {time.time()-start_train} seconds")
+            print(f"      Train Loss: {train_loss:.5f}, Train R2: {train_r2:.5f}, Time: {time.time()-start_train:.2f} seconds")
             current_learning_rate = self.scheduler.get_last_lr()[0]
             start_val = time.time()   
             val_loss, val_r2 = self.validate_epoch()
-            print(f"      Val Loss: {val_loss:.5f}, Val R2: {val_r2:.5f}, Time: {time.time()-start_val} seconds")
+            print(f"      Val Loss: {val_loss:.5f}, Val R2: {val_r2:.5f}, Time: {time.time()-start_val:.2f} seconds")
             print(f"      LR: {current_learning_rate:.6f}, Grad Norm: {grad_norm:.5e}")
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
