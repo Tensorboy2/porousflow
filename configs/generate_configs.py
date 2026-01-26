@@ -267,6 +267,7 @@ DEVICE_CONFIGS = {
             "learning_rate": 2e-4,
             "num_training_samples": 32,
             "num_validation_samples": 32,
+            "num_test_samples": 3,
             "pe_encoder": None,
             "prefetch_factor": None,
             "pin_memory": False,
