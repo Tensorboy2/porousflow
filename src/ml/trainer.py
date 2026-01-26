@@ -169,8 +169,10 @@ class Trainer:
         grad_steps = 0
 
         use_amp = self.scaler.is_enabled()
-
+        i = 0
         for inputs, D, Pe in self.train_loader:
+            i+=1
+            print(f'{i}/{len(self.train_loader)}')
             B = inputs.shape[0]
 
             if self.config.get('pin_memory', False):
@@ -410,19 +412,35 @@ class Trainer:
         print(f'Saving state-dicts to: {save_path}.pth and {save_path}_last_model.pth')
         print(f'Saving metrics to: {save_path}_metrics.zarr')
         for epoch in range(num_epochs):
+            print(f"\n{'='*60}")
+            print(f"Epoch {epoch+1}/{num_epochs} started")
+
+            # ---- TRAIN ----
             train_loss, train_r2, grad_norm = self.train_epoch()
-            val_loss, val_r2 = self.validate_epoch()
-            current_learning_rate = self.scheduler.get_last_lr()[0]
             print(
-                f"\nEpoch [{epoch+1}/{num_epochs}],\n"
-                f"      Train Loss: {train_loss:.5f}, Train R2: {train_r2:.5f}"
-                f"      Val Loss: {val_loss:.5f}, Val R2: {val_r2:.5f}"
-                f"      Current LR: {current_learning_rate:.6f}, Grad Norm: {grad_norm:.5e}"
-                )
+                f"  Train done | "
+                f"loss: {train_loss:.5f} | "
+                f"R2: {train_r2:.5f} | "
+                f"grad‖: {grad_norm:.5e}"
+            )
+
+            # ---- VALIDATION ----
+            val_loss, val_r2 = self.validate_epoch()
+            print(
+                f"  Val   done | "
+                f"loss: {val_loss:.5f} | "
+                f"R2: {val_r2:.5f}"
+            )
+
+            # ---- LR ----
+            current_lr = self.scheduler.get_last_lr()[0]
+            print(f"  LR: {current_lr:.6e}")
+
+            # ---- CHECKPOINT ----
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
-                self.save_model(save_path+".pth")
-                print(f"  Saved best model at epoch {epoch+1} with val loss {val_loss:.5f}")
+                self.save_model(save_path + ".pth")
+                print(f"    New best model saved (val loss = {val_loss:.5f})")
         #save last model
         self.save_model(save_path+"_last_model.pth")
         self.save_metrics(save_path+'_metrics.zarr')
