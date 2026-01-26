@@ -11,6 +11,7 @@ import os
 import zarr
 import numpy as np
 from torch.amp import autocast, GradScaler
+import time
 
 class Trainer:
     def __init__(self, model, train_loader, val_loader, test_loader, optimizer, device, config):
@@ -407,15 +408,15 @@ class Trainer:
         print(f'Saving state-dicts to: {save_path}.pth and {save_path}_last_model.pth')
         print(f'Saving metrics to: {save_path}_metrics.zarr')
         for epoch in range(num_epochs):
+            print(f"\nEpoch [{epoch+1}/{num_epochs}],")
+            start_train = time.time()
             train_loss, train_r2, grad_norm = self.train_epoch()
-            val_loss, val_r2 = self.validate_epoch()
+            print(f"      Train Loss: {train_loss:.5f}, Train R2: {train_r2:.5f}, Time: {time.time()-start_train} seconds")
             current_learning_rate = self.scheduler.get_last_lr()[0]
-            print(
-                f"Epoch [{epoch+1}/{num_epochs}],\n" 
-                f"      Train Loss: {train_loss:.5f}, Val Loss: {val_loss:.5f}\n"
-                f"      Train R2: {train_r2:.5f},       Val R2: {val_r2:.5f}\n"
-                f"      LR: {current_learning_rate:.6f}, Grad Norm: {grad_norm:.5e}"
-                )
+            start_val = time.time()   
+            val_loss, val_r2 = self.validate_epoch()
+            print(f"      Val Loss: {val_loss:.5f}, Val R2: {val_r2:.5f}, Time: {time.time()-start_val} seconds")
+            print(f"      LR: {current_learning_rate:.6f}, Grad Norm: {grad_norm:.5e}")
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 self.save_model(save_path+".pth")

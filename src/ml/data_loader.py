@@ -348,7 +348,7 @@ def get_dispersion_dataloader(file_path,config):
         # train_dataset = DispersionDataset_single_view(base_train_dataset)
         # val_dataset = DispersionDataset_single_view(base_val_dataset)
         # test_dataset = DispersionDataset_single_view(base_test_dataset)
-        train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=True)
+        train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=False)
         val_dataset = DispersionDatasetCached(val_path,num_samples=config.get('num_validation_samples',None),cache_images=False)
         test_dataset = DispersionDatasetCached(test_path,cache_images=False)
     else:
