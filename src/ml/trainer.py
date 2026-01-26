@@ -234,11 +234,13 @@ class Trainer:
             sum_squared_error, sum_targets, sum_targets_squared, count
         )
 
+        grad_norm = gradient_norm / grad_steps if grad_steps!=torch.inf else self.max_grad_norm
+
         self.metrics['train_loss'].append(epoch_loss)
         self.metrics['R2_train'].append(r2)
-        self.metrics['grad_norm'] = gradient_norm / grad_steps if grad_steps > 0 else 0.0
+        self.metrics['grad_norm'].append(grad_norm)
 
-        return epoch_loss, r2
+        return epoch_loss, r2, grad_norm
     
     def validate_permeability(self):
         self.model.eval()
@@ -294,9 +296,9 @@ class Trainer:
                 # Support datasets that yield either (inputs, D) or (inputs, D, Pe)
                 if len(batch) == 3:
                     inputs, D, Pe = batch
-                    inputs = inputs.to(self.device)
-                    D = D.to(self.device)
-                    Pe = Pe.to(self.device)
+                    inputs = inputs.to(self.device, non_blocking=True)
+                    D = D.to(self.device, non_blocking=True)
+                    Pe = Pe.to(self.device, non_blocking=True)
                     outputs = self.model(inputs, Pe)
                 else:
                     inputs, D = batch
@@ -405,14 +407,14 @@ class Trainer:
         print(f'Saving state-dicts to: {save_path}.pth and {save_path}_last_model.pth')
         print(f'Saving metrics to: {save_path}_metrics.zarr')
         for epoch in range(num_epochs):
-            train_loss, train_r2 = self.train_epoch()
+            train_loss, train_r2, grad_norm = self.train_epoch()
             val_loss, val_r2 = self.validate_epoch()
             current_learning_rate = self.scheduler.get_last_lr()[0]
             print(
                 f"Epoch [{epoch+1}/{num_epochs}],\n" 
                 f"      Train Loss: {train_loss:.5f}, Val Loss: {val_loss:.5f}\n"
                 f"      Train R2: {train_r2:.5f},       Val R2: {val_r2:.5f}\n"
-                f"      LR: {current_learning_rate:.6f}, Grad Norm: {self.metrics['grad_norm']:.5e}"
+                f"      LR: {current_learning_rate:.6f}, Grad Norm: {grad_norm:.5e}"
                 )
             if val_loss < best_val_loss:
                 best_val_loss = val_loss

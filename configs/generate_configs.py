@@ -134,12 +134,12 @@ SWEEP_PRESETS = {
     },
     "pe_encoder_sweep": {
         # Sweep only learning rate
-        "learning_rate": "single",
-        "batch_size": "single",
-        "weight_decay": "single",
-        "num_training_samples": "single",
-        "num_epochs": "single",
-        "decay": "single",
+        # "learning_rate": "single",
+        # "batch_size": "single",
+        # "weight_decay": "single",
+        # "num_training_samples": "single",
+        # "num_epochs": "single",
+        # "decay": "single",
         'pe_encoder': 'sweep',
     },
     "lr_sweep": {
@@ -233,8 +233,10 @@ TASK_CONFIGS = {
         "num_training_samples": None,
         "num_validation_samples": None,
         "pe_encoder": None,
-        "prefetch_factor": 4,
+        "prefetch_factor": 2,
         "pin_memory": True,
+        "pin_memory_device": "cuda",
+        "persistent_workers": True,
     },
 }
 

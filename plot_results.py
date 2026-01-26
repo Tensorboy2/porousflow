@@ -1,18 +1,46 @@
-'''
-plotting of metrics.zarr files from training runs
-'''
+"""
+Refactored plotting of metrics.zarr files from training runs.
+"""
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
+import matplotlib.cm as cm
 import zarr
 import pandas as pd
 from pathlib import Path
 import re
-import os
-import seaborn as sns
-import matplotlib.cm as cm
+from typing import Dict, List, Optional, Union, Tuple
+from dataclasses import dataclass
 
-pattern = re.compile(
+
+# Configuration
+@dataclass
+class ModelConfig:
+    """Configuration for model families and their visual properties."""
+    families: Dict[str, List[str]] = None
+    colormaps: Dict[str, str] = None
+    
+    def __post_init__(self):
+        if self.families is None:
+            self.families = {
+                "ConvNeXt-V2": ["Atto", "Femto", "Pico", "Nano", "Tiny", "Small", "Base", "Large"],
+                "ConvNeXt-RMS": ["Atto", "Femto", "Pico", "Nano", "Tiny", "Small", "Base", "Large"],
+                "ConvNeXt": ["Atto", "Femto", "Pico", "Nano", "Tiny", "Small", "Base", "Large"],
+                "ResNet": ["18", "34", "50", "101", "152"],
+                "ViT": ["T16", "S16", "B16", "L16"],
+            }
+        
+        if self.colormaps is None:
+            self.colormaps = {
+                "ConvNeXt-V2": "plasma",
+                "ConvNeXt-RMS": "cividis",
+                "ConvNeXt": "viridis",
+                "ResNet": "autumn",
+                "ViT": "winter",
+            }
+
+
+# Pattern for parsing run names
+FILENAME_PATTERN = re.compile(
     r"""
     (?P<model>[^_]+)
     _lr-(?P<lr>[\d.e-]+)
@@ -27,465 +55,449 @@ pattern = re.compile(
     re.VERBOSE,
 )
 
-def parse_run_name(path: Path):
-    '''
-    Function for parsing run names from file paths.
-    
-    :param path: Path to metrics file
-    :type path: Path
-    '''
-    m = pattern.match(path.name)
-    if m is None:
-        raise ValueError(f"Could not parse: {path.name}")
-    d = m.groupdict()
-    d["lr"] = float(d["lr"])
-    d["wd"] = float(d["wd"])
-    d["bs"] = int(d["bs"])
-    d["epochs"] = int(d["epochs"])
-    d["warmup"] = int(d["warmup"])
-    return d
 
-def FetchMetrics(path: Path):
-    '''
-    Function for fetching metrics from zarr files in a given path.
+class MetricsLoader:
+    """Handles loading and parsing of metrics files."""
     
-    :param path: Base path to search for metrics
-    :type path: Path
-    '''
-    rows = []
-    base = Path(path)
-    for p in base.rglob("*metrics.zarr"):
-        meta = parse_run_name(p)
-        z = zarr.open(p, mode="r")
-        train_loss = z["train_loss"][:]
-        val_loss = z["val_loss"][:]
-        R2_train = z["R2_train"][:]
-        R2_val = z["R2_val"][:]
-        for step, (tl, vl, tr, vr) in enumerate(zip(train_loss, val_loss, R2_train, R2_val)):
-            rows.append({
-                **meta,
-                "step": step,
-                "train_loss": tl,
-                "val_loss": vl,
-                "R2_train": tr,
-                "R2_val": vr,
-            })
-    df = pd.DataFrame(rows)
-    return df
-
-# Model families for colormap assignment
-MODEL_FAMILIES = {
-    "ConvNeXt": ["Atto", "Femto", "Pico", "Nano", "Tiny", "Small", "Base", "Large"],
-    "ConvNeXt-V2": ["Atto", "Femto", "Pico", "Nano", "Tiny", "Small", "Base", "Large"],
-    "ConvNeXt-RMS": ["Atto", "Femto", "Pico", "Nano", "Tiny", "Small", "Base", "Large"],
-    "ResNet": ["18", "34", "50", "101", "152"],
-    "ViT": ["T16", "S16", "B16", "L16"],
-}
-
-# Assign distinct colormaps for each model family
-MODEL_CMAPS = {
-    "ConvNeXt": "viridis",
-    "ConvNeXt-V2": "plasma",
-    "ConvNeXt-RMS": "cividis",
-    "ResNet": "autumn",
-    "ViT": "winter",
-}
-
-def get_model_family(model_name):
-    '''
-    Determine model family from model name.
-    
-    :param model_name: Full model name
-    :return: Model family name or None
-    '''
-    for family in MODEL_FAMILIES.keys():
-        if model_name.startswith(family):
-            return family
-    return None
-
-def get_color_for_model(model_name, model_family=None):
-    '''
-    Get a unique color for a model based on its family.
-    
-    :param model_name: Full model name
-    :param model_family: Optional pre-computed family name
-    :return: RGB color tuple
-    '''
-    if model_family is None:
-        model_family = get_model_family(model_name)
-    
-    if model_family is None:
-        return (0.5, 0.5, 0.5)  # default gray
-    
-    # Get the variant list and colormap
-    variants = MODEL_FAMILIES.get(model_family, [])
-    cmap_name = MODEL_CMAPS.get(model_family, "viridis")
-    cmap = cm.get_cmap(cmap_name)
-    
-    # Find the variant in the model name
-    variant_idx = 0
-    for idx, variant in enumerate(variants):
-        if variant in model_name:
-            variant_idx = idx
-            break
-    
-    # Map variant index to color
-    if len(variants) > 1:
-        color_pos = variant_idx / (len(variants) - 1)
-    else:
-        color_pos = 0.5
-    
-    return cmap(color_pos)
-
-def plot_metric_on_axis(ax, data, metric, model_colors, title=None):
-    '''
-    Plot a single metric on a given axis.
-    
-    :param ax: Matplotlib axis
-    :param data: DataFrame with model data
-    :param metric: Metric name (e.g., 'R2')
-    :param model_colors: Dictionary mapping model names to colors
-    :param title: Optional title for the subplot
-    '''
-    unique_models = sorted(data['model'].unique())
-    
-    for model in unique_models:
-        model_data = data[data['model'] == model]
-        color = model_colors[model]
+    @staticmethod
+    def parse_run_name(path: Path) -> Dict:
+        """Parse run metadata from filename."""
+        match = FILENAME_PATTERN.match(path.name)
+        if not match:
+            raise ValueError(f"Could not parse: {path.name}")
         
-        # Plot train
-        # ax.plot(
-        #     model_data['step'],
-        #     model_data[f'{metric}_train'],
-        #     color=color,
-        #     linestyle='--',
-        #     alpha=0.6,
-        #     linewidth=1.5,
-        #     label=f'{model} (train)'
-        # )
-        
-        # Plot validation
-        ax.plot(
-            model_data['step'],
-            model_data[f'{metric}_val'],
-            color=color,
-            linestyle='-',
-            alpha=0.7,
-            linewidth=2,
-            label=f'{model} (val)'
-        )
+        metadata = match.groupdict()
+        metadata["lr"] = float(metadata["lr"])
+        metadata["wd"] = float(metadata["wd"])
+        metadata["bs"] = int(metadata["bs"])
+        metadata["epochs"] = int(metadata["epochs"])
+        metadata["warmup"] = int(metadata["warmup"])
+        return metadata
     
-    ax.set_xlabel("Training Steps", fontsize=11)
-    ax.set_ylabel(metric, fontsize=11)
-    ax.set_xscale('log')
-    if title:
-        ax.set_title(title, fontsize=12, fontweight='bold')
-    ax.grid(True, alpha=0.3)
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', 
-             frameon=True, fontsize=8)
+    @staticmethod
+    def load_zarr_metrics(path: Path) -> Dict[str, np.ndarray]:
+        """Load metrics from a zarr file."""
+        z = zarr.open(path, mode="r")
+        return {
+            "train_loss": z["train_loss"][:],
+            "val_loss": z["val_loss"][:],
+            "R2_train": z["R2_train"][:],
+            "R2_val": z["R2_val"][:],
+        }
+    
+    def fetch_metrics(self, base_path: Path) -> pd.DataFrame:
+        """Fetch all metrics from zarr files in path."""
+        rows = []
+        
+        for metrics_file in Path(base_path).rglob("*metrics.zarr"):
+            try:
+                metadata = self.parse_run_name(metrics_file)
+                metrics = self.load_zarr_metrics(metrics_file)
+                
+                # Combine metrics into rows
+                n_steps = len(metrics["train_loss"])
+                for step in range(n_steps):
+                    row = {
+                        **metadata,
+                        "step": step,
+                        "train_loss": metrics["train_loss"][step],
+                        "val_loss": metrics["val_loss"][step],
+                        "R2_train": metrics["R2_train"][step],
+                        "R2_val": metrics["R2_val"][step],
+                    }
+                    rows.append(row)
+            except Exception as e:
+                print(f"Warning: Failed to process {metrics_file}: {e}")
+        
+        return pd.DataFrame(rows)
 
-def plot_training(runs, metrics_to_plot=None, ylim=None, 
-                 subplot_by='none', models_to_include=None):
-    '''
-    Function for plotting metrics over epochs with flexible subplot organization.
+
+class ColorManager:
+    """Manages color assignment for models."""
     
-    :param runs: Dictionary of run names to paths
-    :param metrics_to_plot: List of metric names to plot (e.g., ['R2', 'loss'])
-    :param ylim: Optional y-axis limits as tuple (min, max) or dict {metric: (min, max)}
-    :param subplot_by: How to organize subplots - 'none', 'family', 'model', or list of model groups
-    :param models_to_include: Optional list of model names to include (filters others out)
-    '''
-    if metrics_to_plot is None:
-        metrics_to_plot = ['R2']
+    def __init__(self, config: ModelConfig):
+        self.config = config
     
-    # Fetch all data
-    all_dfs = []
-    for run_name, run_path in runs.items():
-        print(f"Processing run: {run_name}")
-        df = FetchMetrics(Path(run_path))
-        df = df.assign(run=run_name)
-        all_dfs.append(df)
+    def get_model_family(self, model_name: str) -> Optional[str]:
+        """Determine model family from model name."""
+        # Check longer names first to avoid ConvNeXt matching ConvNeXt-V2
+        sorted_families = sorted(self.config.families.keys(), key=len, reverse=True)
+        for family in sorted_families:
+            if model_name.startswith(family):
+                return family
+        return None
     
-    if not all_dfs:
-        print("No runs found.")
-        return
-    
-    combined = pd.concat(all_dfs, ignore_index=True)
-    
-    # Filter models if specified
-    if models_to_include:
-        combined = combined[combined['model'].isin(models_to_include)]
-    
-    # Get unique models and assign colors
-    unique_models = combined['model'].unique()
-    model_colors = {}
-    for model in unique_models:
-        model_family = get_model_family(model)
-        model_colors[model] = get_color_for_model(model, model_family)
-    
-    # Organize subplots based on subplot_by parameter
-    if subplot_by == 'none':
-        # Single plot with all models
-        n_metrics = len(metrics_to_plot)
-        fig, axes = plt.subplots(n_metrics, 1, figsize=(14, 6 * n_metrics))
-        if n_metrics == 1:
-            axes = [axes]
+    def get_color(self, model_name: str) -> Tuple[float, float, float]:
+        """Get color for a model based on its family and variant."""
+        family = self.get_model_family(model_name)
+        if family is None:
+            return (0.5, 0.5, 0.5)
         
-        for idx, metric in enumerate(metrics_to_plot):
-            ax = axes[idx]
-            plot_metric_on_axis(ax, combined, metric, model_colors, 
-                              f"{metric} over Training Steps")
+        variants = self.config.families[family]
+        cmap_name = self.config.colormaps.get(family, "viridis")
+        cmap = cm.get_cmap(cmap_name)
+        
+        # Find variant index
+        variant_idx = 0
+        for idx, variant in enumerate(variants):
+            if variant in model_name:
+                variant_idx = idx
+                break
+        
+        # Map to color
+        color_pos = variant_idx / (len(variants) - 1) if len(variants) > 1 else 0.5
+        return cmap(color_pos)
+    
+    def get_colors_for_models(self, models: List[str]) -> Dict[str, Tuple]:
+        """Get color mapping for multiple models."""
+        return {model: self.get_color(model) for model in models}
+
+
+class MetricsPlotter:
+    """Handles plotting of metrics."""
+    
+    def __init__(self, color_manager: ColorManager):
+        self.color_manager = color_manager
+    
+    def plot_single_metric(
+        self,
+        ax: plt.Axes,
+        data: pd.DataFrame,
+        metric: str,
+        model_colors: Dict[str, Tuple],
+        title: Optional[str] = None
+    ):
+        """Plot a single metric on an axis."""
+        # Track if we've added the legend entries for train/val
+        legend_added = False
+        
+        for model in sorted(data['model'].unique()):
+            model_data = data[data['model'] == model]
+            color = model_colors[model]
             
-            # Apply ylim
-            if ylim:
-                if isinstance(ylim, dict):
-                    if metric in ylim:
-                        ax.set_ylim(ylim[metric])
-                else:
-                    ax.set_ylim(ylim)
+            # Validation curve (no label, we'll add it separately)
+            ax.plot(
+                model_data['step'],
+                1-model_data[f'{metric}_val'],
+                color=color,
+                linestyle='-',
+                alpha=0.9,
+                linewidth=1,
+            )
+            # Training curve
+            ax.plot(
+                model_data['step'],
+                1-model_data[f'{metric}_train'],
+                color=color,
+                linestyle='--',
+                alpha=0.6,
+                linewidth=0.9,
+                label=f'{model}'
+            )
+            
+        
+        # Add custom legend entries for line styles
+        from matplotlib.lines import Line2D
+        model_handles, model_labels = ax.get_legend_handles_labels()
+        
+        # Add line style indicators
+        style_handles = [
+            Line2D([0], [0], color='gray', linestyle='-', linewidth=1, label='Val'),
+            Line2D([0], [0], color='gray', linestyle='--', linewidth=0.9, label='Train'),
+        ]
+        
+        # Combine: models first, then line styles
+        all_handles = model_handles + style_handles
+        all_labels = model_labels + ['Train', 'Val']
+        
+        ax.set_xlabel("Epochs", fontsize=11)
+        ax.set_ylabel(r"$1-R^2$", fontsize=11)
+        ax.set_yscale('log')
+        # ax.set_xscale('log')
+        ax.grid(True, alpha=0.3)
+        ax.legend(all_handles, all_labels, bbox_to_anchor=(1.05, 1), 
+                 loc='upper left', frameon=True, fontsize=8)
+        
+        if title:
+            ax.set_title(title, fontsize=12, fontweight='bold')
     
-    elif subplot_by == 'family':
-        # Separate subplot for each model family
+    def apply_ylim(self, ax: plt.Axes, ylim: Union[Tuple, Dict], metric: str):
+        """Apply y-axis limits to an axis."""
+        if ylim is None:
+            return
+        
+        if isinstance(ylim, dict):
+            if metric in ylim:
+                ax.set_ylim(ylim[metric])
+        else:
+            ax.set_ylim(ylim)
+
+
+class SubplotOrganizer:
+    """Organizes subplots based on different grouping strategies."""
+    
+    @staticmethod
+    def organize_by_none(data: pd.DataFrame) -> List[Tuple[str, pd.DataFrame]]:
+        """All models in one group."""
+        return [("All Models", data)]
+    
+    @staticmethod
+    def organize_by_family(data: pd.DataFrame, color_manager: ColorManager) -> List[Tuple[str, pd.DataFrame]]:
+        """Group by model family."""
+        groups = []
         model_families = {}
-        for model in unique_models:
-            family = get_model_family(model)
+        
+        for model in data['model'].unique():
+            family = color_manager.get_model_family(model)
             if family not in model_families:
                 model_families[family] = []
             model_families[family].append(model)
         
-        n_families = len(model_families)
-        n_metrics = len(metrics_to_plot)
+        for family, models in sorted(model_families.items()):
+            family_data = data[data['model'].isin(models)]
+            groups.append((family, family_data))
         
-        fig, axes = plt.subplots(n_families, n_metrics, 
-                                figsize=(6 * n_metrics, 4 * n_families),
-                                squeeze=False)
-        
-        for f_idx, (family, models) in enumerate(sorted(model_families.items())):
-            family_data = combined[combined['model'].isin(models)]
-            
-            for m_idx, metric in enumerate(metrics_to_plot):
-                ax = axes[f_idx, m_idx]
-                plot_metric_on_axis(ax, family_data, metric, model_colors,
-                                  f"{family} - {metric}")
-                
-                # Apply ylim
-                if ylim:
-                    if isinstance(ylim, dict):
-                        if metric in ylim:
-                            ax.set_ylim(ylim[metric])
-                    else:
-                        ax.set_ylim(ylim)
+        return groups
     
-    elif subplot_by == 'model':
-        # Separate subplot for each model
-        n_models = len(unique_models)
-        n_metrics = len(metrics_to_plot)
-        
-        # Determine grid layout
-        ncols = min(3, n_models)  # Max 3 columns
-        nrows = (n_models + ncols - 1) // ncols
-        
-        fig, axes = plt.subplots(nrows, ncols, 
-                                figsize=(7 * ncols, 5 * nrows),
-                                squeeze=False)
-        
-        for idx, model in enumerate(sorted(unique_models)):
-            row = idx // ncols
-            col = idx % ncols
-            ax = axes[row, col]
-            
-            model_data = combined[combined['model'] == model]
-            
-            # Plot all metrics on same axis for this model
-            for metric in metrics_to_plot:
-                color = model_colors[model]
-                
-                # Plot train
-                # ax.plot(
-                #     model_data['step'],
-                #     model_data[f'{metric}_train'],
-                #     color=color,
-                #     linestyle='--',
-                #     alpha=0.6,
-                #     linewidth=1.5,
-                #     label=f'{metric} (train)'
-                # )
-                
-                # Plot validation
-                ax.plot(
-                    model_data['step'],
-                    model_data[f'{metric}_val'],
-                    color=color,
-                    linestyle='-',
-                    alpha=0.7,
-                    linewidth=2,
-                    label=f'{metric} (val)'
-                )
-            
-            ax.set_title(model, fontsize=12, fontweight='bold')
-            ax.set_xlabel("Training Steps", fontsize=10)
-            ax.set_ylabel("Metric Value", fontsize=10)
-            ax.grid(True, alpha=0.3)
-            ax.legend(fontsize=8)
-            
-            # Apply ylim
-            if ylim and not isinstance(ylim, dict):
-                ax.set_ylim(ylim)
-        
-        # Hide empty subplots
-        for idx in range(n_models, nrows * ncols):
-            row = idx // ncols
-            col = idx % ncols
-            axes[row, col].axis('off')
+    @staticmethod
+    def organize_by_model(data: pd.DataFrame) -> List[Tuple[str, pd.DataFrame]]:
+        """Each model gets its own group."""
+        groups = []
+        for model in sorted(data['model'].unique()):
+            model_data = data[data['model'] == model]
+            groups.append((model, model_data))
+        return groups
     
-    elif isinstance(subplot_by, list):
-        # Custom grouping - subplot_by is list of lists of model names
-        n_groups = len(subplot_by)
-        n_metrics = len(metrics_to_plot)
-        
-        fig, axes = plt.subplots(n_groups, n_metrics, 
-                                figsize=(6 * n_metrics, 4 * n_groups),
-                                squeeze=False)
-        
-        for g_idx, group in enumerate(subplot_by):
-            group_data = combined[combined['model'].isin(group)]
+    @staticmethod
+    def organize_by_custom(data: pd.DataFrame, model_groups: List[List[str]]) -> List[Tuple[str, pd.DataFrame]]:
+        """Custom grouping based on provided model lists."""
+        groups = []
+        for group in model_groups:
+            group_data = data[data['model'].isin(group)]
             group_name = " vs ".join(group)
-            
-            for m_idx, metric in enumerate(metrics_to_plot):
-                ax = axes[g_idx, m_idx]
-                plot_metric_on_axis(ax, group_data, metric, model_colors,
-                                  f"{group_name} - {metric}")
-                
-                # Apply ylim
-                if ylim:
-                    if isinstance(ylim, dict):
-                        if metric in ylim:
-                            ax.set_ylim(ylim[metric])
-                    else:
-                        ax.set_ylim(ylim)
+            groups.append((group_name, group_data))
+        return groups
+
+
+class TrainingPlotter:
+    """Main class for plotting training metrics."""
     
-    plt.tight_layout()
-    # plt.show()
-    plt.savefig("training_metrics.png", dpi=300)
-
-
-def plot_convnext_size_summary(runs, output_path="training_metrics_convnext_sizes.png", metric='R2_val'):
-    """
-    Plot final validation metric (e.g., `R2_val`) across ConvNeXt model sizes,
-    with different ConvNeXt versions in different colours.
-
-    Args:
-        runs: dict of run_name -> path (same as used by `plot_training`).
-        output_path: path to save the generated figure.
-        metric: metric column to summarize (default 'R2_val').
-    """
-    all_dfs = []
-    for run_name, run_path in runs.items():
-        try:
-            df = FetchMetrics(Path(run_path))
-            df = df.assign(run=run_name)
+    def __init__(self, config: Optional[ModelConfig] = None):
+        self.config = config or ModelConfig()
+        self.loader = MetricsLoader()
+        self.color_manager = ColorManager(self.config)
+        self.plotter = MetricsPlotter(self.color_manager)
+        self.organizer = SubplotOrganizer()
+    
+    def load_runs(self, runs: Dict[str, str], models_to_include: Optional[List[str]] = None) -> pd.DataFrame:
+        """Load and combine metrics from multiple runs."""
+        all_dfs = []
+        
+        for run_name, run_path in runs.items():
+            print(f"Processing run: {run_name}")
+            df = self.loader.fetch_metrics(Path(run_path))
+            df['run'] = run_name
             all_dfs.append(df)
-        except Exception as e:
-            print(f"Warning: could not fetch metrics for {run_name}: {e}")
+        
+        if not all_dfs:
+            raise ValueError("No runs found.")
+        
+        combined = pd.concat(all_dfs, ignore_index=True)
+        
+        if models_to_include:
+            combined = combined[combined['model'].isin(models_to_include)]
+        
+        return combined
+    
+    def plot(
+        self,
+        runs: Dict[str, str],
+        metrics: Union[str, List[str]] = 'R2',
+        ylim: Optional[Union[Tuple, Dict]] = None,
+        subplot_by: Union[str, List[List[str]]] = 'none',
+        models_to_include: Optional[List[str]] = None,
+        figsize: Optional[Tuple[int, int]] = None,
+        output_path: str = "training_metrics.png",
+        dpi: int = 300
+    ):
+        """
+        Plot training metrics with flexible organization.
+        
+        Args:
+            runs: Dictionary mapping run names to paths
+            metrics: Metric(s) to plot (e.g., 'R2' or ['R2', 'loss'])
+            ylim: Y-axis limits as tuple (min, max) or dict {metric: (min, max)}
+            subplot_by: How to organize: 'none', 'family', 'model', or list of model groups
+            models_to_include: Optional list of models to filter
+            figsize: Optional figure size override
+            output_path: Where to save the figure
+            dpi: Resolution for saved figure
+        """
+        # Normalize metrics to list
+        if isinstance(metrics, str):
+            metrics = [metrics]
+        
+        # Load data
+        data = self.load_runs(runs, models_to_include)
+        model_colors = self.color_manager.get_colors_for_models(data['model'].unique())
+        
+        # Organize subplots
+        groups = self._organize_data(data, subplot_by)
+        
+        # Create figure
+        fig, axes = self._create_figure(len(groups), len(metrics), figsize)
+        
+        # Plot each group
+        for group_idx, (group_name, group_data) in enumerate(groups):
+            for metric_idx, metric in enumerate(metrics):
+                ax = self._get_axis(axes, group_idx, metric_idx, len(groups), len(metrics))
+                
+                title = f"{group_name} - {metric}" if len(groups) > 1 else f"{metric} over Training Steps"
+                self.plotter.plot_single_metric(ax, group_data, metric, model_colors, title)
+                self.plotter.apply_ylim(ax, ylim, metric)
+        
+        # Save figure
+        plt.tight_layout()
+        plt.savefig(output_path, dpi=dpi, bbox_inches='tight')
+        print(f"Saved figure to {output_path}")
+        plt.close()
+    
+    def _organize_data(self, data: pd.DataFrame, subplot_by: Union[str, List]) -> List[Tuple[str, pd.DataFrame]]:
+        """Organize data into groups based on subplot_by parameter."""
+        if subplot_by == 'none':
+            return self.organizer.organize_by_none(data)
+        elif subplot_by == 'family':
+            return self.organizer.organize_by_family(data, self.color_manager)
+        elif subplot_by == 'model':
+            return self.organizer.organize_by_model(data)
+        elif isinstance(subplot_by, list):
+            return self.organizer.organize_by_custom(data, subplot_by)
+        else:
+            raise ValueError(f"Invalid subplot_by: {subplot_by}")
+    
+    def _create_figure(self, n_groups: int, n_metrics: int, figsize: Optional[Tuple]) -> Tuple:
+        """Create figure with appropriate layout."""
+        if figsize is None:
+            figsize = (6 * n_metrics, 4 * n_groups)
+        
+        fig, axes = plt.subplots(n_groups, n_metrics, figsize=figsize, squeeze=False)
+        return fig, axes
+    
+    def _get_axis(self, axes, group_idx: int, metric_idx: int, n_groups: int, n_metrics: int) -> plt.Axes:
+        """Get the appropriate axis from the axes array."""
+        if n_groups == 1 and n_metrics == 1:
+            return axes[0, 0]
+        elif n_groups == 1:
+            return axes[0, metric_idx]
+        elif n_metrics == 1:
+            return axes[group_idx, 0]
+        else:
+            return axes[group_idx, metric_idx]
+    
+    def plot_convnext_summary(
+        self,
+        runs: Dict[str, str],
+        metric: str = 'R2_val',
+        output_path: str = "convnext_summary.png",
+        dpi: int = 300
+    ):
+        """Plot summary comparing ConvNeXt versions across model sizes."""
+        data = self.load_runs(runs)
+        
+        families = [f for f in self.config.families.keys() if 'ConvNeXt' in f]
+        sizes = self.config.families.get('ConvNeXt', [])
+        x = np.arange(len(sizes))
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        for family in families:
+            means, stds = [], []
+            
+            for size in sizes:
+                model_name = f"{family}-{size}"
+                model_data = data[data['model'] == model_name]
+                
+                if model_data.empty:
+                    means.append(np.nan)
+                    stds.append(np.nan)
+                    continue
+                
+                # Get max value for each run
+                max_vals = model_data.groupby('run')[metric].max().values
+                means.append(np.nanmean(max_vals))
+                stds.append(np.nanstd(max_vals))
+            
+            # Plot with family color
+            cmap_name = self.config.colormaps.get(family, 'viridis')
+            color = cm.get_cmap(cmap_name)(0.6)
+            
+            ax.plot(x, means, marker='o', label=family, color=color, linewidth=2)
+            ax.fill_between(
+                x,
+                np.array(means) - np.array(stds),
+                np.array(means) + np.array(stds),
+                color=color,
+                alpha=0.2
+            )
+        
+        ax.set_xticks(x)
+        ax.set_xticklabels(sizes)
+        ax.set_xlabel('Model Size', fontsize=12)
+        ax.set_ylabel(metric, fontsize=12)
+        ax.set_title(f'ConvNeXt max validation {metric} by size and version', fontsize=14, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        ax.legend()
+        
+        plt.tight_layout()
+        plt.savefig(output_path, dpi=dpi, bbox_inches='tight')
+        print(f"Saved summary to {output_path}")
+        plt.close()
 
-    if not all_dfs:
-        print("No metrics found for convnext summary plot.")
-        return
 
-    combined = pd.concat(all_dfs, ignore_index=True)
+# Convenience function
+def plot_training_metrics(
+    runs: Dict[str, str],
+    metrics: Union[str, List[str]] = 'R2',
+    ylim: Optional[Union[Tuple, Dict]] = None,
+    subplot_by: Union[str, List[List[str]]] = 'none',
+    models_to_include: Optional[List[str]] = None,
+    output_path: str = "training_metrics.png"
+):
+    """Convenience function for plotting training metrics."""
+    plotter = TrainingPlotter()
+    plotter.plot(runs, metrics, ylim, subplot_by, models_to_include, output_path=output_path)
 
-    families = [f for f in MODEL_FAMILIES.keys() if f.startswith('ConvNeXt')]
-    sizes = MODEL_FAMILIES.get('ConvNeXt', [])
-    x = np.arange(len(sizes))
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-
-    for family in families:
-        means = []
-        stds = []
-        for size in sizes:
-            model_name = f"{family}-{size}"
-            df_model = combined[combined['model'] == model_name]
-            if df_model.empty:
-                means.append(np.nan)
-                stds.append(np.nan)
-                continue
-
-            # For each distinct run/model combination, take the maximum value
-            # of the metric across training (best validation), instead of the final step.
-            last_vals = []
-            for (run, model), grp in df_model.groupby(['run', 'model']):
-                if metric in grp:
-                    max_val = grp[metric].max()
-                else:
-                    max_val = np.nan
-                last_vals.append(max_val)
-
-            means.append(np.nanmean(last_vals) if last_vals else np.nan)
-            stds.append(np.nanstd(last_vals) if last_vals else np.nan)
-
-        cmap_name = MODEL_CMAPS.get(family, 'viridis')
-        color = cm.get_cmap(cmap_name)(0.6)
-
-        ax.plot(x, means, marker='o', label=family, color=color)
-        ax.fill_between(x, np.array(means) - np.array(stds), np.array(means) + np.array(stds),
-                        color=color, alpha=0.2)
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(sizes)
-    ax.set_xlabel('Model Size', fontsize=12)
-    ax.set_ylabel(metric, fontsize=12)
-    ax.set_title('ConvNeXt max validation R2 by model size and version')
-    ax.grid(True, alpha=0.3)
-    ax.legend()
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300)
-    print(f"Saved {output_path}")
-
-# Usage examples
+# Usage example
 if __name__ == "__main__":
-    results = "results"
+    # Initialize plotter
+    plotter = TrainingPlotter()
+    
+    # Define runs
     runs = {
-        "all_models_permeability": os.path.join(results, "all_models_permeability")
+        # "all_models_permeability": "results/all_models_permeability",
+        "zero_pecle_all_models": "results/zero_pecle_all_models",
     }
     
-    # Example 1: All models in one plot
-    # plot_training(runs, metrics_to_plot=['R2'], ylim=(0.5, 1.1))
+    # Example 1: Simple plot with all models
+    # plotter.plot(runs, metrics='R2')
     
-    # Example 2: Separate by model family
-    # plot_training(runs, metrics_to_plot=['R2'], ylim=(0.5, 1.1), subplot_by='family')
+    # Example 2: Group by family
+    # plotter.plot(runs, metrics='R2',
+    #             #   ylim=(0.8, 1.001), 
+    #               subplot_by='family', output_path="by_family.pdf")
     
-    # Example 3: Each model gets its own subplot
-    # plot_training(runs, metrics_to_plot=['R2'],ylim=(0.5, 1.1), subplot_by='model')
+    # # Example 3: Custom grouping
+    plotter.plot(
+        runs,
+        metrics='R2',
+        # ylim=(0.995, 1.001),
+        subplot_by=[
+            ["ConvNeXt-Atto","ConvNeXt-V2-Atto","ConvNeXt-RMS-Atto"],
+            ["ConvNeXt-Femto","ConvNeXt-V2-Femto","ConvNeXt-RMS-Femto"],
+        ],
+        output_path="custom_comparison.png"
+    )
     
-    # Example 4: Custom grouping - compare specific models
-    # plot_training(runs, 
-    #              metrics_to_plot=['R2'], 
-    #              ylim=(0.5, 1.1),
-    #              subplot_by=[
-    #                 #  ['ConvNeXt-Tiny', 'ResNet-50', 'ViT-S16'],
-    #                 #  ['ConvNeXt-Base', 'ResNet-101', 'ViT-B16']
-    #                 ["ConvNeXt-Atto", "ConvNeXt-Femto", "ConvNeXt-Pico", "ConvNeXt-Nano", "ConvNeXt-Tiny", "ConvNeXt-Small", "ConvNeXt-Base", "ConvNeXt-Large"],
-    #                 ["ConvNeXt-V2-Atto", "ConvNeXt-V2-Femto", "ConvNeXt-V2-Pico", "ConvNeXt-V2-Nano", "ConvNeXt-V2-Tiny", "ConvNeXt-V2-Small", "ConvNeXt-V2-Base", "ConvNeXt-V2-Large"],
-    #                 ["ConvNeXt-RMS-Atto", "ConvNeXt-RMS-Femto", "ConvNeXt-RMS-Pico", "ConvNeXt-RMS-Nano", "ConvNeXt-RMS-Tiny", "ConvNeXt-RMS-Small", "ConvNeXt-RMS-Base", "ConvNeXt-RMS-Large"]
-    #              ])
-    plot_training(runs, 
-                 metrics_to_plot=['R2'], 
-                 ylim=(0.99, 1.0),
-                 subplot_by=[
-                    #  ['ConvNeXt-Tiny', 'ResNet-50', 'ViT-S16'],
-                    #  ['ConvNeXt-Base', 'ResNet-101', 'ViT-B16']
-                    ["ConvNeXt-Atto", "ConvNeXt-Femto", "ConvNeXt-Pico", "ConvNeXt-Nano", "ConvNeXt-Tiny", "ConvNeXt-Small", "ConvNeXt-Base", "ConvNeXt-Large"],
-                    ["ConvNeXt-V2-Atto", "ConvNeXt-V2-Femto", "ConvNeXt-V2-Pico", "ConvNeXt-V2-Nano", "ConvNeXt-V2-Tiny", "ConvNeXt-V2-Small", "ConvNeXt-V2-Base", "ConvNeXt-V2-Large"],
-                    ["ConvNeXt-RMS-Atto", "ConvNeXt-RMS-Femto", "ConvNeXt-RMS-Pico", "ConvNeXt-RMS-Nano", "ConvNeXt-RMS-Tiny", "ConvNeXt-RMS-Small", "ConvNeXt-RMS-Base", "ConvNeXt-RMS-Large"]
-                    # ['ViT-T16'],['ViT-S16'],['ViT-B16'],['ViT-L16']
-                 ])
-
-    # New summary: ConvNeXt sizes across versions
-    plot_convnext_size_summary(runs, output_path="training_metrics_convnext_sizes.png", metric='R2_val')
-    
-    # Example 5: Filter to only include specific models
-    # plot_training(runs, 
-    #              metrics_to_plot=['R2'], 
-    #              ylim=(0.5, 1.1),
-    #              models_to_include=['ViT-T16','ViT-S16''ViT-B16','ViT-L16'])
+    # Example 4: ConvNeXt summary
+    # plotter.plot_convnext_summary(runs, metric='R2_val', output_path="convnext_pecle_best_r2.pdf")

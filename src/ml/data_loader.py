@@ -214,7 +214,56 @@ class DispersionDataset_single_view(Dataset):
         Pe = torch.tensor([self.pe_hash[slice_idx]], dtype=torch.float32)  # Peclet number as float tensor
         return image, Dx_single, Pe
 
-
+class DispersionDatasetCached(Dataset):
+    """
+    Ultra-optimized version: cache images in RAM since they're reused 5x.
+    Use this if you have enough RAM (total_images * image_size * 4 bytes).
+    """
+    def __init__(self, file_path, transform=None, num_samples=None, cache_images=True):
+        self.root = zarr.open(file_path, mode='r')
+        self.transform = transform
+        
+        self.pe_values = torch.tensor([0.1, 10, 50, 100, 500], dtype=torch.float32)
+        self.samples_per_image = 5
+        
+        # Determine length
+        base_len = self.root['filled_images']['filled_images'].shape[0]
+        if num_samples is not None:
+            base_len = min(num_samples, base_len)
+        
+        self.base_len = base_len
+        self.total_len = base_len * self.samples_per_image
+        
+        # Cache images in RAM
+        if cache_images:
+            print(f"Caching {base_len} images in RAM...")
+            self.images = self.root['filled_images']['filled_images'][:base_len]
+            self.targets_ds_x = self.root['dispersion_results']['Dx'][:base_len]
+            print(f"Cached {(self.images.nbytes + self.targets_ds_x.nbytes) / 1e9:.2f} GB of data")
+        else:
+            self.images = self.root['filled_images']['filled_images']
+            self.targets_ds_x = self.root['dispersion_results']['Dx']
+    
+    def __len__(self):
+        return self.total_len
+    
+    def __getitem__(self, idx):
+        base_idx = idx // self.samples_per_image
+        pe_idx = idx % self.samples_per_image
+        
+        # Fast numpy array access (from RAM if cached, else from disk)
+        image = self.images[base_idx]
+        Dx = self.targets_ds_x[base_idx, pe_idx]
+        
+        # Convert to tensors
+        image = torch.from_numpy(image).float().unsqueeze(0)
+        Dx_single = torch.from_numpy(Dx).float().flatten()
+        Pe = self.pe_values[pe_idx:pe_idx+1]
+        
+        if self.transform:
+            image = self.transform(image)
+        
+        return image, Dx_single, Pe
 
 def get_permeability_dataloader(file_path,config):
     '''
@@ -293,12 +342,15 @@ def get_dispersion_dataloader(file_path,config):
 
     if config.get('pe_encoder',None):
         print(f"Pe encoder: {config['pe_encoder']}")
-        base_train_dataset = DispersionDataset_2(train_path,num_samples=config.get('num_training_samples',None))
-        base_val_dataset = DispersionDataset_2(val_path,num_samples=config.get('num_validation_samples',None))
-        base_test_dataset = DispersionDataset_2(test_path)
-        train_dataset = DispersionDataset_single_view(base_train_dataset)
-        val_dataset = DispersionDataset_single_view(base_val_dataset)
-        test_dataset = DispersionDataset_single_view(base_test_dataset)
+        # base_train_dataset = DispersionDataset_2(train_path,num_samples=config.get('num_training_samples',None))
+        # base_val_dataset = DispersionDataset_2(val_path,num_samples=config.get('num_validation_samples',None))
+        # base_test_dataset = DispersionDataset_2(test_path)
+        # train_dataset = DispersionDataset_single_view(base_train_dataset)
+        # val_dataset = DispersionDataset_single_view(base_val_dataset)
+        # test_dataset = DispersionDataset_single_view(base_test_dataset)
+        train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=True)
+        val_dataset = DispersionDatasetCached(val_path,num_samples=config.get('num_validation_samples',None),cache_images=False)
+        test_dataset = DispersionDatasetCached(test_path,cache_images=False)
     else:
         train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None))#, transform=DispersionTransform())
         val_dataset = DispersionDataset(val_path,num_samples=config.get('num_validation_samples',None))
