@@ -7,7 +7,7 @@ permeability and dispersion from porous media images. It also implements the aug
 import os
 import zarr
 import numpy as np
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, get_worker_info
 import torch
 import torchvision.transforms.functional as tf
 import random
@@ -289,20 +289,30 @@ class DispersionDatasetCached(Dataset):
         self.base_len = base_len
         self.total_len = base_len * self.samples_per_image
         
-        # Cache images in RAM
+        # Avoid caching inside DataLoader worker processes to prevent duplicated memory/IO
+        worker_info = get_worker_info()
+        if cache_images and worker_info is not None:
+            # We're in a worker process — don't perform the expensive global cache here.
+            cache_images = False
+            print("Worker process detected: disabling image caching to avoid duplicates.")
+
+        # Cache images in RAM (only when running in main process / requested)
         if cache_images:
             print(f"Caching {base_len} images in RAM...")
             np_images = self.root['filled_images']['filled_images'][:base_len]
             np_targets = self.root['dispersion_results']['Dx'][:base_len]
-            
+
             self.images = torch.from_numpy(np_images).float()          # Shape e.g. (N, H, W) or (N, C, H, W)
             self.targets_ds_x = torch.from_numpy(np_targets).float()   # Shape (N, 5, ...)
-            
-            # If images lack channel dim, add it once here
-            # if self.images.ndim == 3:  # (N, H, W)
-            self.images = self.images.unsqueeze(1)  # -> (N, 1, H, W)
-    
-            print(f"Cached {(self.images.nbytes + self.targets_ds_x.nbytes) / 1e9:.2f} GB of data")
+
+            # Ensure channel dim exists
+            if self.images.ndim == 3:  # (N, H, W)
+                self.images = self.images.unsqueeze(1)  # -> (N, 1, H, W)
+
+            # Compute bytes safely for torch tensors
+            bytes_images = self.images.element_size() * self.images.nelement()
+            bytes_targets = self.targets_ds_x.element_size() * self.targets_ds_x.nelement()
+            print(f"Cached {(bytes_images + bytes_targets) / 1e9:.2f} GB of data")
         else:
             self.images = self.root['filled_images']['filled_images']
             self.targets_ds_x = self.root['dispersion_results']['Dx']
@@ -325,14 +335,26 @@ class DispersionDatasetCached(Dataset):
         
         # if self.transform:
         #     image = self.transform(image)
-        image = self.images[base_idx]          # View, zero-copy
+        image = self.images[base_idx]
         Dx = self.targets_ds_x[base_idx, pe_idx]
-        Dx_single = Dx.flatten()
+
+        # If not cached, image/Dx might be numpy arrays from zarr — convert to torch + channel dim
+        if isinstance(image, np.ndarray):
+            image = torch.from_numpy(image).float().unsqueeze(0)
+        # If cached, image is already a torch tensor; ensure channel dim exists
+        elif isinstance(image, torch.Tensor) and image.ndim == 3:
+            image = image.unsqueeze(0)
+
+        if isinstance(Dx, np.ndarray):
+            Dx_single = torch.from_numpy(Dx).float().flatten()
+        else:
+            Dx_single = Dx.flatten()
+
         Pe = self.pe_values[pe_idx:pe_idx+1]
 
         if self.transform:
             image = self.transform(image)      # Transform expects torch tensor
-        
+
         return image, Dx_single, Pe
 
 def get_dispersion_dataloader(file_path,config):
