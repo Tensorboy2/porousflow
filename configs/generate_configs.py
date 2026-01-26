@@ -32,8 +32,6 @@ Run plans:
 MODEL_PRESETS = {
     "quick_test": [
         "ConvNeXt-Atto",
-        "ConvNeXt-Tiny",
-        "ConvNeXt-Base",
     ],
     "small_sweep": [
         "ViT-T16",
@@ -224,12 +222,12 @@ TASK_CONFIGS = {
         "pin_memory": True,
     },
     "dispersion": {
-        "learning_rate": 8e-4,
-        "weight_decay": 0.1,
-        "batch_size": 512,
-        "num_epochs": 200,
+        "learning_rate": 5e-3,
+        "weight_decay": 0.2,
+        "batch_size": 128,
+        "num_epochs": 500,
         "decay": "cosine",
-        "warmup_steps": 1000,
+        "warmup_steps": 10_000,
         "num_training_samples": None,
         "num_validation_samples": None,
         "pe_encoder": None,
