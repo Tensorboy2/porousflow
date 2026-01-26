@@ -230,7 +230,7 @@ TASK_CONFIGS = {
         "warmup_steps": 1_000,
         "num_training_samples": None,
         "num_validation_samples": None,
-        "pe_encoder": None,
+        "pe_encoder": 'log',
         "num_workers": 2,
         "prefetch_factor": 4,
         "pin_memory": True,
