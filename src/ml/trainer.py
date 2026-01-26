@@ -65,7 +65,7 @@ class Trainer:
         use_amp = config.get('use_amp', False)
         self.scaler = GradScaler(enabled=use_amp,device='cuda' if torch.cuda.is_available() else 'cpu')  
 
-    
+
         # Deal with output directories:
         save_path = config.get('save_model_path', 'results')
         os.makedirs(save_path, exist_ok=True)
@@ -169,10 +169,10 @@ class Trainer:
         grad_steps = 0
 
         use_amp = self.scaler.is_enabled()
-        i = 0
+        # i = 0
         for inputs, D, Pe in self.train_loader:
-            i+=1
-            print(f'{i}/{len(self.train_loader)}')
+            # i+=1
+            # print(f'{i}/{len(self.train_loader)}')
             B = inputs.shape[0]
 
             if self.config.get('pin_memory', False):
@@ -230,7 +230,7 @@ class Trainer:
                 sum_targets += torch.sum(targets_cpu).item()
                 sum_targets_squared += torch.sum(targets_cpu ** 2).item()
                 count += targets_cpu.numel()
-
+    
             self.scheduler.step()
 
         epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0

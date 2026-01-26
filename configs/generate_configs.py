@@ -92,7 +92,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [1e-4, 5e-4, 1e-3, 5e-3],
     },
     "batch_size": {
-        "single": [128],
+        "single": [512],
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
@@ -228,8 +228,8 @@ TASK_CONFIGS = {
         "num_epochs": 500,
         "decay": "cosine",
         "warmup_steps": 1_000,
-        "num_training_samples": 512,
-        "num_validation_samples": 512,
+        "num_training_samples": None,
+        "num_validation_samples": None,
         "pe_encoder": None,
         "num_workers": 2,
         "prefetch_factor": 4,
