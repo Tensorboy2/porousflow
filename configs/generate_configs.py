@@ -322,8 +322,8 @@ class SlurmConfig:
         """Generate SLURM header."""
         lines = [
             "#!/bin/bash",
-            f"#SBATCH --output={self.slurm_out_dir}/%x_%j.out",
-            f"#SBATCH --error={self.slurm_out_dir}/%x_%j.err",
+            f"#SBATCH --output={self.slurm_out_dir}/{job_name}/%x_%j.out",
+            # f"#SBATCH --error={self.slurm_out_dir}/%x_%j.err",
             f"#SBATCH --job-name={job_name}",
             f"#SBATCH --partition={self.partition}",
             f"#SBATCH --ntasks={self.ntasks}",
