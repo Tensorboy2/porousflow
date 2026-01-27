@@ -321,10 +321,10 @@ class SlurmConfig:
     
     def to_header(self, job_name: str) -> str:
         """Generate SLURM header."""
-        os.makedirs(os.path.join(self.slurm_out_dir, job_name), exist_ok=True)
+        # os.makedirs(os.path.join(self.slurm_out_dir, job_name), exist_ok=True)
         lines = [
             "#!/bin/bash",
-            f"#SBATCH --output={self.slurm_out_dir}/{job_name}/%x_%j.out",
+            f"#SBATCH --output={self.slurm_out_dir}/%x_%j.out",
             # f"#SBATCH --error={self.slurm_out_dir}/%x_%j.err",
             f"#SBATCH --job-name={job_name}",
             f"#SBATCH --partition={self.partition}",
