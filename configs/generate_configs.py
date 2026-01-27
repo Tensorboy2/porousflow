@@ -306,7 +306,7 @@ MAIN_SCRIPT = "run_model_training.py"
 # ============================================================================
 # Core classes (unchanged from original)
 # ============================================================================
-
+import os
 @dataclass
 class SlurmConfig:
     """SLURM job configuration."""
@@ -318,8 +318,10 @@ class SlurmConfig:
     mem: str = None
     slurm_out_dir: str = "slurm_outputs"
     
+    
     def to_header(self, job_name: str) -> str:
         """Generate SLURM header."""
+        os.makedirs(os.path.join(self.slurm_out_dir, job_name), exist_ok=True)
         lines = [
             "#!/bin/bash",
             f"#SBATCH --output={self.slurm_out_dir}/{job_name}/%x_%j.out",
