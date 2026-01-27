@@ -314,10 +314,20 @@ def load_resnet_model(config_or_size='18', in_channels=1, pretrained_path: str =
 
     return model
 
+def count_parameters(model):
+    """Count the number of trainable parameters in a model."""
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
 
 if __name__ == "__main__":
     # Example usage
     print("Testing ResNet models...")
+    sizes=[]
+    for size in ['18', '34', '50', '101', '152']:
+        model = load_resnet_model(size, in_channels=1, num_classes=4)
+        params = count_parameters(model)
+        sizes.append(params)
+    print(f"{sizes}")
     
     # Test ResNet-18 (BasicBlock)
     x = torch.randn(2, 1, 128, 128)
@@ -344,9 +354,9 @@ if __name__ == "__main__":
     print(f"ResNet-18: {count_parameters(model18):,}")
     print(f"ResNet-50: {count_parameters(model50):,}")
 
-    # Test Pe encoder 
-    for encoder in [None, 'straight', 'log', 'vector']:
-        model = load_resnet_model(size='18', in_channels=1, task='dispersion', Pe_encoder=encoder)
-        Pe = torch.tensor([[10.0],[100.0]])
-        out = model(x, Pe=Pe)
-        print(f"\nCResNet-18 with Peclet encoder '{encoder}': output shape {out.shape}")
+    # # Test Pe encoder 
+    # for encoder in [None, 'straight', 'log', 'vector']:
+    #     model = load_resnet_model(size='18', in_channels=1, task='dispersion', Pe_encoder=encoder)
+    #     Pe = torch.tensor([[10.0],[100.0]])
+    #     out = model(x, Pe=Pe)
+    #     print(f"\nCResNet-18 with Peclet encoder '{encoder}': output shape {out.shape}")

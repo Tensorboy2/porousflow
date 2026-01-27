@@ -407,7 +407,13 @@ def count_parameters(model):
 if __name__ == "__main__":    
     # Example usage
     print("Testing ViT models...")
-    
+    sizes=[]
+    for size in ['T16','S16','B16','L16']:
+        model = load_vit_model(size, in_channels=1, num_classes=4)
+        params = count_parameters(model)
+        sizes.append(params)
+    print(f"{sizes}")
+
     # Test ViT-Tiny
     x = torch.randn(2, 1, 128, 128)
     model_tiny = load_vit_model(config_or_size='T16', in_channels=1, task='permeability')

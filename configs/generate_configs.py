@@ -32,6 +32,7 @@ Run plans:
 MODEL_PRESETS = {
     "quick_test": [
         "ConvNeXt-Atto",
+        "ResNet-18",
     ],
     "small_sweep": [
         "ViT-T16",
@@ -97,14 +98,14 @@ HYPERPARAM_SWEEPS = {
     },
     "weight_decay": {
         "single": [1e-1],
-        "sweep": [0.0, 1e-2, 1e-1, 0.3],
+        "sweep": [5e-2, 1e-1, 0.3],
     },
     "num_training_samples": {
         "single": [None],  # None means use all available data
         "scaling": [100, 500, 1000, 5000, 10000, None],
     },
     "num_epochs": {
-        "single": [200],
+        "single": [400],
         "sweep": [100,300,500,700,1000],    
     },
     "decay": {
@@ -139,7 +140,7 @@ SWEEP_PRESETS = {
         # Sweep only learning rate
         "learning_rate": "single",
         "batch_size": "single",
-        "weight_decay": "single",
+        "weight_decay": "sweep",
         "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "single",

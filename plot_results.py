@@ -475,7 +475,7 @@ if __name__ == "__main__":
     
     # Define runs
     runs = {
-        # "all_models_permeability": "results/all_models_permeability",
+        "all_models_permeability": "results/all_models_permeability",
         "zero_pecle_all_models": "results/zero_pecle_all_models",
     }
     
@@ -488,16 +488,16 @@ if __name__ == "__main__":
     #               subplot_by='family', output_path="by_family.pdf")
     
     # # Example 3: Custom grouping
-    plotter.plot(
-        runs,
-        metrics='R2',
-        # ylim=(0.995, 1.001),
-        subplot_by=[
-            ["ConvNeXt-Atto","ConvNeXt-V2-Atto","ConvNeXt-RMS-Atto"],
-            ["ConvNeXt-Femto","ConvNeXt-V2-Femto","ConvNeXt-RMS-Femto"],
-        ],
-        output_path="custom_comparison.png"
-    )
+    # plotter.plot(
+    #     runs,
+    #     metrics='R2',
+    #     # ylim=(0.995, 1.001),
+    #     subplot_by=[
+    #         ["ConvNeXt-Atto","ConvNeXt-V2-Atto","ConvNeXt-RMS-Atto"],
+    #         ["ConvNeXt-Femto","ConvNeXt-V2-Femto","ConvNeXt-RMS-Femto"],
+    #     ],
+    #     output_path="custom_comparison.png"
+    # )
     
     # Example 4: ConvNeXt summary
-    # plotter.plot_convnext_summary(runs, metric='R2_val', output_path="convnext_pecle_best_r2.pdf")
+    plotter.plot_convnext_summary(runs, metric='R2_val', output_path="update_plots/convnext_pecle_best_r2.pdf")

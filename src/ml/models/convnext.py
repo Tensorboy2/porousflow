@@ -357,18 +357,19 @@ if __name__ == "__main__":
     torch.manual_seed(42)
     
     x = torch.randn(2, 1, 128, 128)
-    
     # Test different versions and sizes
-    # for version in ['v1', 'v2', 'rms']:
-    #     for size in ['atto', 'pico', 'tiny']:
-    #         try:
-    #             model = load_convnext_model(config_or_version=version, size=size, in_channels=1)
-    #             out = model(x)
-    #             params = count_parameters(model)
-    #             print(f"ConvNeXt-{version}-{size}: output shape {out.shape}, params {params:,}")
-    #         except Exception as e:
-    #             print(f"Error with ConvNeXt-{version}-{size}: {e}")
-    
+    for version in ['v1', 'v2', 'rms']:
+        sizes=[]
+        for size in ['atto', 'femto', 'pico', 'nano', 'tiny', 'small', 'base', 'large']:
+            # try:
+            model = load_convnext_model(config_or_version=version, size=size, in_channels=1)
+            # out = model(x)
+            params = count_parameters(model)
+            sizes.append(params)
+            #     print(f"ConvNeXt-{version}-{size}: output shape {out.shape}, params {params:,}")
+            # except Exception as e:
+            #     print(f"Error with ConvNeXt-{version}-{size}: {e}")
+        print(f"{version}: {sizes}")
     # # Test large model
     # try:
     #     model = load_convnext_model(config_or_version='v2', size='large', in_channels=1)
@@ -379,11 +380,11 @@ if __name__ == "__main__":
 
     # Test with Peclet number input
     # try:
-    for encoder in [None, 'straight', 'log', 'vector']:
-        model = load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='dispersion', Pe_encoder=encoder)
-        Pe = torch.tensor([[10.0],[100.0]])
-        out = model(x, Pe=Pe)
-        print(f"\nConvNeXt-v1-tiny with Peclet encoder '{encoder}': output shape {out.shape}")
+    # for encoder in [None, 'straight', 'log', 'vector']:
+    #     model = load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='dispersion', Pe_encoder=encoder)
+    #     Pe = torch.tensor([[10.0],[100.0]])
+    #     out = model(x, Pe=Pe)
+    #     print(f"\nConvNeXt-v1-tiny with Peclet encoder '{encoder}': output shape {out.shape}")
     # model = load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='dispersion', Pe_encoder='vector')
     # Pe = torch.tensor([[1,0,0,0,0],[0,1,0,0,0]])
     # out = model(x, Pe=Pe)
