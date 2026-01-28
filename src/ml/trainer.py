@@ -171,25 +171,37 @@ class Trainer:
 
         use_amp = self.scaler.is_enabled()
         # i = 0
-        for inputs, D, Pe in self.train_loader:
+        for Batch in self.train_loader:
             # i+=1
             # print(f'{i}/{len(self.train_loader)}')
+            if self.config['pe']['include_direction']:
+                inputs, D, Pe, Direction = Batch
+            else:
+                inputs, D, Pe = Batch
+
+
             B = inputs.shape[0]
 
             if self.config.get('pin_memory', False):
                 inputs = inputs.to(self.device, non_blocking=True)
                 D = D.to(self.device, non_blocking=True)
                 Pe = Pe.to(self.device, non_blocking=True)
+                Direction = Direction.to(self.device, non_blocking=True)
             else:
                 inputs = inputs.to(self.device)
                 D = D.to(self.device)
                 Pe = Pe.to(self.device)
+                # Direction = Direction.to(self.device)
 
             self.optimizer.zero_grad(set_to_none=True)
 
             # Forward pass (only the model under autocast)
-            with autocast(device_type='cuda', enabled=use_amp):
-                outputs = self.model(inputs, Pe)
+            if self.config['pe']['include_direction']:
+                with autocast(device_type='cuda', enabled=use_amp):
+                    outputs = self.model(inputs, Pe, Direction)
+            else:
+                with autocast(device_type='cuda', enabled=use_amp):
+                    outputs = self.model(inputs, Pe)
 
             # Compute loss in FP32 (outside autocast) to ensure stable scaling
             outputs_fp32 = outputs.float()
@@ -300,19 +312,21 @@ class Trainer:
         total_samples = 0
 
         with torch.no_grad():
-            for batch in self.val_loader:
+            for Batch in self.val_loader:
                 # Support datasets that yield either (inputs, D) or (inputs, D, Pe)
-                if len(batch) == 3:
-                    inputs, D, Pe = batch
+                if self.config['pe']['include_direction']:
+                    inputs, D, Pe, Direction = Batch
+                    inputs = inputs.to(self.device, non_blocking=True)
+                    D = D.to(self.device, non_blocking=True)
+                    Pe = Pe.to(self.device, non_blocking=True)
+                    Direction = Direction.to(self.device, non_blocking=True)
+                    outputs = self.model(inputs, Pe, Direction)
+                else:
+                    inputs, D, Pe = Batch
                     inputs = inputs.to(self.device, non_blocking=True)
                     D = D.to(self.device, non_blocking=True)
                     Pe = Pe.to(self.device, non_blocking=True)
                     outputs = self.model(inputs, Pe)
-                else:
-                    inputs, D = batch
-                    inputs = inputs.to(self.device)
-                    D = D.to(self.device)
-                    outputs = self.model(inputs)
 
                 # Apply arcsinh transform consistently with training
                 scaled_outputs = torch.arcsinh(outputs.float())

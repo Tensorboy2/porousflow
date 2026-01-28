@@ -166,9 +166,9 @@ import matplotlib.pyplot as plt
 
 
 pe_encoders = ['straight','log','vector']
-models = ['ConvNeXt-Atto', 'ConvNeXt-Tiny']
+models = ['ConvNeXt-Atto', 'ConvNeXt-Tiny','ConvNeXt-Base']
 
-fig, ax = plt.subplots(1, 2, figsize=(6, 4.5))
+fig, ax = plt.subplots(1, 3, figsize=(9, 4.5))
 
 # colors for pe-encoders
 colors = {"straight":"C0", "log":"C1", "vector":"C2"}

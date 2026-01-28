@@ -31,8 +31,7 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-Atto",
-        "ResNet-18",
+        "ConvNeXt-Tiny",
     ],
     "small_sweep": [
         "ViT-T16",
@@ -105,7 +104,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [100, 500, 1000, 5000, 10000, None],
     },
     "num_epochs": {
-        "single": [400],
+        "single": [1000],
         "sweep": [100,300,500,700,1000],    
     },
     "decay": {
@@ -240,17 +239,22 @@ TASK_CONFIGS = {
         "pin_memory": True,
     },
     "dispersion": {
-        "learning_rate": 1e-3,
-        "weight_decay": 0.3,
+        "learning_rate": 8e-4,
+        "weight_decay": 0.05,
         "batch_size": 128,
-        "num_epochs": 200,
+        "num_epochs": 1000,
         "decay": "cosine",
-        "warmup_steps": 2000,
+        "warmup_steps": 12000,
         "num_training_samples": None,
         "num_validation_samples": None,
-        "pe_encoder": None,
         "prefetch_factor": 4,
         "pin_memory": True,
+        "pe": {
+            "pe_encoder": True,
+            "pe": 0,
+            "include_direction": True,
+        },
+        "pe_encoder": 'vector',
         "Pe": 0,
     },
 }
@@ -275,19 +279,20 @@ DEVICE_CONFIGS = {
             "mem": "16G",
         },
         "training_overrides": {
-            "batch_size": 4,
-            "num_epochs": 4,
-            "warmup_steps": 0,
-            "weight_decay": 0.5,
+            "batch_size": 8,
+            "num_epochs": 1000,
+            "warmup_steps": int(0.1*10*32*10/8),
+            "weight_decay": 1e-3,
             "decay": "cosine",
-            "learning_rate": 2e-4,
+            "learning_rate": 8e-4,
             "num_training_samples": 32,
-            "num_validation_samples": 32,
-            "num_test_samples": 3,
-            "pe_encoder": None,
+            "num_validation_samples": 4,
+            "num_test_samples": 4,
+            "pe_encoder": 'vector',
             "prefetch_factor": None,
             "pin_memory": False,
             "pin_memory_device": "",
+            "use_amp": False,
         },
     },
 }

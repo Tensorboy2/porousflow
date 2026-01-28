@@ -50,11 +50,11 @@ class DispersionTransform:
             lambda img, Dx: (img, Dx),
 
             # R90
-            lambda img, Dx: (
-                tf.rotate(img, 90),
-                # swap_diag(Dy),
-                swap_diag(Dx),
-            ),
+            # lambda img, Dx: (
+            #     tf.rotate(img, 90),
+            #     # swap_diag(Dy),
+            #     swap_diag(Dx),
+            # ),
 
             # R180
             lambda img, Dx: (
@@ -64,25 +64,25 @@ class DispersionTransform:
             ),
 
             # R270
-            lambda img, Dx: (
-                tf.rotate(img, 270),
-                # swap_diag(Dy),
-                swap_diag(Dx),
-            ),
+            # lambda img, Dx: (
+            #     tf.rotate(img, 270),
+            #     # swap_diag(Dy),
+            #     swap_diag(Dx),
+            # ),
 
             # H
-            lambda img, Dx: (
-                tf.hflip(img),
-                Dx,
-                # Dy,
-            ),
+            # lambda img, Dx: (
+            #     tf.hflip(img),
+            #     Dx,
+            #     # Dy,
+            # ),
 
-            # H + R90
-            lambda img, Dx: (
-                tf.rotate(tf.hflip(img), 90),
-                # swap_diag(Dy),
-                swap_diag(Dx),
-            ),
+            # # H + R90
+            # lambda img, Dx: (
+            #     tf.rotate(tf.hflip(img), 90),
+            #     # swap_diag(Dy),
+            #     swap_diag(Dx),
+            # ),
 
             # H + R180
             lambda img, Dx: (
@@ -91,12 +91,12 @@ class DispersionTransform:
                 # Dy,
             ),
 
-            # H + R270
-            lambda img, Dx: (
-                tf.rotate(tf.hflip(img), 270),
-                # swap_diag(Dy),
-                swap_diag(Dx),
-            ),
+            # # H + R270
+            # lambda img, Dx: (
+            #     tf.rotate(tf.hflip(img), 270),
+            #     # swap_diag(Dy),
+            #     swap_diag(Dx),
+            # ),
         ]
 
     def __call__(self, image, Dx):
@@ -323,8 +323,8 @@ class DispersionDatasetCached(Dataset):
         Dx_single = torch.from_numpy(Dx).float().flatten()
         Pe = self.pe_values[pe_idx:pe_idx+1]
         
-        # if self.transform:
-        #     image = self.transform(image)
+        if self.transform:
+            image,Dx = self.transform(image,Dx)
         # image = self.images[base_idx]          # View, zero-copy
         # Dx = self.targets_ds_x[base_idx, pe_idx]
         # Dx_single = Dx.flatten()
@@ -334,6 +334,74 @@ class DispersionDatasetCached(Dataset):
         #     image = self.transform(image)      # Transform expects torch tensor
         
         return image, Dx_single, Pe
+    
+class DispersionDatasetFull(Dataset):
+    """
+    Ultra-optimized version: cache images in RAM since they're reused 10x.
+    Each base image produces 10 samples: 5 Pe values × 2 directions (x/y).
+    """
+    def __init__(self, file_path, transform=None, num_samples=None):
+        self.root = zarr.open(file_path, mode='r')
+        self.transform = transform
+        
+        self.pe_values = torch.tensor([0.1, 10, 50, 100, 500], dtype=torch.float32)
+        self.directions = torch.tensor([[1.0, 0.0], [0.0, 1.0]], dtype=torch.float32)
+        
+        self.num_pe = len(self.pe_values)          # 5
+        self.num_dir = self.directions.shape[0]    # 2
+        self.samples_per_image = self.num_pe * self.num_dir  # 10
+        
+        # Determine length
+        base_len = self.root['filled_images']['filled_images'].shape[0]
+        if num_samples is not None:
+            base_len = min(num_samples, base_len)
+        
+        self.base_len = base_len
+        self.total_len = base_len * self.samples_per_image
+        
+        # Cached array references (Zarr loads on-demand but keeps in RAM if possible)
+        self.images = self.root['filled_images']['filled_images']
+        self.Dx_array = self.root['dispersion_results']['Dx']   # shape: [N, 5]
+        self.Dy_array = self.root['dispersion_results']['Dy']   # shape: [N, 5]
+    
+    def __len__(self):
+        return self.total_len
+    
+    def __getitem__(self, idx):
+        # Map global idx → base image + Pe + direction
+        base_idx = idx // self.samples_per_image
+        inner_idx = idx % self.samples_per_image
+        
+        pe_idx = inner_idx % self.num_pe
+        dir_idx = inner_idx // self.num_pe   # 0 or 1
+        
+        # Load data
+        image_np = self.images[base_idx]                     # numpy array
+        if dir_idx == 0:  # x-direction
+            target_np = self.Dx_array[base_idx, pe_idx]
+            direction = self.directions[0]
+        else:             # y-direction
+            target_np = self.Dy_array[base_idx, pe_idx]
+            direction = self.directions[1]
+        
+        # Convert to tensors
+        image = torch.from_numpy(image_np).float().unsqueeze(0)  # add channel dim
+        target = torch.from_numpy(target_np).float()
+        if target.ndim > 0:
+            target = target.flatten()  # ensure 1D vector
+        pe = self.pe_values[pe_idx].unsqueeze(0)  # shape (1,)
+        
+        if self.transform:
+            # Assuming transform takes (image, target) and returns the same
+            image, target = self.transform(image, target)
+        
+        return image, target, pe, direction
+
+if __name__ == '__main__':
+    ds = DispersionDatasetFull('data/train.zarr')
+    img, tgt, pe, dir_vec = ds[0]
+    print(f"Dataset ready — len = {len(ds):,}")
+    print(f"Content: image {img.shape} | D {tgt.shape} | pe {pe} | dir {dir_vec}")
 
 def get_dispersion_dataloader(file_path,config):
     '''
@@ -357,17 +425,35 @@ def get_dispersion_dataloader(file_path,config):
     val_path = os.path.join(file_path,'validation.zarr')
     test_path = os.path.join(file_path,'test.zarr')
 
-    if config.get('pe_encoder','')!='':
-        print(f"Pe encoder: {config['pe_encoder']}")
-        # base_train_dataset = DispersionDataset_2(train_path,num_samples=config.get('num_training_samples',None))
-        # base_val_dataset = DispersionDataset_2(val_path,num_samples=config.get('num_validation_samples',None))
-        # base_test_dataset = DispersionDataset_2(test_path)
-        # train_dataset = DispersionDataset_single_view(base_train_dataset)
-        # val_dataset = DispersionDataset_single_view(base_val_dataset)
-        # test_dataset = DispersionDataset_single_view(base_test_dataset)
-        train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=False)
-        val_dataset = DispersionDatasetCached(val_path,num_samples=config.get('num_validation_samples',None),cache_images=False)
-        test_dataset = DispersionDatasetCached(test_path,cache_images=False)
+    # if config.get('pe_encoder','')!='':
+    #     print(f"Pe encoder: {config['pe_encoder']}")
+    #     # base_train_dataset = DispersionDataset_2(train_path,num_samples=config.get('num_training_samples',None))
+    #     # base_val_dataset = DispersionDataset_2(val_path,num_samples=config.get('num_validation_samples',None))
+    #     # base_test_dataset = DispersionDataset_2(test_path)
+    #     # train_dataset = DispersionDataset_single_view(base_train_dataset)
+    #     # val_dataset = DispersionDataset_single_view(base_val_dataset)
+    #     # test_dataset = DispersionDataset_single_view(base_test_dataset)
+    #     train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=False,transform=DispersionTransform())
+    #     val_dataset = DispersionDatasetCached(val_path,num_samples=config.get('num_validation_samples',None),cache_images=False)
+    #     test_dataset = DispersionDatasetCached(test_path,cache_images=False)
+    # else:
+    #     Pe = config.get('Pe',0)
+    #     train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None),Pe=Pe)#, transform=DispersionTransform())
+    #     val_dataset = DispersionDataset(val_path,num_samples=config.get('num_validation_samples',None),Pe=Pe)
+    #     test_dataset = DispersionDataset(test_path,Pe=Pe)
+    
+    pe = config['pe']
+    if pe['pe_encoder']:
+        # print(f"Pe encoder: {pe['pe_encoder']}")
+        if pe['include_direction']:
+            train_dataset = DispersionDatasetFull(train_path,num_samples=config.get('num_training_samples',None))
+            val_dataset = DispersionDatasetFull(val_path,num_samples=config.get('num_validation_samples',None))
+            test_dataset = DispersionDatasetFull(test_path)
+        else:
+            aug = DispersionTransform() if config.get("transform",False) else None
+            train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=False,transform=aug)
+            val_dataset = DispersionDatasetCached(val_path,num_samples=config.get('num_validation_samples',None),cache_images=False)
+            test_dataset = DispersionDatasetCached(test_path,cache_images=False)
     else:
         Pe = config.get('Pe',0)
         train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None),Pe=Pe)#, transform=DispersionTransform())
@@ -402,25 +488,36 @@ def get_dispersion_dataloader(file_path,config):
     return train_loader, val_loader, test_loader
 
 if __name__ == "__main__":
-    # Example usage
-    import time, psutil, os
-    config = {
-        'batch_size': 1024,
-        'num_workers': 0,
-        # 'prefetch_factor': 8,
-    }
-
-    proc = psutil.Process(os.getpid())
-    start_mem = proc.memory_info().rss / 1e6  # MB
-    start = time.time()
-
-    train_loader, val_loader, test_loader = get_dispersion_dataloader('data', config)
-    for i, (image, target) in enumerate(train_loader):
-        print(f"Batch {i}: Image batch shape: {image.shape}, Target batch shape: {target.shape}")
-        if i >= 20:  # first 20 batches
+    configs = [
+        {'pe':{'pe_encoder':False, 'pe':0, 'include_direction':False}},
+        {'pe':{'pe_encoder':True, 'pe':0, 'include_direction':False}},
+        {'pe':{'pe_encoder':True, 'pe':0, 'include_direction':True}},
+        ]
+    for config in configs:
+        t,v,_ = get_dispersion_dataloader('data', config=config)
+        for i, batch in enumerate(t):
+            print(f'{config}, {len(t)}, {len(batch)}')
             break
 
-    end = time.time()
-    end_mem = proc.memory_info().rss / 1e6
+    # # Example usage
+    # import time, psutil, os
+    # config = {
+    #     'batch_size': 1024,
+    #     'num_workers': 0,
+    #     # 'prefetch_factor': 8,
+    # }
 
-    print(f"Time per batch: {(end-start)/20:.3f} s, RAM usage increase: {end_mem-start_mem:.2f} MB")
+    # proc = psutil.Process(os.getpid())
+    # start_mem = proc.memory_info().rss / 1e6  # MB
+    # start = time.time()
+
+    # train_loader, val_loader, test_loader = get_dispersion_dataloader('data', config)
+    # for i, (image, target) in enumerate(train_loader):
+    #     print(f"Batch {i}: Image batch shape: {image.shape}, Target batch shape: {target.shape}")
+    #     if i >= 20:  # first 20 batches
+    #         break
+
+    # end = time.time()
+    # end_mem = proc.memory_info().rss / 1e6
+
+    # print(f"Time per batch: {(end-start)/20:.3f} s, RAM usage increase: {end_mem-start_mem:.2f} MB")
