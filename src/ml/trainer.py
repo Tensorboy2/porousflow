@@ -198,7 +198,7 @@ class Trainer:
                 inputs = inputs.to(self.device, non_blocking=True)
                 D = D.to(self.device, non_blocking=True)
                 Pe = Pe.to(self.device, non_blocking=True)
-                Direction = Direction.to(self.device, non_blocking=True)
+                # Direction = Direction.to(self.device, non_blocking=True)
             else:
                 inputs = inputs.to(self.device)
                 D = D.to(self.device)
