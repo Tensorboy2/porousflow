@@ -190,241 +190,183 @@ class ConvNeXtEncoder(nn.Module):
         return x
 
 
-class ConvNeXt(nn.Module):
-    def __init__(self, version='v1', 
-                 size='tiny', 
-                 in_channels=1, 
-                 num_classes=4, 
-                 task='permeability',
-                 Pe_encoder=None,
-                 include_direction=False,
-                 use_transformer=False,
-                 transformer_dim=None):
+# ------------------------------------------------------------
+# CONDITION ENCODER (Pe + Direction)
+# ------------------------------------------------------------
+
+class ConditionEncoder(nn.Module):
+    def __init__(self, pe_mode=None, include_direction=False, out_dim=256):
         super().__init__()
-        
-        # Validate inputs
-        if size not in CONVNEXT_CONFIGS:
-            raise ValueError(f"Unknown size: {size}. Available sizes: {list(CONVNEXT_CONFIGS.keys())}")
-        
-        config = CONVNEXT_CONFIGS[size]
-        depths, dims = config['depths'], config['dims']
-        
-        # Select block type
-        if version == 'v1':
-            block_type = ConvNeXtBlockV1
-        elif version == 'v2':
-            block_type = ConvNeXtBlockV2 
-        elif version == 'rms':
-            block_type = ConvNeXtBlockRMS
-        else:
-            raise ValueError(f"Unknown version: {version}. Available versions: ['v1', 'v2', 'rms']")
-        
-        self.task = task  # Store task type
-        self.encoder = ConvNeXtEncoder(in_channels, depths, dims, block_type)
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        
-        self.Pe_encoder = Pe_encoder
+        self.pe_mode = pe_mode
         self.include_direction = include_direction
+        
+        if pe_mode == "straight":
+            self.pe_mlp = self._mlp(1, out_dim)
+        elif pe_mode == "log":
+            self.pe_mlp = self._mlp(1, out_dim)
+        elif pe_mode == "vector":
+            self.pe_mlp = self._mlp(5, out_dim)
+        else:
+            self.pe_mlp = None
+        
+        self.dir_mlp = self._mlp(2, out_dim) if include_direction else None
+    
+    def _mlp(self, inp, out):
+        return nn.Sequential(
+            nn.Linear(inp, out // 2),
+            nn.GELU(),
+            nn.LayerNorm(out // 2),
+            nn.Linear(out // 2, out)
+        )
+    
+    def pe_to_vector(self, Pe):
+        B = Pe.size(0)
+        vec = torch.zeros(B, 5, device=Pe.device, dtype=Pe.dtype)
+        bins = [1, 10, 50, 100]
+        
+        for i in range(B):
+            v = float(Pe[i])
+            idx = sum(v >= b for b in bins)
+            vec[i, idx] = 1
+        
+        return vec
+    
+    def encode_pe(self, Pe):
+        if self.pe_mode == "log":
+            Pe = torch.log(Pe.clamp(min=1e-8))
+        elif self.pe_mode == "vector":
+            Pe = self.pe_to_vector(Pe)
+        
+        return self.pe_mlp(Pe)
+    
+    def forward(self, Pe=None, Direction=None):
+        outs = []
+        
+        if self.pe_mlp is not None and Pe is not None:
+            Pe = Pe.view(-1, 1)
+            outs.append(self.encode_pe(Pe))
+        
+        if self.dir_mlp is not None and Direction is not None:
+            outs.append(self.dir_mlp(Direction))
+        
+        if len(outs) == 0:
+            return None
+        
+        return torch.cat(outs, dim=-1)
+
+
+# ------------------------------------------------------------
+# TOKEN MIXER (Transformer optional)
+# ------------------------------------------------------------
+
+class TokenMixer(nn.Module):
+    def __init__(self, dim, use_transformer=False, layers=2):
+        super().__init__()
         self.use_transformer = use_transformer
         
-        # Determine output dimension based on transformer usage
         if use_transformer:
-            transformer_dim = transformer_dim or dims[-1]
-            out_dim = transformer_dim
-        else:
-            out_dim = dims[-1]
+            layer = nn.TransformerEncoderLayer(
+                d_model=dim, nhead=8, batch_first=True
+            )
+            self.transformer = nn.TransformerEncoder(layer, layers)
+            self.pos_emb = None
+    
+    def forward(self, feat):
+        # feat: [B, C, H, W]
         
-        # Set up direction MLP if needed
-        if include_direction:
-            self.dir_mlp = nn.Sequential(
-                nn.Linear(2, dims[-1]//2), 
-                nn.GELU(),
-                nn.LayerNorm(dims[-1]//2),
-                nn.Linear(dims[-1]//2, dims[-1] if not use_transformer else transformer_dim)
+        if not self.use_transformer:
+            return feat.mean(dim=[2, 3])  # GAP
+        
+        B, C, H, W = feat.shape
+        tokens = feat.flatten(2).transpose(1, 2)  # [B, HW, C]
+        
+        if self.pos_emb is None or self.pos_emb.size(1) != H * W:
+            self.pos_emb = nn.Parameter(
+                torch.randn(1, H * W, C, device=feat.device) * 0.02
             )
         
-        # Set up Peclet encoder MLPs
-        if self.Pe_encoder == 'straight':
-            self.pe_mlp = nn.Sequential(
-                nn.Linear(1, 16), 
-                nn.GELU(),
-                nn.LayerNorm(16),
-                nn.Linear(16, 16 if not use_transformer else transformer_dim)
-            )
-        elif self.Pe_encoder == 'log':
-            self.pe_mlp = nn.Sequential(
-                nn.Linear(1, dims[-1]//2), 
-                nn.GELU(),
-                nn.LayerNorm(dims[-1]//2),
-                nn.Linear(dims[-1]//2, dims[-1] if not use_transformer else transformer_dim)
-            )
-        elif self.Pe_encoder == 'vector':
-            if include_direction:
-                self.pe_mlp = nn.Sequential(
-                    nn.Linear(5, dims[-1]//2), 
-                    nn.GELU(),
-                    nn.LayerNorm(dims[-1]//2),
-                    nn.Linear(dims[-1]//2, dims[-1] if not use_transformer else transformer_dim)
-                )
-            else:
-                self.pe_mlp = nn.Sequential(
-                    nn.Linear(5, 16), 
-                    nn.GELU(),
-                    nn.LayerNorm(16),
-                    nn.Linear(16, dims[-1] if not use_transformer else transformer_dim)
-                )
+        tokens = tokens + self.pos_emb
+        tokens = self.transformer(tokens)
         
-        # Set up final classification head
-        self.fc = nn.Sequential(
-            nn.LayerNorm(out_dim),
-            nn.Linear(out_dim, num_classes)
+        return tokens.mean(dim=1)
+
+
+# ------------------------------------------------------------
+# CLEAN CONVNEXT MODEL
+# ------------------------------------------------------------
+
+class ConvNeXt(nn.Module):
+    def __init__(
+        self,
+        size="tiny",
+        version="v1",
+        in_channels=1,
+        num_classes=4,
+        pe_encoder=None,
+        include_direction=False,
+        use_transformer=False
+    ):
+        super().__init__()
+        
+        config = CONVNEXT_CONFIGS[size]
+        depths, dims = config["depths"], config["dims"]
+        
+        block_map = {
+            "v1": ConvNeXtBlockV1,
+            "v2": ConvNeXtBlockV2,
+            "rms": ConvNeXtBlockRMS
+        }
+        block = block_map[version]
+        
+        # Backbone
+        self.encoder = ConvNeXtEncoder(in_channels, depths, dims, block)
+        feat_dim = dims[-1]
+        
+        # Conditioning encoder
+        self.cond_encoder = ConditionEncoder(
+            pe_mode=pe_encoder,
+            include_direction=include_direction,
+            out_dim=feat_dim
         )
         
-        # Set up transformer if requested
-        if use_transformer:
-            d_model = transformer_dim or dims[-1]
-            decoder_layer = nn.TransformerEncoderLayer(
-                d_model=d_model, nhead=8, batch_first=True
-            )
-            self.transformer = nn.TransformerEncoder(decoder_layer, num_layers=2)
-            
-            # Positional embedding for spatial tokens (will be set dynamically based on H*W)
-            self.pos_emb = None
-            
-            # Optional projection if ConvNeXt dim != transformer dim
-            if dims[-1] != d_model:
-                self.proj_to_transformer = nn.Linear(dims[-1], d_model)
-            else:
-                self.proj_to_transformer = None
-
-    def pe_to_vector(self, Pe):
-        """Convert Peclet number to a one-hot vector representation."""
-        Pe = Pe.to(device=Pe.device)
-        B = Pe.size(0)
-        vector = torch.zeros((B, 5), device=Pe.device, dtype=Pe.dtype)
-        for i in range(B):
-            val = Pe[i]
-            v = float(val.view(-1).item())
-            if v < 1:
-                vector[i, 0] = 1
-            elif v == 10:
-                vector[i, 1] = 1
-            elif v == 50:
-                vector[i, 2] = 1
-            elif v == 100:
-                vector[i, 3] = 1
-            else:
-                vector[i, 4] = 1
-        return vector
-    
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, (nn.Conv2d, nn.Linear)):
-                nn.init.trunc_normal_(m.weight, std=0.02)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
+        # Token mixer
+        self.token_mixer = TokenMixer(
+            dim=feat_dim,
+            use_transformer=use_transformer
+        )
+        
+        # Fusion dimension logic
+        fusion_dim = feat_dim
+        
+        if not use_transformer:
+            if pe_encoder is not None:
+                fusion_dim += feat_dim
+            if include_direction:
+                fusion_dim += feat_dim
+        
+        # Head
+        self.head = nn.Sequential(
+            nn.LayerNorm(fusion_dim),
+            nn.Linear(fusion_dim, num_classes)
+        )
     
     def forward(self, x, Pe=None, Direction=None):
-        """
-        Args:
-            x: Input image tensor [B, C, H, W]
-            Pe: Peclet number [B, 1] or scalar per sample
-            Direction: flow direction [B, 2] or scalar per sample
-        """
-        B = x.size(0)
+        feat = self.encoder(x)
+        pooled = self.token_mixer(feat)
         
-        # Get ConvNeXt feature map
-        feat = self.encoder(x)  # [B, C, H', W']
+        cond = self.cond_encoder(Pe, Direction)
         
-        if self.use_transformer:
-            # ------------------------
-            # TRANSFORMER PATH
-            # ------------------------
-            B, C, H, W = feat.shape
-            
-            # Flatten spatial features -> tokens
-            img_tokens = feat.flatten(2).transpose(1, 2)  # [B, H*W, C]
-            
-            # Project to transformer dimension if needed
-            if self.proj_to_transformer is not None:
-                img_tokens = self.proj_to_transformer(img_tokens)
-            
-            transformer_dim = img_tokens.size(-1)
-            
-            # Add positional encoding
-            if self.pos_emb is None or self.pos_emb.size(1) != H*W:
-                self.pos_emb = nn.Parameter(
-                    torch.randn(1, H*W, transformer_dim, device=x.device) * 0.02
-                )
-            img_tokens = img_tokens + self.pos_emb
-            
-            # Encode Pe and Direction as tokens
-            token_list = []
-            
-            if self.Pe_encoder:
-                if self.Pe_encoder == 'straight':
-                    Pe_val = Pe.view(B, 1).to(x.device, x.dtype)
-                    Pe_token = self.pe_mlp(Pe_val)
-                elif self.Pe_encoder == 'log':
-                    Pe_val = torch.log(Pe.view(B, 1).to(x.device, x.dtype))
-                    Pe_token = self.pe_mlp(Pe_val)
-                elif self.Pe_encoder == 'vector':
-                    if Pe.dim() == 2 and Pe.size(1) == 5:
-                        Pe_vec = Pe.to(x.device, x.dtype)
-                    else:
-                        Pe_vec = self.pe_to_vector(Pe)
-                    Pe_token = self.pe_mlp(Pe_vec)
-                Pe_token = Pe_token.unsqueeze(1)  # [B, 1, embed_dim]
-                token_list.append(Pe_token)
-            
-            if self.include_direction and Direction is not None:
-                Dir_token = self.dir_mlp(Direction.to(x.device, x.dtype))
-                Dir_token = Dir_token.unsqueeze(1)  # [B, 1, embed_dim]
-                token_list.append(Dir_token)
-            
-            token_list.append(img_tokens)
-            
-            # Concatenate all tokens
-            all_tokens = torch.cat(token_list, dim=1)  # [B, seq_len, embed_dim]
-            
-            # Run transformer
-            transformed = self.transformer(all_tokens)  # [B, seq_len, embed_dim]
-            
-            # Pool across sequence for final prediction
-            x_out = transformed.mean(dim=1)  # [B, embed_dim]
-            
+        # Transformer mode → additive fusion
+        if self.token_mixer.use_transformer:
+            if cond is not None:
+                pooled = pooled + cond
+        
+        # CNN mode → concatenative fusion
         else:
-            # ------------------------
-            # STANDARD CNN PATH (no transformer)
-            # ------------------------
-            # Global average pooling
-            x_out = self.avgpool(feat)  # [B, C, 1, 1]
-            x_out = x_out.flatten(1)  # [B, C]
-            
-            # Optionally incorporate Pe and Direction
-            if self.Pe_encoder:
-                if self.Pe_encoder == 'straight':
-                    Pe_val = Pe.view(B, 1).to(x.device, x.dtype)
-                    Pe_emb = self.pe_mlp(Pe_val)
-                elif self.Pe_encoder == 'log':
-                    Pe_val = torch.log(Pe.view(B, 1).to(x.device, x.dtype))
-                    Pe_emb = self.pe_mlp(Pe_val)
-                elif self.Pe_encoder == 'vector':
-                    if Pe.dim() == 2 and Pe.size(1) == 5:
-                        Pe_vec = Pe.to(x.device, x.dtype)
-                    else:
-                        Pe_vec = self.pe_to_vector(Pe)
-                    Pe_emb = self.pe_mlp(Pe_vec)
-                x_out = x_out + Pe_emb
-            
-            if self.include_direction and Direction is not None:
-                Dir_emb = self.dir_mlp(Direction.to(x.device, x.dtype))
-                x_out = x_out + Dir_emb
+            if cond is not None:
+                pooled = torch.cat([pooled, cond], dim=-1)
         
-        # Final classification head
-        x = self.fc(x_out)  # [B, num_classes]
-        
-        return x
+        return self.head(pooled)
 
 def load_convnext_model(config_or_version='v1', 
                         size='tiny', 
@@ -460,8 +402,8 @@ def load_convnext_model(config_or_version='v1',
                      size=size, 
                      in_channels=in_channels, 
                      num_classes=num_classes, 
-                     task=task, 
-                     Pe_encoder=Pe_encoder,
+                    #  task=task, 
+                     pe_encoder=Pe_encoder,
                      include_direction=include_direction)
 
     if pretrained_path:

@@ -363,11 +363,11 @@ class Trainer:
                 # scaled_D = torch.arcsinh(a*D.float())
                 # scaled_outputs = torch.sign(outputs)*torch.log1p(torch.abs(outputs)/100)
                 # scaled_D = torch.sign(D) * torch.log1p(torch.abs(D)/100)
-                scaled_outputs = self.scale(outputs)
+                # scaled_outputs = self.scale(outputs)
                 # scaled_outputs = self.scale(scaled_outputs)
                 scaled_D = self.scale(D)
                 # scaled_D = self.scale(scaled_D)
-                loss = self.criterion(scaled_outputs, scaled_D)
+                loss = self.criterion(outputs, scaled_D)
                 # loss = self.criterion(outputs, D)
 
                 running_loss += loss.item() * inputs.size(0)
