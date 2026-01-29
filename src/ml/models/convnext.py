@@ -304,7 +304,7 @@ class ConvNeXt(nn.Module):
         num_classes=4,
         pe_encoder=None,
         include_direction=False,
-        use_transformer=False
+        use_transformer=True
     ):
         super().__init__()
         
