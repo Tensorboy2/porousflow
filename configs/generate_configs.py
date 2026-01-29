@@ -252,7 +252,7 @@ TASK_CONFIGS = {
         "pe": {
             "pe_encoder": True,
             "pe": 0,
-            "include_direction": True,
+            "include_direction": False,
         },
         "pe_encoder": 'vector',
         "Pe": 0,
