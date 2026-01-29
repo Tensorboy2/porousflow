@@ -82,7 +82,7 @@ MODEL_PRESETS = {
 }
 
 # Default model preset to use
-DEFAULT_MODEL_PRESET = "small_sweep"
+DEFAULT_MODEL_PRESET = "quick_test"
 
 # Hyperparameter sweep configurations
 # Each list defines the values to sweep over for that hyperparameter
