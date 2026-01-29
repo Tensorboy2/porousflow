@@ -227,7 +227,7 @@ DEFAULT_SWEEP_PRESET = "none"
 # Base training configurations by task (used as defaults)
 TASK_CONFIGS = {
     "permeability": {
-        "learning_rate": 1e-5,
+        "learning_rate": 5e-5,
         "weight_decay": 1e-8,
         "batch_size": 128,
         "num_epochs": 100,

@@ -410,6 +410,9 @@ if __name__ == '__main__':
     img, tgt, pe, dir_vec = ds[0]
     print(f"Dataset ready — len = {len(ds):,}")
     print(f"Content: image {img.shape} | D {tgt.shape} | pe {pe} | dir {dir_vec}")
+    # root = zarr.open('data/train.zarr', mode='r')
+    # Dx_array = np.amax(root['dispersion_results']['Dx'][:])  # shape: [N, 5]
+    # print(f"Max value {Dx_array}")
 
 def get_dispersion_dataloader(file_path,config):
     '''

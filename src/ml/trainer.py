@@ -25,7 +25,7 @@ class Trainer:
 
         self.config = config
 
-        self.a = torch.sinh(torch.ones(1))/10_000
+        self.a = torch.sinh(torch.ones(1))/9299.419921875
         
         # training metrics
         self.metrics = {
