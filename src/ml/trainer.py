@@ -344,8 +344,9 @@ class Trainer:
                     outputs = self.model(inputs, Pe)
 
                 # Apply arcsinh transform consistently with training
-                scaled_outputs = torch.arcsinh(outputs.float())
-                scaled_D = torch.arcsinh(D.float())
+                a = self.a.to(self.device)
+                scaled_outputs = torch.arcsinh(a*outputs.float())
+                scaled_D = torch.arcsinh(a*D.float())
                 loss = self.criterion(scaled_outputs, scaled_D)
 
                 running_loss += loss.item() * inputs.size(0)
