@@ -226,9 +226,9 @@ class Trainer:
             # scaled_D = torch.sign(D_fp32) * torch.sqrt(torch.abs(D_fp32) + 1e-8)
 
             scaled_outputs = self.scale(outputs_fp32)
-            scaled_outputs = self.scale(scaled_outputs)
+            # scaled_outputs = self.scale(scaled_outputs)
             scaled_D = self.scale(D_fp32)
-            scaled_D = self.scale(scaled_D)
+            # scaled_D = self.scale(scaled_D)
             # scaled_outputs = torch.sign(outputs_fp32) * torch.log1p(torch.abs(outputs_fp32)/100)
             # scaled_D = torch.sign(D_fp32) * torch.log1p(torch.abs(D_fp32)/100)
 
@@ -364,9 +364,9 @@ class Trainer:
                 # scaled_outputs = torch.sign(outputs)*torch.log1p(torch.abs(outputs)/100)
                 # scaled_D = torch.sign(D) * torch.log1p(torch.abs(D)/100)
                 scaled_outputs = self.scale(outputs)
-                scaled_outputs = self.scale(scaled_outputs)
+                # scaled_outputs = self.scale(scaled_outputs)
                 scaled_D = self.scale(D)
-                scaled_D = self.scale(scaled_D)
+                # scaled_D = self.scale(scaled_D)
                 loss = self.criterion(scaled_outputs, scaled_D)
                 # loss = self.criterion(outputs, D)
 
