@@ -217,12 +217,16 @@ class Trainer:
             D_fp32 = D.float()
             # a = self.a.to(self.device)
             # scaled_outputs = torch.arcsinh(outputs_fp32*a)
-            scaled_outputs = torch.sign(outputs_fp32) * torch.sqrt(torch.abs(outputs_fp32) + 1e-8)
             # scaled_D = torch.arcsinh(D_fp32*a)
-            scaled_D = torch.sign(D_fp32) * torch.sqrt(torch.abs(D_fp32) + 1e-8)
+
+            # scaled_outputs = torch.sign(outputs_fp32) * torch.sqrt(torch.abs(outputs_fp32) + 1e-8)
+            # scaled_D = torch.sign(D_fp32) * torch.sqrt(torch.abs(D_fp32) + 1e-8)
+
+            scaled_outputs = torch.sign(outputs_fp32) * torch.log1p(torch.abs(outputs_fp32)/100)
+            scaled_D = torch.sign(D_fp32) * torch.log1p(torch.abs(D_fp32)/100)
+
             loss = self.criterion(scaled_outputs, scaled_D)
             # loss = self.criterion(outputs_fp32, D_fp32)
-
             running_loss += loss.item() * B
             total_samples += B
 
@@ -350,8 +354,10 @@ class Trainer:
                 # a = self.a.to(self.device)
                 # scaled_outputs = torch.arcsinh(a*outputs.float())
                 # scaled_D = torch.arcsinh(a*D.float())
-                # loss = self.criterion(scaled_outputs, scaled_D)
-                loss = self.criterion(outputs, D)
+                scaled_outputs = torch.sign(outputs) * torch.log1p(torch.abs(outputs)/100)
+                scaled_D = torch.sign(D) * torch.log1p(torch.abs(D)/100)
+                loss = self.criterion(scaled_outputs, scaled_D)
+                # loss = self.criterion(outputs, D)
 
                 running_loss += loss.item() * inputs.size(0)
                 total_samples += inputs.size(0)
