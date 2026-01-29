@@ -42,7 +42,7 @@ class Trainer:
 
         # gradient clipping
         self.clip_grad = config.get('clip_grad', True)
-        self.max_grad_norm = config.get('max_grad_norm', 0.1)
+        self.max_grad_norm = config.get('max_grad_norm', 1.0)
 
         # lr scheduler
         warmup_steps = config.get('warmup_steps', 0)
