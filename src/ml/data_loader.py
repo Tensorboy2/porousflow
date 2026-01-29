@@ -123,7 +123,7 @@ class PermeabilityDataset(Dataset):
 
         # turn into torch tensors
         image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
-        K = torch.from_numpy(K).float()/9.187899330242999e-10  # convert to mD
+        K = torch.from_numpy(K).float()*1e9#/9.187899330242999e-10  # convert to mD
         
         # transform if needed
         if self.transform:
