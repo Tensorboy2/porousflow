@@ -215,8 +215,8 @@ class Trainer:
             # Compute loss in FP32 (outside autocast) to ensure stable scaling
             outputs_fp32 = outputs.float()
             D_fp32 = D.float()
-            scaled_outputs = torch.arcsinh(outputs_fp32)
-            scaled_D = torch.arcsinh(D_fp32)
+            scaled_outputs = torch.arcsinh(outputs_fp32*self.a)
+            scaled_D = torch.arcsinh(D_fp32*self.a)
             loss = self.criterion(scaled_outputs, scaled_D)
 
             running_loss += loss.item() * B
