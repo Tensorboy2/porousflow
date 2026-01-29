@@ -228,7 +228,7 @@ DEFAULT_SWEEP_PRESET = "none"
 TASK_CONFIGS = {
     "permeability": {
         "learning_rate": 5e-5,
-        "weight_decay": 1e-8,
+        "weight_decay": 1e-1,
         "batch_size": 128,
         "num_epochs": 100,
         "decay": "cosine",
@@ -240,7 +240,7 @@ TASK_CONFIGS = {
     },
     "dispersion": {
         "learning_rate": 5e-5,
-        "weight_decay": 1e-8,
+        "weight_decay": 1e-1,
         "batch_size": 128,
         "num_epochs": 100,
         "decay": "cosine",
