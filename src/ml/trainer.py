@@ -36,12 +36,13 @@ class Trainer:
             'R2_val': [],
             'R2_test': [],
             'grad_norm': [],
+            'grad_norm_clipped': [],  # NEW: track how often clipping occurs
             # 'test_pred': []
         }
 
         # gradient clipping
-        self.clip_grad = config.get('clip_grad', False)
-        self.max_grad_norm = config.get('max_grad_norm', 10.0)
+        self.clip_grad = config.get('clip_grad', True)
+        self.max_grad_norm = config.get('max_grad_norm', 1.0)
 
         # lr scheduler
         warmup_steps = config.get('warmup_steps', 0)
@@ -95,6 +96,7 @@ class Trainer:
         sum_targets = 0.0
         sum_targets_squared = 0.0
         gradient_norm = 0.0
+        num_clipped = 0  # NEW: count how many batches were clipped
         count = 0
         # preds = []
         # trues = []
@@ -118,7 +120,10 @@ class Trainer:
 
             if self.clip_grad:
                 self.scaler.unscale_(self.optimizer)
-                gradient_norm += torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+                grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+                gradient_norm += grad_norm.item()  # FIXED: convert to item()
+                if grad_norm > self.max_grad_norm:  # NEW: track when clipping occurs
+                    num_clipped += 1
 
             # Optimizer step
             self.scaler.step(self.optimizer)
@@ -149,12 +154,15 @@ class Trainer:
             sum_squared_error, sum_targets, sum_targets_squared, count
         )
 
-        grad_norm = gradient_norm / len(self.train_loader)
+        avg_grad_norm = gradient_norm / len(self.train_loader)
+        clip_percentage = 100 * num_clipped / len(self.train_loader) if len(self.train_loader) > 0 else 0
+        
         self.metrics['R2_train'].append(r2)
         self.metrics['train_loss'].append(epoch_loss)
-        self.metrics['grad_norm'].append(grad_norm)
+        self.metrics['grad_norm'].append(avg_grad_norm)
+        self.metrics['grad_norm_clipped'].append(clip_percentage)  # NEW: percentage of batches clipped
         
-        return epoch_loss, r2, grad_norm
+        return epoch_loss, r2, avg_grad_norm
     
     def train_epoch_dispersion(self):
         self.model.train()
@@ -164,6 +172,7 @@ class Trainer:
         sum_targets = 0.0
         sum_targets_squared = 0.0
         gradient_norm = 0.0
+        num_clipped = 0  # NEW: count how many batches were clipped
 
         total_samples = 0
         count = 0
@@ -223,9 +232,12 @@ class Trainer:
             if self.clip_grad:
                 if use_amp:
                     self.scaler.unscale_(self.optimizer)
-                gradient_norm += torch.nn.utils.clip_grad_norm_(
+                grad_norm = torch.nn.utils.clip_grad_norm_(
                     self.model.parameters(), self.max_grad_norm
                 )
+                gradient_norm += grad_norm.item()  # FIXED: convert to item()
+                if grad_norm > self.max_grad_norm:  # NEW: track when clipping occurs
+                    num_clipped += 1
 
             # Optimizer step
             if use_amp:
@@ -254,13 +266,15 @@ class Trainer:
             sum_squared_error, sum_targets, sum_targets_squared, count
         )
 
-        grad_norm = gradient_norm / len(self.train_loader)
+        avg_grad_norm = gradient_norm / len(self.train_loader)
+        clip_percentage = 100 * num_clipped / len(self.train_loader) if len(self.train_loader) > 0 else 0
 
         self.metrics['train_loss'].append(epoch_loss)
         self.metrics['R2_train'].append(r2)
-        self.metrics['grad_norm'].append(grad_norm)
+        self.metrics['grad_norm'].append(avg_grad_norm)
+        self.metrics['grad_norm_clipped'].append(clip_percentage)  # NEW: percentage of batches clipped
 
-        return epoch_loss, r2, grad_norm
+        return epoch_loss, r2, avg_grad_norm
     
     def validate_permeability(self):
         self.model.eval()
@@ -435,11 +449,13 @@ class Trainer:
 
             # ---- TRAIN ----
             train_loss, train_r2, grad_norm = self.train_epoch()
+            clip_pct = self.metrics['grad_norm_clipped'][-1]  # Get the last recorded clip percentage
             print(
                 f"  Train done | "
                 f"loss: {train_loss:.5f} | "
                 f"R2: {train_r2:.5f} | "
-                f"grad‖: {grad_norm:.5e}"
+                f"grad‖: {grad_norm:.5e} | "
+                f"clipped: {clip_pct:.1f}%"  # NEW: show clipping percentage
             )
 
             # ---- VALIDATION ----

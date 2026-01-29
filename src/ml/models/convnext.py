@@ -197,7 +197,7 @@ class ConvNeXt(nn.Module):
                  task='permeability',
                  Pe_encoder=None,
                  include_direction=False,
-                 use_transformer=True,
+                 use_transformer=False,
                  transformer_dim=None):
         super().__init__()
         
