@@ -166,6 +166,9 @@ class Trainer:
     
     def scale(self,x):
         return torch.sign(x)*torch.log(torch.abs(x)+1)
+    
+    def inverse_scale(self,y):
+        return torch.sign(y) * (torch.exp(torch.abs(y)) - 1)
 
     def train_epoch_dispersion(self):
         self.model.train()
@@ -198,7 +201,8 @@ class Trainer:
                 inputs = inputs.to(self.device, non_blocking=True)
                 D = D.to(self.device, non_blocking=True)
                 Pe = Pe.to(self.device, non_blocking=True)
-                # Direction = Direction.to(self.device, non_blocking=True)
+                if self.config['pe']['include_direction']:
+                    Direction = Direction.to(self.device, non_blocking=True)
             else:
                 inputs = inputs.to(self.device)
                 D = D.to(self.device)
@@ -217,6 +221,7 @@ class Trainer:
 
             # Compute loss in FP32 (outside autocast) to ensure stable scaling
             outputs_fp32 = outputs.float()
+            outputs = self.inverse_scale(outputs)
             D_fp32 = D.float()
             # a = self.a.to(self.device)
             # scaled_outputs = torch.arcsinh(outputs_fp32*a)
@@ -365,10 +370,12 @@ class Trainer:
                 # scaled_D = torch.sign(D) * torch.log1p(torch.abs(D)/100)
                 # scaled_outputs = self.scale(outputs)
                 # scaled_outputs = self.scale(scaled_outputs)
+
                 scaled_D = self.scale(D)
                 # scaled_D = self.scale(scaled_D)
                 loss = self.criterion(outputs, scaled_D)
                 # loss = self.criterion(outputs, D)
+                outputs = self.inverse_scale(outputs)
 
                 running_loss += loss.item() * inputs.size(0)
                 total_samples += inputs.size(0)
