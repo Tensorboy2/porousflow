@@ -123,13 +123,21 @@ class PermeabilityDataset(Dataset):
 
         # turn into torch tensors
         image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
-        K = torch.from_numpy(K).float()*1e9  # convert to mD
+        K = torch.from_numpy(K).float()/9.187899330242999e-10  # convert to mD
         
         # transform if needed
         if self.transform:
             image, K = self.transform(image, K)
 
         return image, K
+    
+if __name__ == '__main__':
+    dataset = PermeabilityDataset(file_path='data/train.zarr')
+    print(f"Permeability dataset with len: {len(dataset)}")
+    # root = zarr.open('data/train.zarr', mode='r')
+    # targets_ds = np.amax(root['lbm_results']['K'][:])
+    # print(f"Max value {targets_ds/9.187899330242999e-10}")
+
     
 class DispersionDataset(Dataset):
     def __init__(self, file_path, transform=None, num_samples=None, Pe=0):
