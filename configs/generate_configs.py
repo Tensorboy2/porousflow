@@ -232,7 +232,7 @@ TASK_CONFIGS = {
         "batch_size": 128,
         "num_epochs": 100,
         "decay": "cosine",
-        "warmup_steps": 125*2,
+        "warmup_steps": 125*2, # steps per epoch * warmup epochs
         "num_training_samples": None,  # None = use all data
         "num_validation_samples": None,
         "prefetch_factor": 4,
@@ -244,7 +244,7 @@ TASK_CONFIGS = {
         "batch_size": 128,
         "num_epochs": 100,
         "decay": "cosine",
-        "warmup_steps": 2000,
+        "warmup_steps": 1250*2, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
