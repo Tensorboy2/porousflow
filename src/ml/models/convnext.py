@@ -271,7 +271,7 @@ class ConvNeXt(nn.Module):
                     nn.Linear(5, 16), 
                     nn.GELU(),
                     nn.LayerNorm(16),
-                    nn.Linear(16, 16 if not use_transformer else transformer_dim)
+                    nn.Linear(16, dims[-1] if not use_transformer else transformer_dim)
                 )
         
         # Set up final classification head
