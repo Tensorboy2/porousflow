@@ -239,8 +239,8 @@ TASK_CONFIGS = {
         "pin_memory": True,
     },
     "dispersion": {
-        "learning_rate": 8e-4,
-        "weight_decay": 0.05,
+        "learning_rate": 5e-5,
+        "weight_decay": 1e-8,
         "batch_size": 128,
         "num_epochs": 1000,
         "decay": "cosine",
