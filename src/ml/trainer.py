@@ -164,6 +164,9 @@ class Trainer:
         
         return epoch_loss, r2, avg_grad_norm
     
+    def scale(self,x):
+        return torch.sign(x)*torch.log(torch.abs(x)+1)
+
     def train_epoch_dispersion(self):
         self.model.train()
 
@@ -222,8 +225,12 @@ class Trainer:
             # scaled_outputs = torch.sign(outputs_fp32) * torch.sqrt(torch.abs(outputs_fp32) + 1e-8)
             # scaled_D = torch.sign(D_fp32) * torch.sqrt(torch.abs(D_fp32) + 1e-8)
 
-            scaled_outputs = torch.sign(outputs_fp32) * torch.log1p(torch.abs(outputs_fp32)/100)
-            scaled_D = torch.sign(D_fp32) * torch.log1p(torch.abs(D_fp32)/100)
+            scaled_outputs = self.scale(outputs_fp32)
+            scaled_outputs = self.scale(scaled_outputs)
+            scaled_D = self.scale(D_fp32)
+            scaled_D = self.scale(scaled_D)
+            # scaled_outputs = torch.sign(outputs_fp32) * torch.log1p(torch.abs(outputs_fp32)/100)
+            # scaled_D = torch.sign(D_fp32) * torch.log1p(torch.abs(D_fp32)/100)
 
             loss = self.criterion(scaled_outputs, scaled_D)
             # loss = self.criterion(outputs_fp32, D_fp32)
@@ -354,8 +361,12 @@ class Trainer:
                 # a = self.a.to(self.device)
                 # scaled_outputs = torch.arcsinh(a*outputs.float())
                 # scaled_D = torch.arcsinh(a*D.float())
-                scaled_outputs = torch.sign(outputs) * torch.log1p(torch.abs(outputs)/100)
-                scaled_D = torch.sign(D) * torch.log1p(torch.abs(D)/100)
+                # scaled_outputs = torch.sign(outputs)*torch.log1p(torch.abs(outputs)/100)
+                # scaled_D = torch.sign(D) * torch.log1p(torch.abs(D)/100)
+                scaled_outputs = self.scale(outputs)
+                scaled_outputs = self.scale(scaled_outputs)
+                scaled_D = self.scale(D)
+                scaled_D = self.scale(scaled_D)
                 loss = self.criterion(scaled_outputs, scaled_D)
                 # loss = self.criterion(outputs, D)
 
