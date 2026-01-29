@@ -132,6 +132,7 @@ class ConvNeXtBlockRMS(nn.Module):
         x = shortcut + x
         return x
 
+
 # --- Model Configurations ---
 CONVNEXT_CONFIGS = {
     'atto':   {'depths': [2, 2, 6, 2],   'dims': [40, 80, 160, 320]},

@@ -39,8 +39,9 @@ def main(config):
     model_type = model_cfg.get('type')
     task = config.get('task', 'permeability')
     pe_encoder = config.get('pe_encoder', None)
+    include_direction = config.get('pe',{}).get('include_direction',False)
     if model_type == 'convnext':
-        model = load_convnext_model(model_cfg,task=task,Pe_encoder=pe_encoder,include_direction=config['pe']['include_direction'])
+        model = load_convnext_model(model_cfg,task=task,Pe_encoder=pe_encoder,include_direction=include_direction)
     elif model_type == 'vit':
         model = load_vit_model(model_cfg,task=task)
     elif model_type == 'resnet':
