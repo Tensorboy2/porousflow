@@ -215,10 +215,11 @@ class Trainer:
             # Compute loss in FP32 (outside autocast) to ensure stable scaling
             outputs_fp32 = outputs.float()
             D_fp32 = D.float()
-            a = self.a.to(self.device)
-            scaled_outputs = torch.arcsinh(outputs_fp32*a)
-            scaled_D = torch.arcsinh(D_fp32*a)
-            loss = self.criterion(scaled_outputs, scaled_D)
+            # a = self.a.to(self.device)
+            # scaled_outputs = torch.arcsinh(outputs_fp32*a)
+            # scaled_D = torch.arcsinh(D_fp32*a)
+            # loss = self.criterion(scaled_outputs, scaled_D)
+            loss = self.criterion(outputs_fp32, D_fp32)
 
             running_loss += loss.item() * B
             total_samples += B
@@ -344,10 +345,11 @@ class Trainer:
                     outputs = self.model(inputs, Pe)
 
                 # Apply arcsinh transform consistently with training
-                a = self.a.to(self.device)
-                scaled_outputs = torch.arcsinh(a*outputs.float())
-                scaled_D = torch.arcsinh(a*D.float())
-                loss = self.criterion(scaled_outputs, scaled_D)
+                # a = self.a.to(self.device)
+                # scaled_outputs = torch.arcsinh(a*outputs.float())
+                # scaled_D = torch.arcsinh(a*D.float())
+                # loss = self.criterion(scaled_outputs, scaled_D)
+                loss = self.criterion(outputs, D)
 
                 running_loss += loss.item() * inputs.size(0)
                 total_samples += inputs.size(0)
