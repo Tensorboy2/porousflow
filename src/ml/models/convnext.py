@@ -470,11 +470,11 @@ if __name__ == "__main__":
 
     # Test with Peclet number input
     # try:
-    # for encoder in [None, 'straight', 'log', 'vector']:
-    #     model = load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='dispersion', Pe_encoder=encoder)
-    #     Pe = torch.tensor([[10.0],[100.0]])
-    #     out = model(x, Pe=Pe)
-    #     print(f"\nConvNeXt-v1-tiny with Peclet encoder '{encoder}': output shape {out.shape}")
+    for encoder in [None, 'straight', 'log', 'vector']:
+        model = load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='dispersion', Pe_encoder=encoder)
+        Pe = torch.tensor([[10.0],[100.0]])
+        out = model(x, Pe=Pe)
+        print(f"\nConvNeXt-v1-tiny with Peclet encoder '{encoder}': output shape {out.shape}")
     # model = load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='dispersion', Pe_encoder='vector')
     # Pe = torch.tensor([[1,0,0,0,0],[0,1,0,0,0]])
     # out = model(x, Pe=Pe)

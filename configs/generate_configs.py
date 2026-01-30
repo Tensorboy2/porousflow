@@ -250,12 +250,12 @@ TASK_CONFIGS = {
         "prefetch_factor": 4,
         "pin_memory": True,
         "pe": {
-            "pe_encoder": True,
-            "pe": 0,
+            "pe_encoder": False,
+            "pe": 4,
             "include_direction": False,
         },
         "pe_encoder": 'vector',
-        "Pe": 0,
+        "Pe": 4,
     },
 }
 
@@ -288,10 +288,10 @@ DEVICE_CONFIGS = {
             "num_training_samples": 32,
             "num_validation_samples": 4,
             "num_test_samples": 4,
-            "pe_encoder": '',
+            "pe_encoder": None,
             "prefetch_factor": None,
             "pin_memory": False,
-            "pin_memory_device": "vector",
+            "pin_memory_device": "",
             "use_amp": False,
         },
     },
