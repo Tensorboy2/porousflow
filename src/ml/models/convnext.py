@@ -366,25 +366,6 @@ class ConvNeXt(nn.Module):
             nn.LayerNorm(fusion_dim),
             nn.Linear(fusion_dim, num_classes)
         )
-        
-        # Initialize weights for stability
-        self._init_weights()
-
-    def _init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
-            elif isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
-            elif isinstance(m, nn.LayerNorm):
-                if hasattr(m, 'weight') and m.weight is not None:
-                    nn.init.ones_(m.weight)
-                if hasattr(m, 'bias') and m.bias is not None:
-                    nn.init.zeros_(m.bias)
     
     def forward(self, x, Pe=None, Direction=None):
         feat = self.encoder(x)
