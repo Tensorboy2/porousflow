@@ -251,11 +251,11 @@ TASK_CONFIGS = {
         "pin_memory": True,
         "pe": {
             "pe_encoder": False,
-            "pe": 0,
+            "pe": 1,
             "include_direction": False,
         },
         "pe_encoder": None,
-        "Pe": 0,
+        "Pe": 1,
     },
 }
 
