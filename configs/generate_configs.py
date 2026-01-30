@@ -31,7 +31,7 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-Small",
+        "ConvNeXt-Nano",
     ],
     "small_sweep": [
         "ViT-T16",
