@@ -3,6 +3,7 @@ Docstring for ml.train
 
 This module implements the training loop for the permeability and dispersion models.
 It is independent of the data loading and model definition modules.
+Enhanced with comprehensive metric tracking.
 '''
 import torch
 import torch.nn as nn
@@ -27,22 +28,66 @@ class Trainer:
 
         self.a = torch.sinh(torch.ones(1))/9299.419921875
         
-        # training metrics
+        # Enhanced training metrics
         self.metrics = {
+            # Loss metrics
             'train_loss': [],
             'val_loss': [],
             'test_loss': [],
+            
+            # R² metrics
             'R2_train': [],
             'R2_val': [],
             'R2_test': [],
+            
+            # Gradient metrics
             'grad_norm': [],
-            'grad_norm_clipped': [],  # NEW: track how often clipping occurs
-            # 'test_pred': []
+            'grad_norm_clipped': [],  # percentage of batches clipped
+            'grad_norm_max': [],  # maximum gradient norm in epoch
+            'grad_norm_min': [],  # minimum gradient norm in epoch
+            
+            # Learning rate
+            'learning_rate': [],
+            
+            # Timing
+            'epoch_time': [],
+            'train_time': [],
+            'val_time': [],
+            
+            # Additional error metrics
+            'train_mae': [],  # mean absolute error
+            'val_mae': [],
+            'test_mae': [],
+            'train_rmse': [],  # root mean squared error
+            'val_rmse': [],
+            'test_rmse': [],
+            'train_mape': [],  # mean absolute percentage error
+            'val_mape': [],
+            'test_mape': [],
+            'train_max_error': [],  # maximum absolute error
+            'val_max_error': [],
+            'test_max_error': [],
+            'train_median_error': [],  # median absolute error
+            'val_median_error': [],
+            'test_median_error': [],
+            
+            # Model statistics
+            'model_param_norm': [],  # L2 norm of model parameters
+            'model_param_mean': [],  # mean of model parameters
+            'model_param_std': [],  # std of model parameters
+            
+            # Training dynamics
+            'scaler_scale': [],  # GradScaler scale factor (for AMP)
+            'samples_per_second': [],  # throughput metric
+            
+            # Per-layer gradient norms (if enabled)
+            'layer_grad_norms': [],  # stores dict per epoch
         }
 
         # gradient clipping
         self.clip_grad = config.get('clip_grad', True)
         self.max_grad_norm = config.get('max_grad_norm', 5.0)
+        self.track_layer_grads = config.get('track_layer_grads', False)  # Can be expensive
 
         # lr scheduler
         warmup_steps = config.get('warmup_steps', 0)
@@ -86,25 +131,75 @@ class Trainer:
             self.validate_epoch = self.validate_permeability
             self.test_epoch = self.test_permeability
     
+    def _compute_additional_metrics(self, outputs, targets):
+        """
+        Compute additional error metrics beyond MSE.
+        
+        Returns dict with: mae, rmse, mape, max_error, median_error
+        """
+        with torch.no_grad():
+            abs_error = torch.abs(outputs - targets)
+            
+            mae = torch.mean(abs_error).item()
+            rmse = torch.sqrt(torch.mean((outputs - targets) ** 2)).item()
+            
+            # MAPE - handle division by zero
+            epsilon = 1e-8
+            mape = torch.mean(abs_error / (torch.abs(targets) + epsilon)).item() * 100
+            
+            max_error = torch.max(abs_error).item()
+            median_error = torch.median(abs_error).item()
+            
+            return {
+                'mae': mae,
+                'rmse': rmse,
+                'mape': mape,
+                'max_error': max_error,
+                'median_error': median_error
+            }
+    
+    def _compute_model_stats(self):
+        """Compute statistics about model parameters."""
+        with torch.no_grad():
+            all_params = torch.cat([p.flatten() for p in self.model.parameters()])
+            return {
+                'norm': torch.norm(all_params, p=2).item(),
+                'mean': torch.mean(all_params).item(),
+                'std': torch.std(all_params).item()
+            }
+    
+    def _compute_layer_grad_norms(self):
+        """Compute gradient norms for each layer (can be expensive)."""
+        layer_norms = {}
+        for name, param in self.model.named_parameters():
+            if param.grad is not None:
+                layer_norms[name] = torch.norm(param.grad, p=2).item()
+        return layer_norms
+    
     # '''
     # Defining training methods:
     # '''
     def train_epoch_permeability(self):
         self.model.train()
+        epoch_start = time.time()
+        
         running_loss = 0.0
         sum_squared_error = 0.0
         sum_targets = 0.0
         sum_targets_squared = 0.0
         gradient_norm = 0.0
-        num_clipped = 0  # NEW: count how many batches were clipped
+        num_clipped = 0
         count = 0
-        # preds = []
-        # trues = []
+        
+        # For additional metrics
+        all_outputs = []
+        all_targets = []
+        grad_norms_list = []
+        
         for inputs, targets in self.train_loader:
             # Move data to device and handle pin_memory if specified
             if self.config.get('pin_memory', False):
                 inputs, targets = inputs.to(self.device, non_blocking=True), targets.to(self.device, non_blocking=True)
-            # Move data to device without pin_memory
             else:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
 
@@ -121,16 +216,18 @@ class Trainer:
             if self.clip_grad:
                 self.scaler.unscale_(self.optimizer)
                 grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
-                gradient_norm += grad_norm.item()  # FIXED: convert to item()
-                if grad_norm > self.max_grad_norm:  # NEW: track when clipping occurs
+                gradient_norm += grad_norm.item()
+                grad_norms_list.append(grad_norm.item())
+                if grad_norm > self.max_grad_norm:
                     num_clipped += 1
 
             # Optimizer step
             self.scaler.step(self.optimizer)
             self.scaler.update()
-            
-            # preds.append(outputs.detach().cpu())
-            # trues.append(targets.detach().cpu())
+
+            # Accumulate for metrics
+            all_outputs.append(outputs.detach().cpu())
+            all_targets.append(targets.detach().cpu())
 
             # Accumulate R2 components (on CPU to save GPU memory)
             with torch.no_grad():
@@ -144,58 +241,94 @@ class Trainer:
 
             self.scheduler.step()
             
+        train_time = time.time() - epoch_start
         
+        # Concatenate all predictions and targets
+        all_outputs = torch.cat(all_outputs, dim=0)
+        all_targets = torch.cat(all_targets, dim=0)
+        
+        # Compute metrics
         epoch_loss = running_loss / len(self.train_loader.dataset)
-        
-        # preds = torch.cat(preds, dim=0)
-        # trues = torch.cat(trues, dim=0)
-        # r2 = self.R2_score(trues, preds)
         r2 = self._compute_r2_from_accumulators(
             sum_squared_error, sum_targets, sum_targets_squared, count
         )
-
+        
+        # Additional metrics
+        additional_metrics = self._compute_additional_metrics(all_outputs, all_targets)
+        
+        # Gradient metrics
         avg_grad_norm = gradient_norm / len(self.train_loader)
         clip_percentage = 100 * num_clipped / len(self.train_loader) if len(self.train_loader) > 0 else 0
+        max_grad_norm = max(grad_norms_list) if grad_norms_list else 0.0
+        min_grad_norm = min(grad_norms_list) if grad_norms_list else 0.0
         
+        # Model statistics
+        model_stats = self._compute_model_stats()
+        
+        # Throughput
+        samples_per_second = len(self.train_loader.dataset) / train_time if train_time > 0 else 0
+        
+        # Store metrics
         self.metrics['R2_train'].append(r2)
         self.metrics['train_loss'].append(epoch_loss)
         self.metrics['grad_norm'].append(avg_grad_norm)
-        self.metrics['grad_norm_clipped'].append(clip_percentage)  # NEW: percentage of batches clipped
+        self.metrics['grad_norm_clipped'].append(clip_percentage)
+        self.metrics['grad_norm_max'].append(max_grad_norm)
+        self.metrics['grad_norm_min'].append(min_grad_norm)
+        self.metrics['train_mae'].append(additional_metrics['mae'])
+        self.metrics['train_rmse'].append(additional_metrics['rmse'])
+        self.metrics['train_mape'].append(additional_metrics['mape'])
+        self.metrics['train_max_error'].append(additional_metrics['max_error'])
+        self.metrics['train_median_error'].append(additional_metrics['median_error'])
+        self.metrics['model_param_norm'].append(model_stats['norm'])
+        self.metrics['model_param_mean'].append(model_stats['mean'])
+        self.metrics['model_param_std'].append(model_stats['std'])
+        self.metrics['scaler_scale'].append(self.scaler.get_scale())
+        self.metrics['train_time'].append(train_time)
+        self.metrics['samples_per_second'].append(samples_per_second)
+        self.metrics['learning_rate'].append(self.scheduler.get_last_lr()[0])
         
-        return epoch_loss, r2, avg_grad_norm
+        # Optional: layer-wise gradient norms
+        if self.track_layer_grads:
+            self.metrics['layer_grad_norms'].append(self._compute_layer_grad_norms())
+        
+        return epoch_loss, r2, avg_grad_norm, additional_metrics
     
     def scale(self,x):
-        return torch.asinh(x)/10
+        return torch.asinh(x)
         # return torch.sign(x)*torch.log(torch.abs(x)+1)
     
     def inverse_scale(self,y):
         # return torch.sign(y) * (torch.exp(torch.abs(y)) - 1)
-        return torch.sinh(y*10)
+        return torch.sinh(y)
 
     def train_epoch_dispersion(self):
         self.model.train()
+        epoch_start = time.time()
 
         running_loss = 0.0
         sum_squared_error = 0.0
         sum_targets = 0.0
         sum_targets_squared = 0.0
         gradient_norm = 0.0
-        num_clipped = 0  # NEW: count how many batches were clipped
+        num_clipped = 0
 
         total_samples = 0
         count = 0
         grad_steps = 0
 
+        # For additional metrics
+        all_outputs = []
+        all_targets = []
+        grad_norms_list = []
+
         use_amp = self.scaler.is_enabled()
-        # i = 0
+        
         for Batch in self.train_loader:
-            # i+=1
-            # print(f'{i}/{len(self.train_loader)}')
             if self.config['pe']['include_direction']:
                 inputs, D, Pe, Direction = Batch
             else:
                 inputs, D, Pe = Batch
-
 
             B = inputs.shape[0]
 
@@ -209,7 +342,6 @@ class Trainer:
                 inputs = inputs.to(self.device)
                 D = D.to(self.device)
                 Pe = Pe.to(self.device)
-                # Direction = Direction.to(self.device)
 
             self.optimizer.zero_grad(set_to_none=True)
 
@@ -221,26 +353,13 @@ class Trainer:
                 with autocast(device_type='cuda', enabled=use_amp):
                     outputs = self.model(inputs, Pe)
 
-            # Compute loss in FP32 (outside autocast) to ensure stable scaling
+            # Compute loss in FP32
             outputs_fp32 = outputs.float()
             outputs = self.inverse_scale(outputs)
             D_fp32 = D.float()
-            # a = self.a.to(self.device)
-            # scaled_outputs = torch.arcsinh(outputs_fp32*a)
-            # scaled_D = torch.arcsinh(D_fp32*a)
-
-            # scaled_outputs = torch.sign(outputs_fp32) * torch.sqrt(torch.abs(outputs_fp32) + 1e-8)
-            # scaled_D = torch.sign(D_fp32) * torch.sqrt(torch.abs(D_fp32) + 1e-8)
-
-            # scaled_outputs = self.scale(outputs_fp32)
-            # scaled_outputs = self.scale(scaled_outputs)
+            
             scaled_D = self.scale(D_fp32)
-            # scaled_D = self.scale(scaled_D)
-            # scaled_outputs = torch.sign(outputs_fp32) * torch.log1p(torch.abs(outputs_fp32)/100)
-            # scaled_D = torch.sign(D_fp32) * torch.log1p(torch.abs(D_fp32)/100)
-
             loss = self.criterion(outputs_fp32, scaled_D)
-            # loss = self.criterion(outputs_fp32, D_fp32)
             running_loss += loss.item() * B
             total_samples += B
 
@@ -257,8 +376,9 @@ class Trainer:
                 grad_norm = torch.nn.utils.clip_grad_norm_(
                     self.model.parameters(), self.max_grad_norm
                 )
-                gradient_norm += grad_norm.item()  # FIXED: convert to item()
-                if grad_norm > self.max_grad_norm:  # NEW: track when clipping occurs
+                gradient_norm += grad_norm.item()
+                grad_norms_list.append(grad_norm.item())
+                if grad_norm > self.max_grad_norm:
                     num_clipped += 1
 
             # Optimizer step
@@ -269,6 +389,10 @@ class Trainer:
                 self.optimizer.step()
 
             grad_steps += 1
+
+            # Accumulate for metrics
+            all_outputs.append(outputs.detach().cpu())
+            all_targets.append(D.detach().cpu())
 
             # Metrics (detach safely after backward)
             with torch.no_grad():
@@ -282,53 +406,109 @@ class Trainer:
 
             self.scheduler.step()
 
-        epoch_loss = running_loss / len(self.train_loader.dataset)
+        train_time = time.time() - epoch_start
+        
+        # Concatenate all predictions and targets
+        all_outputs = torch.cat(all_outputs, dim=0)
+        all_targets = torch.cat(all_targets, dim=0)
 
+        epoch_loss = running_loss / len(self.train_loader.dataset)
         r2 = self._compute_r2_from_accumulators(
             sum_squared_error, sum_targets, sum_targets_squared, count
         )
 
+        # Additional metrics
+        additional_metrics = self._compute_additional_metrics(all_outputs, all_targets)
+        
+        # Gradient metrics
         avg_grad_norm = gradient_norm / len(self.train_loader)
         clip_percentage = 100 * num_clipped / len(self.train_loader) if len(self.train_loader) > 0 else 0
+        max_grad_norm = max(grad_norms_list) if grad_norms_list else 0.0
+        min_grad_norm = min(grad_norms_list) if grad_norms_list else 0.0
+        
+        # Model statistics
+        model_stats = self._compute_model_stats()
+        
+        # Throughput
+        samples_per_second = len(self.train_loader.dataset) / train_time if train_time > 0 else 0
 
+        # Store metrics
         self.metrics['train_loss'].append(epoch_loss)
         self.metrics['R2_train'].append(r2)
         self.metrics['grad_norm'].append(avg_grad_norm)
-        self.metrics['grad_norm_clipped'].append(clip_percentage)  # NEW: percentage of batches clipped
+        self.metrics['grad_norm_clipped'].append(clip_percentage)
+        self.metrics['grad_norm_max'].append(max_grad_norm)
+        self.metrics['grad_norm_min'].append(min_grad_norm)
+        self.metrics['train_mae'].append(additional_metrics['mae'])
+        self.metrics['train_rmse'].append(additional_metrics['rmse'])
+        self.metrics['train_mape'].append(additional_metrics['mape'])
+        self.metrics['train_max_error'].append(additional_metrics['max_error'])
+        self.metrics['train_median_error'].append(additional_metrics['median_error'])
+        self.metrics['model_param_norm'].append(model_stats['norm'])
+        self.metrics['model_param_mean'].append(model_stats['mean'])
+        self.metrics['model_param_std'].append(model_stats['std'])
+        self.metrics['scaler_scale'].append(self.scaler.get_scale())
+        self.metrics['train_time'].append(train_time)
+        self.metrics['samples_per_second'].append(samples_per_second)
+        self.metrics['learning_rate'].append(self.scheduler.get_last_lr()[0])
+        
+        if self.track_layer_grads:
+            self.metrics['layer_grad_norms'].append(self._compute_layer_grad_norms())
 
-        return epoch_loss, r2, avg_grad_norm
+        return epoch_loss, r2, avg_grad_norm, additional_metrics
     
     def validate_permeability(self):
         self.model.eval()
+        val_start = time.time()
+        
         running_loss = 0.0
         sum_squared_error = 0.0
         sum_targets = 0.0
         sum_targets_squared = 0.0
         count = 0
+        
+        all_outputs = []
+        all_targets = []
+        
         with torch.no_grad():
             for inputs, targets in self.val_loader:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
                 outputs = self.model(inputs)
-                # outputs = torch.arcsinh(0.2*outputs)
-                # D = torch.arcsinh(0.2*D)
                 loss = self.criterion(outputs, targets)
                 running_loss += loss.item() * inputs.size(0)
                 
                 outputs_cpu = outputs.detach().cpu()
                 targets_cpu = targets.detach().cpu()
                 
+                all_outputs.append(outputs_cpu)
+                all_targets.append(targets_cpu)
+                
                 sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
                 sum_targets += torch.sum(targets_cpu).item()
                 sum_targets_squared += torch.sum(targets_cpu ** 2).item()
                 count += targets_cpu.numel()
 
+        val_time = time.time() - val_start
+        
+        all_outputs = torch.cat(all_outputs, dim=0)
+        all_targets = torch.cat(all_targets, dim=0)
+
         epoch_loss = running_loss / len(self.val_loader.dataset)
         r2 = self._compute_r2_from_accumulators(sum_squared_error, sum_targets, sum_targets_squared, count)
+        
+        # Additional metrics
+        additional_metrics = self._compute_additional_metrics(all_outputs, all_targets)
 
         self.metrics['R2_val'].append(r2)
         self.metrics['val_loss'].append(epoch_loss)
+        self.metrics['val_mae'].append(additional_metrics['mae'])
+        self.metrics['val_rmse'].append(additional_metrics['rmse'])
+        self.metrics['val_mape'].append(additional_metrics['mape'])
+        self.metrics['val_max_error'].append(additional_metrics['max_error'])
+        self.metrics['val_median_error'].append(additional_metrics['median_error'])
+        self.metrics['val_time'].append(val_time)
 
-        return epoch_loss,r2
+        return epoch_loss, r2, additional_metrics
     
     def validate_dispersion(self):
         """
@@ -337,8 +517,10 @@ class Trainer:
         Returns:
             epoch_loss (float): mean validation loss
             r2 (float): R^2 score over validation set
+            additional_metrics (dict): additional error metrics
         """
         self.model.eval()
+        val_start = time.time()
 
         running_loss = 0.0
         sum_squared_error = 0.0
@@ -346,10 +528,12 @@ class Trainer:
         sum_targets_squared = 0.0
         count = 0
         total_samples = 0
+        
+        all_outputs = []
+        all_targets = []
 
         with torch.no_grad():
             for Batch in self.val_loader:
-                # Support datasets that yield either (inputs, D) or (inputs, D, Pe)
                 if self.config['pe']['include_direction']:
                     inputs, D, Pe, Direction = Batch
                     inputs = inputs.to(self.device, non_blocking=True)
@@ -364,19 +548,8 @@ class Trainer:
                     Pe = Pe.to(self.device, non_blocking=True)
                     outputs = self.model(inputs, Pe)
 
-                # Apply arcsinh transform consistently with training
-                # a = self.a.to(self.device)
-                # scaled_outputs = torch.arcsinh(a*outputs.float())
-                # scaled_D = torch.arcsinh(a*D.float())
-                # scaled_outputs = torch.sign(outputs)*torch.log1p(torch.abs(outputs)/100)
-                # scaled_D = torch.sign(D) * torch.log1p(torch.abs(D)/100)
-                # scaled_outputs = self.scale(outputs)
-                # scaled_outputs = self.scale(scaled_outputs)
-
                 scaled_D = self.scale(D)
-                # scaled_D = self.scale(scaled_D)
                 loss = self.criterion(outputs, scaled_D)
-                # loss = self.criterion(outputs, D)
                 outputs = self.inverse_scale(outputs)
 
                 running_loss += loss.item() * inputs.size(0)
@@ -385,21 +558,38 @@ class Trainer:
                 # Metrics in original space
                 outputs_cpu = outputs.detach().cpu()
                 targets_cpu = D.detach().cpu()
+                
+                all_outputs.append(outputs_cpu)
+                all_targets.append(targets_cpu)
 
                 sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
                 sum_targets += torch.sum(targets_cpu).item()
                 sum_targets_squared += torch.sum(targets_cpu ** 2).item()
                 count += targets_cpu.numel()
 
+        val_time = time.time() - val_start
+        
+        all_outputs = torch.cat(all_outputs, dim=0)
+        all_targets = torch.cat(all_targets, dim=0)
+
         epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
         r2 = self._compute_r2_from_accumulators(
             sum_squared_error, sum_targets, sum_targets_squared, count
         )
+        
+        # Additional metrics
+        additional_metrics = self._compute_additional_metrics(all_outputs, all_targets)
 
         self.metrics['val_loss'].append(epoch_loss)
         self.metrics['R2_val'].append(r2)
+        self.metrics['val_mae'].append(additional_metrics['mae'])
+        self.metrics['val_rmse'].append(additional_metrics['rmse'])
+        self.metrics['val_mape'].append(additional_metrics['mape'])
+        self.metrics['val_max_error'].append(additional_metrics['max_error'])
+        self.metrics['val_median_error'].append(additional_metrics['median_error'])
+        self.metrics['val_time'].append(val_time)
 
-        return epoch_loss, r2
+        return epoch_loss, r2, additional_metrics
     
     def test_permeability(self):
         self.model.eval()
@@ -408,6 +598,10 @@ class Trainer:
         sum_targets = 0.0
         sum_targets_squared = 0.0
         count = 0
+        
+        all_outputs = []
+        all_targets = []
+        
         with torch.no_grad():
             for inputs, targets in self.test_loader:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
@@ -417,19 +611,35 @@ class Trainer:
                 
                 outputs_cpu = outputs.detach().cpu()
                 targets_cpu = targets.detach().cpu()
+                
+                all_outputs.append(outputs_cpu)
+                all_targets.append(targets_cpu)
+                
                 sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
                 sum_targets += torch.sum(targets_cpu).item()
                 sum_targets_squared += torch.sum(targets_cpu ** 2).item()
                 count += targets_cpu.numel()
-        epoch_loss = running_loss / len(self.test_loader.dataset)
+                
+        all_outputs = torch.cat(all_outputs, dim=0)
+        all_targets = torch.cat(all_targets, dim=0)
         
+        epoch_loss = running_loss / len(self.test_loader.dataset)
         r2 = self._compute_r2_from_accumulators(
             sum_squared_error, sum_targets, sum_targets_squared, count
         )
+        
+        # Additional metrics
+        additional_metrics = self._compute_additional_metrics(all_outputs, all_targets)
+        
         self.metrics['R2_test'].append(r2)
         self.metrics['test_loss'].append(epoch_loss)
+        self.metrics['test_mae'].append(additional_metrics['mae'])
+        self.metrics['test_rmse'].append(additional_metrics['rmse'])
+        self.metrics['test_mape'].append(additional_metrics['mape'])
+        self.metrics['test_max_error'].append(additional_metrics['max_error'])
+        self.metrics['test_median_error'].append(additional_metrics['median_error'])
         
-        return epoch_loss, r2
+        return epoch_loss, r2, additional_metrics
     
     def test_dispersion(self):
         self.model.eval()
@@ -439,6 +649,10 @@ class Trainer:
         sum_targets_squared = 0.0
         count = 0
         total_samples = 0
+        
+        all_outputs = []
+        all_targets = []
+        
         with torch.no_grad():
             for inputs, targets in self.test_loader:
                 B, Pe, _ = targets.shape
@@ -455,19 +669,35 @@ class Trainer:
 
                     outputs_cpu = outputs.detach().cpu()
                     targets_cpu = D.detach().cpu()
+                    
+                    all_outputs.append(outputs_cpu)
+                    all_targets.append(targets_cpu)
+                    
                     sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
                     sum_targets += torch.sum(targets_cpu).item()
                     sum_targets_squared += torch.sum(targets_cpu ** 2).item()
                     count += targets_cpu.numel()
-        epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
+                    
+        all_outputs = torch.cat(all_outputs, dim=0)
+        all_targets = torch.cat(all_targets, dim=0)
         
+        epoch_loss = running_loss / total_samples if total_samples > 0 else 0.0
         r2 = self._compute_r2_from_accumulators(
             sum_squared_error, sum_targets, sum_targets_squared, count
         )
+        
+        # Additional metrics
+        additional_metrics = self._compute_additional_metrics(all_outputs, all_targets)
+        
         self.metrics['R2_test'].append(r2)
         self.metrics['test_loss'].append(epoch_loss)
+        self.metrics['test_mae'].append(additional_metrics['mae'])
+        self.metrics['test_rmse'].append(additional_metrics['rmse'])
+        self.metrics['test_mape'].append(additional_metrics['mape'])
+        self.metrics['test_max_error'].append(additional_metrics['max_error'])
+        self.metrics['test_median_error'].append(additional_metrics['median_error'])
         
-        return epoch_loss, r2
+        return epoch_loss, r2, additional_metrics
     
     def train(self, num_epochs):
         best_val_loss = float('inf')
@@ -475,43 +705,105 @@ class Trainer:
         
         print(f'Saving state-dicts to: {save_path}.pth and {save_path}_last_model.pth')
         print(f'Saving metrics to: {save_path}_metrics.zarr')
+        print(f"\n{'='*100}")
+        print(f"Training Configuration:")
+        print(f"  Model: {self.model_name}")
+        print(f"  Epochs: {num_epochs}")
+        print(f"  Learning Rate: {self.config.get('learning_rate', 'N/A')}")
+        print(f"  Batch Size: {self.config.get('batch_size', 'N/A')}")
+        print(f"  Gradient Clipping: {self.clip_grad} (max norm: {self.max_grad_norm})")
+        print(f"  Mixed Precision: {self.scaler.is_enabled()}")
+        print(f"{'='*100}\n")
+        
         for epoch in range(num_epochs):
-            print(f"\n{'='*60}")
-            print(f"Epoch {epoch+1}/{num_epochs} started")
+            epoch_start = time.time()
+            print(f"\n{'='*100}")
+            print(f"Epoch {epoch+1}/{num_epochs}")
+            print(f"{'='*100}")
 
             # ---- TRAIN ----
-            train_loss, train_r2, grad_norm = self.train_epoch()
-            clip_pct = self.metrics['grad_norm_clipped'][-1]  # Get the last recorded clip percentage
-            print(
-                f"  Train done | "
-                f"loss: {train_loss:.5f} | "
-                f"R2: {train_r2:.5f} | "
-                f"grad‖: {grad_norm:.5e} | "
-                f"clipped: {clip_pct:.1f}%"  # NEW: show clipping percentage
-            )
+            train_results = self.train_epoch()
+            train_loss = train_results[0]
+            train_r2 = train_results[1]
+            avg_grad_norm = train_results[2]
+            train_metrics = train_results[3] if len(train_results) > 3 else {}
+            
+            clip_pct = self.metrics['grad_norm_clipped'][-1]
+            grad_max = self.metrics['grad_norm_max'][-1]
+            grad_min = self.metrics['grad_norm_min'][-1]
+            
+            print(f"\n TRAINING METRICS:")
+            print(f"  Loss:        {train_loss:.6f}")
+            print(f"  R²:          {train_r2:.6f}")
+            print(f"  MAE:         {train_metrics.get('mae', 0):.6f}")
+            print(f"  RMSE:        {train_metrics.get('rmse', 0):.6f}")
+            print(f"  MAPE:        {train_metrics.get('mape', 0):.2f}%")
+            print(f"  Max Error:   {train_metrics.get('max_error', 0):.6f}")
+            print(f"  Median Err:  {train_metrics.get('median_error', 0):.6f}")
+            print(f"\n GRADIENT METRICS:")
+            print(f"  Avg Norm:    {avg_grad_norm:.5e}")
+            print(f"  Max Norm:    {grad_max:.5e}")
+            print(f"  Min Norm:    {grad_min:.5e}")
+            print(f"  Clipped:     {clip_pct:.1f}% of batches")
 
             # ---- VALIDATION ----
-            val_loss, val_r2 = self.validate_epoch()
-            print(
-                f"  Val   done | "
-                f"loss: {val_loss:.5f} | "
-                f"R2: {val_r2:.5f}"
-            )
+            val_results = self.validate_epoch()
+            val_loss = val_results[0]
+            val_r2 = val_results[1]
+            val_metrics = val_results[2] if len(val_results) > 2 else {}
+            
+            print(f"\n VALIDATION METRICS:")
+            print(f"  Loss:        {val_loss:.6f}")
+            print(f"  R²:          {val_r2:.6f}")
+            print(f"  MAE:         {val_metrics.get('mae', 0):.6f}")
+            print(f"  RMSE:        {val_metrics.get('rmse', 0):.6f}")
+            print(f"  MAPE:        {val_metrics.get('mape', 0):.2f}%")
+            print(f"  Max Error:   {val_metrics.get('max_error', 0):.6f}")
+            print(f"  Median Err:  {val_metrics.get('median_error', 0):.6f}")
 
-            # ---- LR ----
+            # ---- OPTIMIZATION STATS ----
             current_lr = self.scheduler.get_last_lr()[0]
-            print(f"  LR: {current_lr:.6e}")
+            scaler_scale = self.metrics['scaler_scale'][-1]
+            param_norm = self.metrics['model_param_norm'][-1]
+            
+            print(f"\n  OPTIMIZATION:")
+            print(f"  Learning Rate:    {current_lr:.6e}")
+            print(f"  Scaler Scale:     {scaler_scale:.1f}")
+            print(f"  Param L2 Norm:    {param_norm:.6e}")
+
+            # ---- TIMING ----
+            epoch_time = time.time() - epoch_start
+            train_time = self.metrics['train_time'][-1]
+            val_time = self.metrics['val_time'][-1]
+            throughput = self.metrics['samples_per_second'][-1]
+            
+            self.metrics['epoch_time'].append(epoch_time)
+            
+            print(f"\n  TIMING:")
+            print(f"  Epoch Time:       {epoch_time:.2f}s")
+            print(f"  Train Time:       {train_time:.2f}s")
+            print(f"  Val Time:         {val_time:.2f}s")
+            print(f"  Throughput:       {throughput:.1f} samples/sec")
 
             # ---- CHECKPOINT ----
             if val_loss < best_val_loss:
+                improvement = best_val_loss - val_loss
                 best_val_loss = val_loss
                 self.save_model(save_path + ".pth")
-                print(f"    New best model saved (val loss = {val_loss:.5f})")
-        #save last model
+                print(f"\nNEW BEST MODEL! (improved by {improvement:.6f})")
+            
+            print(f"{'='*100}")
+            
+        # Save final model and metrics
         self.save_model(save_path+"_last_model.pth")
         self.save_metrics(save_path+'_metrics.zarr')
-        # test_loss, test_r2 = self.test()
-        # print(f"Final Test Loss: {test_loss:.4f}, Test R2: {test_r2:.4f}")
+        
+        print(f"\n{'='*100}")
+        print(f"Training Complete!")
+        print(f"  Best validation loss: {best_val_loss:.6f}")
+        print(f"  Models saved to: {save_path}.pth and {save_path}_last_model.pth")
+        print(f"  Metrics saved to: {save_path}_metrics.zarr")
+        print(f"{'='*100}\n")
 
     def save_model(self, path):
         torch.save(self.model.state_dict(), path)
@@ -526,6 +818,10 @@ class Trainer:
         '''
         root = zarr.open(path, mode='w')
         for key, values in self.metrics.items():
+            # Skip layer_grad_norms if it contains dicts
+            if key == 'layer_grad_norms' and len(values) > 0 and isinstance(values[0], dict):
+                # Could save as JSON or nested zarr groups if needed
+                continue
             root.create_dataset(name=key, data=np.array(values), dtype='f4')
 
     def R2_score(self, targets, outputs):
@@ -576,7 +872,15 @@ if __name__ == '__main__':
     y_train = torch.randn(100, 1)
     train_dataset = TensorDataset(X_train, y_train)
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-    trainer = Trainer(model, train_loader, None, None, optimizer, torch.device('cpu'), {'pin_memory': False})
+    
+    config = {
+        'pin_memory': False,
+        'model': {'name': 'test_model'},
+        'learning_rate': 0.001,
+        'weight_decay': 0.0,
+        'batch_size': 16,
+    }
+    trainer = Trainer(model, train_loader, train_loader, train_loader, optimizer, torch.device('cpu'), config)
     trainer.train(num_epochs=5)
     trainer.save_model('model.pth')
     trainer.save_metrics('metrics.zarr')
