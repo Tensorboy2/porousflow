@@ -31,7 +31,7 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-Nano",
+        "ConvNeXt-Atto",
     ],
     "small_sweep": [
         "ViT-T16",
@@ -89,7 +89,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
         "single": [8e-4],  # Default single value
-        "sweep": [1e-4, 5e-4, 1e-3, 5e-3],
+        "sweep": [1e-5, 5e-5, 1e-4, 5e-4],
     },
     "batch_size": {
         "single": [128],
@@ -104,7 +104,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [100, 500, 1000, 5000, 10000, None],
     },
     "num_epochs": {
-        "single": [1000],
+        "single": [30],
         "sweep": [100,300,500,700,1000],    
     },
     "decay": {
@@ -113,7 +113,7 @@ HYPERPARAM_SWEEPS = {
         "common": ["cosine", "linear"],
     },
     'pe_encoder': {
-        'single': [''],
+        'single': ['log'],
         'sweep': ['straight', 'log', 'vector'],
     },
     'Pe': {
