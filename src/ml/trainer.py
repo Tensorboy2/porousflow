@@ -28,7 +28,7 @@ class Trainer:
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.test_loader = test_loader
-        self.criterion = RMSELoss()
+        self.criterion = nn.SmoothL1Loss()#RMSELoss()
         self.optimizer = optimizer
         self.device = device
 
