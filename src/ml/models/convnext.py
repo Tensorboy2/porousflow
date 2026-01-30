@@ -266,11 +266,8 @@ class TokenMixer(nn.Module):
         self.use_transformer = use_transformer
         
         if use_transformer:
-            # choose a valid nhead (must divide dim). prefer larger heads when possible
-            candidate_heads = [8, 4, 2, 1]
-            nhead = next((h for h in candidate_heads if dim % h == 0), 1)
             layer = nn.TransformerEncoderLayer(
-                d_model=dim, nhead=nhead, batch_first=True, norm_first=True
+                d_model=dim, nhead=4, batch_first=True
             )
             self.transformer = nn.TransformerEncoder(layer, layers)
             self.pos_emb = None
@@ -308,7 +305,7 @@ class ConvNeXt(nn.Module):
         num_classes=4,
         pe_encoder=None,
         include_direction=True,
-        use_transformer=True
+        use_transformer=False
     ):
         super().__init__()
         
