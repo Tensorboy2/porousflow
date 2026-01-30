@@ -221,7 +221,7 @@ class Trainer:
 
             # Compute loss in FP32 (outside autocast) to ensure stable scaling
             outputs_fp32 = outputs.float()
-            outputs = self.inverse_scale(outputs)
+            # outputs = self.inverse_scale(outputs)
             D_fp32 = D.float()
             # a = self.a.to(self.device)
             # scaled_outputs = torch.arcsinh(outputs_fp32*a)
@@ -230,14 +230,14 @@ class Trainer:
             # scaled_outputs = torch.sign(outputs_fp32) * torch.sqrt(torch.abs(outputs_fp32) + 1e-8)
             # scaled_D = torch.sign(D_fp32) * torch.sqrt(torch.abs(D_fp32) + 1e-8)
 
-            # scaled_outputs = self.scale(outputs_fp32)
+            scaled_outputs = self.scale(outputs_fp32)
             # scaled_outputs = self.scale(scaled_outputs)
             scaled_D = self.scale(D_fp32)
             # scaled_D = self.scale(scaled_D)
             # scaled_outputs = torch.sign(outputs_fp32) * torch.log1p(torch.abs(outputs_fp32)/100)
             # scaled_D = torch.sign(D_fp32) * torch.log1p(torch.abs(D_fp32)/100)
 
-            loss = self.criterion(outputs_fp32, scaled_D)
+            loss = self.criterion(scaled_outputs, scaled_D)
             # loss = self.criterion(outputs_fp32, D_fp32)
             running_loss += loss.item() * B
             total_samples += B
@@ -368,14 +368,14 @@ class Trainer:
                 # scaled_D = torch.arcsinh(a*D.float())
                 # scaled_outputs = torch.sign(outputs)*torch.log1p(torch.abs(outputs)/100)
                 # scaled_D = torch.sign(D) * torch.log1p(torch.abs(D)/100)
-                # scaled_outputs = self.scale(outputs)
+                scaled_outputs = self.scale(outputs)
                 # scaled_outputs = self.scale(scaled_outputs)
 
                 scaled_D = self.scale(D)
                 # scaled_D = self.scale(scaled_D)
-                loss = self.criterion(outputs, scaled_D)
+                loss = self.criterion(scaled_outputs, scaled_D)
                 # loss = self.criterion(outputs, D)
-                outputs = self.inverse_scale(outputs)
+                # outputs = self.inverse_scale(outputs)
 
                 running_loss += loss.item() * inputs.size(0)
                 total_samples += inputs.size(0)
