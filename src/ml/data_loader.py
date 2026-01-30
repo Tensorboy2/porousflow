@@ -118,6 +118,8 @@ class DispersionDataset(Dataset):
         self.targets_ds_x = self.root['dispersion_results']['Dx']
         # self.targets_ds_y = self.root['dispersion_results']['Dy']
         self.Pe = Pe
+        self.pe_hash = [0.1,10,50,100,500]
+        self.pe_out = torch.tensor([self.pe_hash[Pe]], dtype=torch.float32)
         self.transform = transform
 
         if num_samples is not None:
@@ -439,7 +441,7 @@ def get_dispersion_dataloader(file_path,config):
             test_dataset = DispersionDatasetCached(test_path,cache_images=False)
     else:
         Pe = config.get('Pe',0)
-        train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None),Pe=Pe)#, transform=DispersionTransform())
+        train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None),Pe=Pe, transform=aug)
         val_dataset = DispersionDataset(val_path,num_samples=config.get('num_validation_samples',None),Pe=Pe)
         test_dataset = DispersionDataset(test_path,Pe=Pe)
 
