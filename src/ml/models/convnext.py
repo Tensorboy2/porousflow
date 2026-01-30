@@ -335,9 +335,22 @@ class ConvNeXt(nn.Module):
             use_transformer=use_transformer
         )
         
-        # Fusion dimension logic
+        # Conditioning vector dimension (depends on enabled PE and direction)
+        cond_dim = 0
+        if pe_encoder is not None:
+            cond_dim += feat_dim
+        if include_direction:
+            cond_dim += feat_dim
+
+        # If using transformer (additive fusion) but condition vector doesn't
+        # match the pooled feature size, create a small projection to align
+        # dimensions.
+        self.cond_proj = None
+        if use_transformer and cond_dim > 0 and cond_dim != feat_dim:
+            self.cond_proj = nn.Linear(cond_dim, feat_dim)
+
+        # Fusion dimension logic for non-transformer (concatenation)
         fusion_dim = feat_dim
-        
         if not use_transformer:
             if pe_encoder is not None:
                 fusion_dim += feat_dim
@@ -359,6 +372,14 @@ class ConvNeXt(nn.Module):
         # Transformer mode → additive fusion
         if self.token_mixer.use_transformer:
             if cond is not None:
+                # If the condition vector size doesn't match pooled features,
+                # project it to the pooled size when a projection exists.
+                if cond.size(-1) != pooled.size(-1):
+                    if hasattr(self, 'cond_proj') and self.cond_proj is not None:
+                        cond = self.cond_proj(cond)
+                    else:
+                        # Fallback: trim or pad (trim here) to match pooled size
+                        cond = cond[:, :pooled.size(-1)]
                 pooled = pooled + cond
         
         # CNN mode → concatenative fusion
