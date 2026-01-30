@@ -242,9 +242,9 @@ TASK_CONFIGS = {
         "learning_rate": 5e-3,
         "weight_decay": 1e-5,
         "batch_size": 128,
-        "num_epochs": 50,
+        "num_epochs": 20,
         "decay": "cosine",
-        "warmup_steps": 5*16000/128, # steps per epoch * warmup epochs
+        "warmup_steps": 10*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
