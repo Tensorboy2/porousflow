@@ -254,7 +254,7 @@ TASK_CONFIGS = {
             "pe": 4,
             "include_direction": False,
         },
-        "pe_encoder": 'vector',
+        "pe_encoder": None,
         "Pe": 4,
     },
 }
