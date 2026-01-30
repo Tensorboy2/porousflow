@@ -31,7 +31,7 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-Tiny",
+        "ConvNeXt-Atto",
     ],
     "small_sweep": [
         "ViT-T16",
@@ -239,12 +239,12 @@ TASK_CONFIGS = {
         "pin_memory": True,
     },
     "dispersion": {
-        "learning_rate": 5e-4,
-        "weight_decay": 1e-1,
-        "batch_size": 256,
-        "num_epochs": 100,
+        "learning_rate": 8e-4,
+        "weight_decay": 1e-5,
+        "batch_size": 512,
+        "num_epochs": 30,
         "decay": "cosine",
-        "warmup_steps": 1250*5, # steps per epoch * warmup epochs
+        "warmup_steps": 1250, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
@@ -288,10 +288,10 @@ DEVICE_CONFIGS = {
             "num_training_samples": 32,
             "num_validation_samples": 4,
             "num_test_samples": 4,
-            "pe_encoder": 'vector',
+            "pe_encoder": '',
             "prefetch_factor": None,
             "pin_memory": False,
-            "pin_memory_device": "",
+            "pin_memory_device": "vector",
             "use_amp": False,
         },
     },
