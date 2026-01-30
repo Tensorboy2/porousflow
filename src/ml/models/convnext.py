@@ -260,13 +260,13 @@ class ConditionEncoder(nn.Module):
 # ------------------------------------------------------------
 
 class TokenMixer(nn.Module):
-    def __init__(self, dim, use_transformer=False, layers=2):
+    def __init__(self, dim, use_transformer=False, layers=1):
         super().__init__()
         self.use_transformer = use_transformer
         
         if use_transformer:
             layer = nn.TransformerEncoderLayer(
-                d_model=dim, nhead=8, batch_first=True
+                d_model=dim, nhead=1, batch_first=True
             )
             self.transformer = nn.TransformerEncoder(layer, layers)
             self.pos_emb = None
@@ -304,7 +304,7 @@ class ConvNeXt(nn.Module):
         num_classes=4,
         pe_encoder=None,
         include_direction=True,
-        use_transformer=False
+        use_transformer=True
     ):
         super().__init__()
         
