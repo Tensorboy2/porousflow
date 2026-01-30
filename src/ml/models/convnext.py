@@ -55,7 +55,8 @@ class ConvNeXtBlockV1(nn.Module):
         self.act = nn.GELU()
         self.pwconv2 = nn.Linear(4 * dim, dim)
         # optional gammas
-        # self.gamma_dw = nn.Parameter(layer_scale_init_value * torch.ones(dim), requires_grad=True)
+        # layer-scale for depthwise conv residual (channels-last shape)
+        self.gamma_dw = nn.Parameter(layer_scale_init_value * torch.ones(1, 1, 1, dim), requires_grad=True)
         self.gamma_mlp = nn.Parameter(layer_scale_init_value * torch.ones(dim), requires_grad=True)
 
     def forward(self, x):
@@ -67,8 +68,8 @@ class ConvNeXtBlockV1(nn.Module):
         dw = self.dwconv(x.permute(0, 3, 1, 2))          # conv expects channels-first
         dw = dw.permute(0, 2, 3, 1)                      # back to channels-last
         dw = self.norm(dw)
-        # dw = self.gamma_dw * dw
-        # x = shortcut + dw                                # first residual
+        dw = self.gamma_dw * dw
+        x = shortcut + dw                                # first residual
 
         # MLP residual
         mlp = self.pwconv1(dw)
@@ -265,8 +266,11 @@ class TokenMixer(nn.Module):
         self.use_transformer = use_transformer
         
         if use_transformer:
+            # choose a valid nhead (must divide dim). prefer larger heads when possible
+            candidate_heads = [8, 4, 2, 1]
+            nhead = next((h for h in candidate_heads if dim % h == 0), 1)
             layer = nn.TransformerEncoderLayer(
-                d_model=dim, nhead=4, batch_first=True
+                d_model=dim, nhead=nhead, batch_first=True, norm_first=True
             )
             self.transformer = nn.TransformerEncoder(layer, layers)
             self.pos_emb = None
@@ -362,6 +366,25 @@ class ConvNeXt(nn.Module):
             nn.LayerNorm(fusion_dim),
             nn.Linear(fusion_dim, num_classes)
         )
+        
+        # Initialize weights for stability
+        self._init_weights()
+
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.LayerNorm):
+                if hasattr(m, 'weight') and m.weight is not None:
+                    nn.init.ones_(m.weight)
+                if hasattr(m, 'bias') and m.bias is not None:
+                    nn.init.zeros_(m.bias)
     
     def forward(self, x, Pe=None, Direction=None):
         feat = self.encoder(x)
