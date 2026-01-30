@@ -103,6 +103,8 @@ def main(config):
     print(f"Dataset sizes - Train: {len(train_loader.dataset)}, Val: {len(val_loader.dataset)}, Test: {len(test_loader.dataset)}")
     print(f"Warmup Steps: {config.get('warmup_steps', 0)} | Decay: {config.get('decay', 'None')}")
     # Initialize Trainer
+    loss_function = loss_functions[config.get('loss_function','log-cosh')]
+    print(f"Loss function: {config.get('loss_function','log-cosh')}")
     trainer = Trainer(
         model=model,
         train_loader=train_loader,
@@ -111,7 +113,7 @@ def main(config):
         optimizer=optimizer,
         config=config,
         device=device,
-        criterion=loss_functions[config.get('loss_function','log-cosh')]
+        criterion=loss_function
     )
     print("Trainer initialized.")
 

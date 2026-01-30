@@ -249,12 +249,13 @@ TASK_CONFIGS = {
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
+        "loss_function": 'huber',
         "pe": {
-            "pe_encoder": False,
+            "pe_encoder": 'log',
             "pe": 2,
-            "include_direction": False,
+            "include_direction": True,
         },
-        "pe_encoder": None,
+        "pe_encoder": 'log',
         "Pe": 2,
     },
 }
