@@ -14,9 +14,35 @@ from src.ml.data_loader import get_permeability_dataloader, get_dispersion_datal
 from src.ml.trainer import Trainer
 from torch import optim
 import torch
+import torch.nn as nn
 import yaml
 import os
 import argparse
+
+class RMSELoss(nn.Module):
+    def __init__(self, eps=1e-6):
+        super().__init__()
+        self.mse = nn.MSELoss()
+        self.eps = eps # Added for numerical stability
+    
+    def forward(self, x, y):
+        # Calculate MSE and take the square root
+        loss = torch.sqrt(self.mse(x, y) + self.eps)
+        return loss
+class LogCoshLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, y_pred, y_true):
+        error = y_pred - y_true
+        return torch.mean(torch.log(torch.cosh(error + 1e-12)))
+    
+loss_functions = {
+    'mse': nn.MSELoss(),
+    'huber': nn.SmoothL1Loss(),
+    'rmse': RMSELoss(),
+    'log-cosh': LogCoshLoss(),
+}
 
 def main(config):
     '''
@@ -84,7 +110,8 @@ def main(config):
         test_loader=test_loader,
         optimizer=optimizer,
         config=config,
-        device=device
+        device=device,
+        criterion=loss_functions[config.get('loss_function','log-cosh')]
     )
     print("Trainer initialized.")
 
@@ -107,3 +134,4 @@ if __name__ == "__main__":
 
     for exp_config in config.get('experiments', []):
         main(exp_config)
+

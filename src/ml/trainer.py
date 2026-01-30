@@ -23,12 +23,12 @@ class RMSELoss(nn.Module):
         loss = torch.sqrt(self.mse(x, y) + self.eps)
         return loss
 class Trainer:
-    def __init__(self, model, train_loader, val_loader, test_loader, optimizer, device, config):
+    def __init__(self, model, train_loader, val_loader, test_loader, optimizer, device, config,criterion=nn.MSELoss()):
         self.model = model.to(device)
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.test_loader = test_loader
-        self.criterion = nn.SmoothL1Loss()#RMSELoss()
+        self.criterion = criterion
         self.optimizer = optimizer
         self.device = device
 
