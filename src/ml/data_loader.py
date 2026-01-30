@@ -49,13 +49,6 @@ class DispersionTransform:
             # Identity
             lambda img, Dx: (img, Dx),
 
-            # R90
-            # lambda img, Dx: (
-            #     tf.rotate(img, 90),
-            #     # swap_diag(Dy),
-            #     swap_diag(Dx),
-            # ),
-
             # R180
             lambda img, Dx: (
                 tf.rotate(img, 180),
@@ -63,26 +56,12 @@ class DispersionTransform:
                 # Dy,
             ),
 
-            # R270
-            # lambda img, Dx: (
-            #     tf.rotate(img, 270),
-            #     # swap_diag(Dy),
-            #     swap_diag(Dx),
-            # ),
-
             # H
-            # lambda img, Dx: (
-            #     tf.hflip(img),
-            #     Dx,
-            #     # Dy,
-            # ),
-
-            # # H + R90
-            # lambda img, Dx: (
-            #     tf.rotate(tf.hflip(img), 90),
-            #     # swap_diag(Dy),
-            #     swap_diag(Dx),
-            # ),
+            lambda img, Dx: (
+                tf.hflip(img),
+                Dx,
+                # Dy,
+            ),
 
             # H + R180
             lambda img, Dx: (
@@ -90,13 +69,6 @@ class DispersionTransform:
                 Dx,
                 # Dy,
             ),
-
-            # # H + R270
-            # lambda img, Dx: (
-            #     tf.rotate(tf.hflip(img), 270),
-            #     # swap_diag(Dy),
-            #     swap_diag(Dx),
-            # ),
         ]
 
     def __call__(self, image, Dx):
@@ -454,14 +426,14 @@ def get_dispersion_dataloader(file_path,config):
     #     test_dataset = DispersionDataset(test_path,Pe=Pe)
     
     pe = config['pe']
+    aug = DispersionTransform() if config.get("transform",True) else None
     if pe['pe_encoder']:
         # print(f"Pe encoder: {pe['pe_encoder']}")
         if pe['include_direction']:
-            train_dataset = DispersionDatasetFull(train_path,num_samples=config.get('num_training_samples',None))
+            train_dataset = DispersionDatasetFull(train_path,num_samples=config.get('num_training_samples',None),transform=aug)
             val_dataset = DispersionDatasetFull(val_path,num_samples=config.get('num_validation_samples',None))
             test_dataset = DispersionDatasetFull(test_path)
         else:
-            aug = DispersionTransform() if config.get("transform",False) else None
             train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=False,transform=aug)
             val_dataset = DispersionDatasetCached(val_path,num_samples=config.get('num_validation_samples',None),cache_images=False)
             test_dataset = DispersionDatasetCached(test_path,cache_images=False)
