@@ -165,7 +165,8 @@ class Trainer:
         return epoch_loss, r2, avg_grad_norm
     
     def scale(self,x):
-        return torch.sign(x)*torch.log(torch.abs(x)+1)
+        return torch.asinh(x)
+        # return torch.sign(x)*torch.log(torch.abs(x)+1)
     
     def inverse_scale(self,y):
         return torch.sign(y) * (torch.exp(torch.abs(y)) - 1)
