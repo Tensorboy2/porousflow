@@ -44,7 +44,7 @@ for i in range(len(pe_indices)):
 
         ax.hist2d(
             porosities,
-            Dx[:, i, labels[j][0], labels[j][1]],
+            np.asinh(Dx[:, i, labels[j][0], labels[j][1]]),
             bins=100,
             cmap='viridis',
             cmin=1
@@ -56,4 +56,4 @@ for i in range(len(pe_indices)):
         ax.set_ylabel(y_labels[j])
 
 plt.tight_layout()
-plt.savefig('Dx_vs_porosity.pdf', bbox_inches='tight')
+plt.savefig('Dx_vs_porosity_asinh.pdf', bbox_inches='tight')

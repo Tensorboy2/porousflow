@@ -165,12 +165,12 @@ class Trainer:
         return epoch_loss, r2, avg_grad_norm
     
     def scale(self,x):
-        return torch.asinh(x)
+        return torch.asinh(x)/10
         # return torch.sign(x)*torch.log(torch.abs(x)+1)
     
     def inverse_scale(self,y):
         # return torch.sign(y) * (torch.exp(torch.abs(y)) - 1)
-        return torch.sinh(y)
+        return torch.sinh(y*10)
 
     def train_epoch_dispersion(self):
         self.model.train()
