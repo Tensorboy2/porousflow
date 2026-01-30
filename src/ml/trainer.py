@@ -12,14 +12,23 @@ import zarr
 import numpy as np
 from torch.amp import autocast, GradScaler
 import time
-
+class RMSELoss(nn.Module):
+    def __init__(self, eps=1e-6):
+        super().__init__()
+        self.mse = nn.MSELoss()
+        self.eps = eps # Added for numerical stability
+    
+    def forward(self, x, y):
+        # Calculate MSE and take the square root
+        loss = torch.sqrt(self.mse(x, y) + self.eps)
+        return loss
 class Trainer:
     def __init__(self, model, train_loader, val_loader, test_loader, optimizer, device, config):
         self.model = model.to(device)
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.test_loader = test_loader
-        self.criterion = nn.MSELoss()
+        self.criterion = RMSELoss()
         self.optimizer = optimizer
         self.device = device
 
