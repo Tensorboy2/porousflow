@@ -239,12 +239,12 @@ TASK_CONFIGS = {
         "pin_memory": True,
     },
     "dispersion": {
-        "learning_rate": 5e-3,
+        "learning_rate": 5e-4,
         "weight_decay": 1e-5,
-        "batch_size": 64,
-        "num_epochs": 100,
+        "batch_size": 128,
+        "num_epochs": 50,
         "decay": "cosine",
-        "warmup_steps": 5*16000/64, # steps per epoch * warmup epochs
+        "warmup_steps": 5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
