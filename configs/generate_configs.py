@@ -31,7 +31,7 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-Nano",
+        "ConvNeXt-Atto",
         "ViT-T16",
         "ResNet-18",
     ],
@@ -106,7 +106,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [100, 500, 1000, 5000, 10000, None],
     },
     "num_epochs": {
-        "single": [30],
+        "single": [100],
         "sweep": [1000,1500,2000],    
     },
     "decay": {
@@ -124,7 +124,7 @@ HYPERPARAM_SWEEPS = {
     },
     "loss_function": {
         'single': ['mse'],
-        'sweep': ['mse','rmse','huber','log-cosh']
+        'sweep': ['mse','rmse','huber','log-cosh','rse']
     }
 }
 

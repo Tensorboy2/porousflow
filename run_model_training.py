@@ -36,12 +36,28 @@ class LogCoshLoss(nn.Module):
     def forward(self, y_pred, y_true):
         error = y_pred - y_true
         return torch.mean(torch.log(torch.cosh(error + 1e-12)))
+
+class RelativeSquaredErrorLoss(nn.Module):
+    def __init__(self, eps=1e-8):
+        super().__init__()
+        self.eps = eps
+
+    def forward(self, y_pred, y_true):
+        y_true_flat = y_true.view(y_true.shape[0], -1)
+        y_pred_flat = y_pred.view(y_pred.shape[0], -1)
+
+        num = torch.sum((y_pred_flat - y_true_flat) ** 2, dim=1)
+        mean = torch.mean(y_true_flat, dim=1, keepdim=True)
+        denom = torch.sum((y_true_flat - mean) ** 2, dim=1) + self.eps
+
+        return torch.mean(num / denom)
     
 loss_functions = {
     'mse': nn.MSELoss(),
     'huber': nn.SmoothL1Loss(),
     'rmse': RMSELoss(),
     'log-cosh': LogCoshLoss(),
+    'rse': RelativeSquaredErrorLoss(),
 }
 
 def main(config):
