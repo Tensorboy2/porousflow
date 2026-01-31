@@ -32,6 +32,8 @@ Run plans:
 MODEL_PRESETS = {
     "quick_test": [
         "ConvNeXt-Nano",
+        "ViT-T16",
+        "ResNet-18",
     ],
     "small_sweep": [
         "ViT-T16",
