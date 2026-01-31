@@ -120,6 +120,10 @@ HYPERPARAM_SWEEPS = {
         'single': [0],
         'sweep': [0,1,2,3,4],
     },
+    "loss_function": {
+        'single': ['mse'],
+        'sweep': ['mse','rmse','huber','log-cosh']
+    }
 }
 
 # Sweep presets - predefined combinations of sweeps
@@ -165,6 +169,16 @@ SWEEP_PRESETS = {
         "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "single",
+    },
+    "lf_sweep": {
+        # Sweep only loss function
+        "learning_rate": "single",
+        "batch_size": "single",
+        "weight_decay": "single",
+        "num_training_samples": "single",
+        "num_epochs": "single",
+        "decay": "single",
+        "loss_function": 'sweep'
     },
     "bs_sweep": {
         # Sweep only batch size
@@ -228,7 +242,7 @@ DEFAULT_SWEEP_PRESET = "none"
 TASK_CONFIGS = {
     "permeability": {
         "learning_rate": 5e-5,
-        "weight_decay": 1e-1,
+        "weight_decay": 1e-2,
         "batch_size": 128,
         "num_epochs": 100,
         "decay": "cosine",
@@ -237,6 +251,7 @@ TASK_CONFIGS = {
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
+        'loss_function': 'mse'
     },
     "dispersion": {
         "learning_rate": 5e-4,
