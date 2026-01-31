@@ -182,7 +182,7 @@ SWEEP_PRESETS = {
         "decay": "single",
         "loss_function": 'sweep'
     },
-    "lf_sweep": {
+    "epoch_sweep": {
         # Sweep only loss function
         "learning_rate": "single",
         "batch_size": "single",
