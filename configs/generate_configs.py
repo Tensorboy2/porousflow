@@ -89,7 +89,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 # Each list defines the values to sweep over for that hyperparameter
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
-        "single": [8e-4],  # Default single value
+        "single": [5e-4],  # Default single value
         "sweep": [1e-5, 5e-5, 1e-4, 5e-4],
     },
     "batch_size": {
@@ -97,7 +97,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [1e-1],
+        "single": [1e-2],
         "sweep": [5e-2, 1e-1, 0.3],
     },
     "num_training_samples": {
@@ -114,7 +114,7 @@ HYPERPARAM_SWEEPS = {
         "common": ["cosine", "linear"],
     },
     'pe_encoder': {
-        'single': ['log'],
+        'single': [None],
         'sweep': ['straight', 'log', 'vector'],
     },
     'Pe': {
@@ -275,7 +275,7 @@ TASK_CONFIGS = {
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
-        "loss_function": 'huber',
+        "loss_function": 'rmse',
         "pe": {
             "pe_encoder": None,
             "pe": 2,
