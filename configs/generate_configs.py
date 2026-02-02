@@ -386,19 +386,19 @@ class ModelRegistry:
         "ViT-S16": {
             "type": "vit",
             "size": "S16",
-            "clip_grad": True,
+            "clip_grad": False,
             "description": "Vision Transformer Small with 16x16 patches"
         },
         "ViT-B16": {
             "type": "vit",
             "size": "B16",
-            "clip_grad": True,
+            "clip_grad": False,
             "description": "Vision Transformer Base with 16x16 patches"
         },
         "ViT-L16": {
             "type": "vit",
             "size": "L16",
-            "clip_grad": True,
+            "clip_grad": False,
             "description": "Vision Transformer Large with 16x16 patches"
         },
         
