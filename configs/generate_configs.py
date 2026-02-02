@@ -253,12 +253,12 @@ DEFAULT_SWEEP_PRESET = "none"
 # Base training configurations by task (used as defaults)
 TASK_CONFIGS = {
     "permeability": {
-        "learning_rate": 5e-5,
-        "weight_decay": 1e-2,
+        "learning_rate": 8e-4,
+        "weight_decay": 1e-1,
         "batch_size": 128,
         "num_epochs": 100,
         "decay": "cosine",
-        "warmup_steps": 125*2, # steps per epoch * warmup epochs
+        "warmup_steps": 125*10, # steps per epoch * warmup epochs
         "num_training_samples": None,  # None = use all data
         "num_validation_samples": None,
         "prefetch_factor": 4,
