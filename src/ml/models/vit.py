@@ -26,7 +26,7 @@ class PatchEmbedding(nn.Module):
 
 class MultiHeadAttention(nn.Module):
     """Multi-head self attention mechanism"""
-    def __init__(self, embed_dim: int = 768, num_heads: int = 12, dropout: float = 0.1):
+    def __init__(self, embed_dim: int = 768, num_heads: int = 12, dropout: float = 0.0):
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -60,7 +60,7 @@ class MultiHeadAttention(nn.Module):
 
 class MLP(nn.Module):
     """MLP block with GELU activation"""
-    def __init__(self, embed_dim: int = 768, mlp_ratio: float = 4.0, dropout: float = 0.1):
+    def __init__(self, embed_dim: int = 768, mlp_ratio: float = 4.0, dropout: float = 0.0):
         super().__init__()
         hidden_dim = int(embed_dim * mlp_ratio)
         self.fc1 = nn.Linear(embed_dim, hidden_dim)
@@ -79,7 +79,7 @@ class MLP(nn.Module):
 
 class TransformerBlock(nn.Module):
     """Transformer encoder block"""
-    def __init__(self, embed_dim: int = 768, num_heads: int = 12, mlp_ratio: float = 4.0, dropout: float = 0.1):
+    def __init__(self, embed_dim: int = 768, num_heads: int = 12, mlp_ratio: float = 4.0, dropout: float = 0.0):
         super().__init__()
         self.norm1 = nn.LayerNorm(embed_dim)
         self.attn = MultiHeadAttention(embed_dim, num_heads, dropout)
@@ -119,7 +119,7 @@ class ViT(nn.Module):
         num_layers: int = 12,
         num_heads: int = 12,
         mlp_ratio: float = 4.0,
-        dropout: float = 0.1,
+        dropout: float = 0.0,
         task: str = 'permeability',
         Pe_encoder = None,
         include_direction=False
@@ -335,7 +335,7 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeabil
         num_layers = cfg.get('num_layers', None)
         num_heads = cfg.get('num_heads', None)
         mlp_ratio = cfg.get('mlp_ratio', 4.0)
-        dropout = cfg.get('dropout', 0.1)
+        dropout = cfg.get('dropout', 0.0)
     else:
         size = config_or_size
         num_classes = num_classes
@@ -345,7 +345,7 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeabil
         num_layers = kwargs.pop('num_layers', None)
         num_heads = kwargs.pop('num_heads', None)
         mlp_ratio = kwargs.pop('mlp_ratio', 4.0)
-        dropout = kwargs.pop('dropout', 0.1)
+        dropout = kwargs.pop('dropout', 0.0)
 
     # If a named size (e.g. 'T16', 'S16', 'B16', 'L16', or 'vit-T16') is provided,
     # try to resolve it case-insensitively and accept common prefixes.
