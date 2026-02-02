@@ -277,11 +277,11 @@ TASK_CONFIGS = {
         "pin_memory": True,
         "loss_function": 'huber',
         "pe": {
-            "pe_encoder": 'log',
+            "pe_encoder": None,
             "pe": 2,
             "include_direction": False,
         },
-        "pe_encoder": 'log',
+        "pe_encoder": None,
         "Pe": 2,
     },
 }
