@@ -85,7 +85,7 @@ def main(config):
     if model_type == 'convnext':
         model = load_convnext_model(model_cfg,task=task,Pe_encoder=pe_encoder,include_direction=include_direction)
     elif model_type == 'vit':
-        model = load_vit_model(model_cfg,task=task)
+        model = load_vit_model(model_cfg,task=task,Pe_encoder=pe_encoder,include_direction=include_direction)
     elif model_type == 'resnet':
         model = load_resnet_model(model_cfg,task=task,Pe_encoder=pe_encoder,include_direction=include_direction)
     else:

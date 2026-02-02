@@ -122,6 +122,7 @@ class ViT(nn.Module):
         dropout: float = 0.1,
         task: str = 'permeability',
         Pe_encoder = None,
+        include_direction=False
     ):
         super().__init__()
         
@@ -148,39 +149,49 @@ class ViT(nn.Module):
         # Classification head
         self.norm = nn.LayerNorm(embed_dim)
 
-        # if self.task=='permeability':
-        #     self.head = nn.Linear(embed_dim, num_classes)
-        # elif self.task =='dispersion':
-        #     # self.pe_mlp = nn.Sequential(nn.Linear(1, 16), nn.GELU(), nn.Linear(16, 16))
-        #     self.head = nn.Linear(embed_dim, num_classes)
+        fc_in = embed_dim
         self.Pe_encoder = Pe_encoder
-        if self.Pe_encoder == 'straight':
-            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), 
-                                        nn.GELU(),
-                                        nn.LayerNorm(16),
-                                        nn.Linear(16, 16))
-            # self.fc = nn.Linear(dims[-1] + 16, num_classes)
-            self.fc = nn.Sequential(nn.LayerNorm(embed_dim + 16),
-                                    nn.Linear(embed_dim + 16, num_classes))
-        elif self.Pe_encoder == 'log':
-            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), 
-                                        nn.GELU(),
-                                        nn.LayerNorm(16),
-                                        nn.Linear(16, 16))
-            # self.fc = nn.Linear(embed_dim + 16, num_classes)
-            self.fc = nn.Sequential(nn.LayerNorm(embed_dim + 16),
-                                    nn.Linear(embed_dim + 16, num_classes))
-        elif self.Pe_encoder == 'vector':
-            self.pe_mlp = nn.Sequential(nn.Linear(5, 16), 
-                                        nn.GELU(),
-                                        nn.LayerNorm(16),
-                                        nn.Linear(16, 16))
-            # self.fc = nn.Linear(embed_dim + 16, num_classes)
-            self.fc = nn.Sequential(nn.LayerNorm(embed_dim + 16),
-                                    nn.Linear(embed_dim + 16, num_classes))
+        self.include_direction = include_direction
+
+        pe_in_dims = {
+            'straight': 1,
+            'log': 1,
+            'vector': 5,
+        }
+
+        extra_dim = 0
+
+        # Peclet encoder
+        pe_dim = pe_in_dims.get(self.Pe_encoder)
+        if pe_dim is not None:
+            self.pe_mlp = nn.Sequential(
+                nn.Linear(pe_dim, 16),
+                nn.GELU(),
+                nn.LayerNorm(16),
+                nn.Linear(16, 16),
+            )
+            extra_dim += 16
         else:
-            # Default head when no Peclet encoder is used
-            self.fc = nn.Linear(embed_dim, num_classes)
+            self.pe_mlp = None
+
+        # Direction encoder
+        if self.include_direction:
+            dir_dim = 2
+            self.dir_mlp = nn.Sequential(
+                nn.Linear(dir_dim, 16),
+                nn.GELU(),
+                nn.LayerNorm(16),
+                nn.Linear(16, 16),
+            )
+            extra_dim += 16
+        else:
+            self.dir_mlp = None
+
+        # Final classifier head
+        self.fc = nn.Sequential(
+            nn.LayerNorm(fc_in + extra_dim),
+            nn.Linear(fc_in + extra_dim, num_classes),
+        )
 
         # Initialize weights
         # self._init_weights()
@@ -223,7 +234,7 @@ class ViT(nn.Module):
                 vector[i, 4] = 1
         return vector
     
-    def forward(self, x, Pe=None):
+    def forward(self, x, Pe=None, Direction=None):
         # Validate inputs
         # if self.task == 'dispersion' and Pe is None:
         #     raise ValueError("Pe number must be provided when mode='dispersion'")
@@ -245,33 +256,39 @@ class ViT(nn.Module):
         x = x.mean(dim=1)  # Global average pooling -> (batch_size, embed_dim)
         
         x = x.view(B, -1)  # (batch_size, embed_dim)
-        # Concatenate Péclet number for dispersion mode
-        if self.Pe_encoder:
-            # Ensure Pe is on the same device/dtype as x
+
+        extra_feats = []
+
+        # ---- Peclet encoder ----
+        if self.pe_mlp is not None:
             if Pe is None:
                 raise ValueError("Pe must be provided when Pe_encoder is set")
+
             Pe = Pe.to(device=x.device, dtype=x.dtype)
 
-            if self.Pe_encoder == 'straight':
-                # Expect scalar per-sample shape (B,1) or (B,)
-                Pe = torch.ones(B, 1, device=x.device, dtype=x.dtype) * Pe
-                Pe = self.pe_mlp(Pe)  # (B, 16)
-            elif self.Pe_encoder == 'log':
-                Pe = torch.ones(B, 1, device=x.device, dtype=x.dtype) * Pe
-                Pe = torch.log(Pe)
-                Pe = self.pe_mlp(Pe)  # (B, 16)
-            elif self.Pe_encoder == 'vector':
-                # Accept either scalar Pe (B,1) or already 5-d vectors (B,5)
-                if Pe.dim() == 2 and Pe.size(1) == 5:
-                    vec = Pe
-                else:
-                    vec = self.pe_to_vector(Pe)
-                Pe = self.pe_mlp(vec)  # (B, 16)
+            if self.Pe_encoder in ("straight", "log"):
+                Pe = Pe.view(B, 1)
+                if self.Pe_encoder == "log":
+                    Pe = torch.log(Pe)
 
-            x = torch.cat([x, Pe], dim=1)  # (B, dims[-1] + 16)
-        
+            elif self.Pe_encoder == "vector":
+                if not (Pe.dim() == 2 and Pe.size(1) == 5):
+                    Pe = self.pe_to_vector(Pe)
+
+            Pe = self.pe_mlp(Pe)
+            extra_feats.append(Pe)
+
+        # ---- Direction encoder ----
+        if self.dir_mlp is not None and Direction is not None:
+            Direction = Direction.to(device=x.device, dtype=x.dtype)
+            direction = self.dir_mlp(Direction)
+            extra_feats.append(direction)
+
+        # ---- Concatenate all ----
+        if extra_feats:
+            x = torch.cat([x] + extra_feats, dim=1)
+
         x = self.fc(x)
-        
         return x
     
     def get_num_params(self):
@@ -285,7 +302,7 @@ VIT_CONFIGS = {
     'L16': {'embed_dim': 1024, 'num_layers': 24, 'num_heads': 16},
 }
 
-def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeability', pretrained_path: str = None, Pe_encoder = None, **kwargs):
+def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeability', pretrained_path: str = None, Pe_encoder = None, include_direction=False, **kwargs):
     """
     Flexible loader for ViT models.
 
@@ -379,6 +396,7 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeabil
         dropout=dropout,
         task=task,
         Pe_encoder=Pe_encoder,
+        include_direction=include_direction
     )
 
     # Load pretrained weights if requested
