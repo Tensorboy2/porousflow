@@ -36,13 +36,12 @@ MODEL_PRESETS = {
         # "ResNet-18",
     ],
     "small_sweep": [
-        "ViT-T16",
-        "ViT-S16",
-        "ConvNeXt-Atto",
-        "ConvNeXt-Femto",
-        "ConvNeXt-Pico",
+        "ResNet-152",
+        "ConvNeXt-Large",
         "ResNet-18",
-        "ResNet-34",
+        "ViT-L16",
+        "ViT-T16",
+        "ConvNeXt-Atto",
     ],
     "full_vit": [
         "ViT-T16",
@@ -106,7 +105,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [100, 500, 1000, 5000, 10000, None],
     },
     "num_epochs": {
-        "single": [100],
+        "single": [400],
         "sweep": [1000,1500,2000],    
     },
     "decay": {
@@ -123,7 +122,7 @@ HYPERPARAM_SWEEPS = {
         'sweep': [0,1,2,3,4],
     },
     "loss_function": {
-        'single': ['mse'],
+        'single': ['rmse'],
         'sweep': ['mse','rmse','huber','log-cosh','rse']
     }
 }
@@ -280,7 +279,7 @@ TASK_CONFIGS = {
         "pe": {
             "pe_encoder": 'log',
             "pe": 2,
-            "include_direction": True,
+            "include_direction": False,
         },
         "pe_encoder": 'log',
         "Pe": 2,

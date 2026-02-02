@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import zarr
 
-data = zarr.open('data/train.zarr', mode='r')
+data = zarr.open('data/validation.zarr', mode='r')
 permeabilities = data['lbm_results']['K']
 porosities = data['metrics']['metrics']['porosity']
 
@@ -93,5 +93,5 @@ cbar = fig.colorbar(last_h[3], cax=cax)
 cbar.set_label('Counts')
 # plt.tight_layout(pad=0.3)
 
-plt.savefig('permeability_vs_porosity_unmerged.pdf', bbox_inches='tight')
+plt.savefig('permeability_vs_porosity_unmerged_val.pdf', bbox_inches='tight')
 plt.show()
