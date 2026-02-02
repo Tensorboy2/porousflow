@@ -89,7 +89,10 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, layers, in_channels=3, num_classes=1000, task='permeability', Pe_encoder = None):
+    def __init__(self, block, layers, 
+                 in_channels=3, num_classes=1000, 
+                 task='permeability', Pe_encoder = None, 
+                 include_direction=True):
         super(ResNet, self).__init__()
         self.in_channels = 64
         
@@ -111,33 +114,49 @@ class ResNet(nn.Module):
 
         fc_in = 512 * block.expansion
         self.Pe_encoder = Pe_encoder
-        if self.Pe_encoder == 'straight':
-            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), 
-                                        nn.GELU(),
-                                        nn.LayerNorm(16),
-                                        nn.Linear(16, 16))
-            # self.fc = nn.Linear(dims[-1] + 16, num_classes)
-            self.fc = nn.Sequential(nn.LayerNorm(fc_in + 16),
-                                    nn.Linear(fc_in + 16, num_classes))
-        elif self.Pe_encoder == 'log':
-            self.pe_mlp = nn.Sequential(nn.Linear(1, 16), 
-                                        nn.GELU(),
-                                        nn.LayerNorm(16),
-                                        nn.Linear(16, 16))
-            # self.fc = nn.Linear(fc_in + 16, num_classes)
-            self.fc = nn.Sequential(nn.LayerNorm(fc_in + 16),
-                                    nn.Linear(fc_in + 16, num_classes))
-        elif self.Pe_encoder == 'vector':
-            self.pe_mlp = nn.Sequential(nn.Linear(5, 16), 
-                                        nn.GELU(),
-                                        nn.LayerNorm(16),
-                                        nn.Linear(16, 16))
-            # self.fc = nn.Linear(fc_in + 16, num_classes)
-            self.fc = nn.Sequential(nn.LayerNorm(fc_in + 16),
-                                    nn.Linear(fc_in + 16, num_classes))
+        self.include_direction = include_direction
+
+        pe_in_dims = {
+            'straight': 1,
+            'log': 1,
+            'vector': 5,
+        }
+
+        extra_dim = 0
+
+        # Peclet encoder
+        pe_dim = pe_in_dims.get(self.Pe_encoder)
+        if pe_dim is not None:
+            self.pe_mlp = nn.Sequential(
+                nn.Linear(pe_dim, 16),
+                nn.GELU(),
+                nn.LayerNorm(16),
+                nn.Linear(16, 16),
+            )
+            extra_dim += 16
         else:
-            # Default head when no Peclet encoder is used
-            self.fc = nn.Linear(fc_in, num_classes)
+            self.pe_mlp = None
+
+        # Direction encoder
+        if self.include_direction:
+            dir_dim = 2
+            self.dir_mlp = nn.Sequential(
+                nn.Linear(dir_dim, 16),
+                nn.GELU(),
+                nn.LayerNorm(16),
+                nn.Linear(16, 16),
+            )
+            extra_dim += 16
+        else:
+            self.dir_mlp = None
+
+        # Final classifier head
+        self.fc = nn.Sequential(
+            nn.LayerNorm(fc_in + extra_dim),
+            nn.Linear(fc_in + extra_dim, num_classes),
+        )
+
+
         
         # Initialize weights
         # self._initialize_weights()
@@ -189,8 +208,10 @@ class ResNet(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def forward(self, x, Pe=None):
+    def forward(self, x, Pe=None, Direction=None):
         B = x.size(0)
+
+        # Backbone
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -203,61 +224,69 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
-        # Handle task-specific extra inputs
-        if self.Pe_encoder:
-            # Ensure Pe is on the same device/dtype as x
+
+        extra_feats = []
+
+        # ---- Peclet encoder ----
+        if self.pe_mlp is not None:
             if Pe is None:
                 raise ValueError("Pe must be provided when Pe_encoder is set")
+
             Pe = Pe.to(device=x.device, dtype=x.dtype)
 
-            if self.Pe_encoder == 'straight':
-                # Expect scalar per-sample shape (B,1) or (B,)
-                Pe = torch.ones(B, 1, device=x.device, dtype=x.dtype) * Pe
-                Pe = self.pe_mlp(Pe)  # (B, 16)
-            elif self.Pe_encoder == 'log':
-                Pe = torch.ones(B, 1, device=x.device, dtype=x.dtype) * Pe
-                Pe = torch.log(Pe)
-                Pe = self.pe_mlp(Pe)  # (B, 16)
-            elif self.Pe_encoder == 'vector':
-                # Accept either scalar Pe (B,1) or already 5-d vectors (B,5)
-                if Pe.dim() == 2 and Pe.size(1) == 5:
-                    vec = Pe
-                else:
-                    vec = self.pe_to_vector(Pe)
-                Pe = self.pe_mlp(vec)  # (B, 16)
+            if self.Pe_encoder in ("straight", "log"):
+                Pe = Pe.view(B, 1)
+                if self.Pe_encoder == "log":
+                    Pe = torch.log(Pe)
 
-            x = torch.cat([x, Pe], dim=1)  # (B, dims[-1] + 16)
+            elif self.Pe_encoder == "vector":
+                if not (Pe.dim() == 2 and Pe.size(1) == 5):
+                    Pe = self.pe_to_vector(Pe)
+
+            Pe = self.pe_mlp(Pe)
+            extra_feats.append(Pe)
+
+        # ---- Direction encoder ----
+        if self.dir_mlp is not None and Direction is not None:
+            Direction = Direction.to(device=x.device, dtype=x.dtype)
+            direction = self.dir_mlp(Direction)
+            extra_feats.append(direction)
+
+        # ---- Concatenate all ----
+        if extra_feats:
+            x = torch.cat([x] + extra_feats, dim=1)
 
         x = self.fc(x)
         return x
 
 
-def resnet18(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None):
+
+def resnet18(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None,include_direction=False):
     """ResNet-18 model"""
-    return ResNet(BasicBlock, [2, 2, 2, 2], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
+    return ResNet(BasicBlock, [2, 2, 2, 2], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder,include_direction=include_direction)
 
 
-def resnet34(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None):
+def resnet34(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None,include_direction=False):
     """ResNet-34 model"""
-    return ResNet(BasicBlock, [3, 4, 6, 3], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
+    return ResNet(BasicBlock, [3, 4, 6, 3], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder,include_direction=include_direction)
 
 
-def resnet50(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None):
+def resnet50(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None,include_direction=False):
     """ResNet-50 model"""
-    return ResNet(Bottleneck, [3, 4, 6, 3], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
+    return ResNet(Bottleneck, [3, 4, 6, 3], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder,include_direction=include_direction)
 
 
-def resnet101(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None):
+def resnet101(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None,include_direction=False):
     """ResNet-101 model"""
-    return ResNet(Bottleneck, [3, 4, 23, 3], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
+    return ResNet(Bottleneck, [3, 4, 23, 3], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder,include_direction=include_direction)
 
 
-def resnet152(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None):
+def resnet152(in_channels=3, num_classes=1000, task='permeability',Pe_encoder = None,include_direction=False):
     """ResNet-152 model"""
-    return ResNet(Bottleneck, [3, 8, 36, 3], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
+    return ResNet(Bottleneck, [3, 8, 36, 3], in_channels, num_classes, task=task,Pe_encoder=Pe_encoder,include_direction=include_direction)
 
 
-def load_resnet_model(config_or_size='18', in_channels=1, pretrained_path: str = None, task: str = 'permeability', Pe_encoder = None, **kwargs):
+def load_resnet_model(config_or_size='18', in_channels=1, pretrained_path: str = None, task: str = 'permeability', Pe_encoder = None, include_direction=False, **kwargs):
     """
     Flexible loader for ResNet models.
 
@@ -284,15 +313,15 @@ def load_resnet_model(config_or_size='18', in_channels=1, pretrained_path: str =
     
     # Create model
     if size == '18':
-        model = resnet18(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
+        model = resnet18(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder,include_direction=include_direction)
     elif size == '34':
-        model = resnet34(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
+        model = resnet34(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder,include_direction=include_direction)
     elif size == '50':
-        model = resnet50(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
+        model = resnet50(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder,include_direction=include_direction)
     elif size == '101':
-        model = resnet101(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
+        model = resnet101(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder,include_direction=include_direction)
     elif size == '152':
-        model = resnet152(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder)
+        model = resnet152(in_channels, num_classes, task=task,Pe_encoder=Pe_encoder,include_direction=include_direction)
     else:
         raise ValueError(f"Invalid size '{size}'. Choose from '18', '34', '50', '101', or '152'.")
 
