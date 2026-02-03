@@ -32,7 +32,7 @@ Run plans:
 MODEL_PRESETS = {
     "quick_test": [
         # "ConvNeXt-Base",
-        "ViT-T16",
+        "ViT-L16",
         # "ResNet-18",
     ],
     "smallest": [
@@ -274,20 +274,20 @@ TASK_CONFIGS = {
         "learning_rate": 3e-3,
         "weight_decay": 3e-1,
         "batch_size": 128,
-        "num_epochs": 300,
+        "num_epochs": 2000,
         "decay": "cosine",
-        "warmup_steps": 30*16000/128, # steps per epoch * warmup epochs
+        "warmup_steps": 30*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
         "loss_function": 'log-cosh',
         "pe": {
-            "pe_encoder": None,
+            "pe_encoder": 'log',
             "pe": 4,
             "include_direction": False,
         },
-        "pe_encoder": None,
+        "pe_encoder": 'log',
         "Pe": 4,
     },
 }
@@ -392,13 +392,13 @@ class ModelRegistry:
         "ViT-S16": {
             "type": "vit",
             "size": "S16",
-            "clip_grad": False,
+            "clip_grad": True,
             "description": "Vision Transformer Small with 16x16 patches"
         },
         "ViT-B16": {
             "type": "vit",
             "size": "B16",
-            "clip_grad": False,
+            "clip_grad": True,
             "description": "Vision Transformer Base with 16x16 patches"
         },
         "ViT-L16": {
