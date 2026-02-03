@@ -32,7 +32,7 @@ Run plans:
 MODEL_PRESETS = {
     "quick_test": [
         # "ConvNeXt-Base",
-        "ViT-L16",
+        "ViT-T16",
         # "ResNet-18",
     ],
     "smallest": [
@@ -314,7 +314,7 @@ DEVICE_CONFIGS = {
         "training_overrides": {
             "batch_size": 8,
             "num_epochs": 20,
-            "warmup_steps": int(0.1*10*32*10/8),
+            "warmup_steps": int(0.1*32*10/8),
             "weight_decay": 1e-3,
             "decay": "cosine",
             "learning_rate": 8e-4,
@@ -386,7 +386,7 @@ class ModelRegistry:
         "ViT-T16": {
             "type": "vit",
             "size": "T16",
-            "clip_grad": False,
+            "clip_grad": True,
             "description": "Vision Transformer Tiny with 16x16 patches"
         },
         "ViT-S16": {
