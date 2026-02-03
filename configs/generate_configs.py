@@ -404,7 +404,7 @@ class ModelRegistry:
         "ViT-L16": {
             "type": "vit",
             "size": "L16",
-            "clip_grad": False,
+            "clip_grad": True,
             "description": "Vision Transformer Large with 16x16 patches"
         },
         
