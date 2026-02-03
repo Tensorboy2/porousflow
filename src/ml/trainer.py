@@ -479,7 +479,7 @@ class Trainer:
         return epoch_loss, r2
     
     def train(self, num_epochs):
-        best_val_loss = float('inf')
+        best_val_r2 = -float('inf')
         save_path = os.path.join(self.config.get('save_model_path', 'results'), f"{self.config['model']['name']}_lr-{self.config['learning_rate']}_wd-{self.config['weight_decay']}_bs-{self.config['batch_size']}_epochs-{num_epochs}_{self.config.get('decay','no-decay')}_warmup-{self.config.get('warmup_steps',0)}_clipgrad-{self.config.get('clip_grad',False)}_pe-encoder-{self.config.get('pe_encoder',None)}_pe-{self.config.get('Pe',None)}_{self.config.get('loss_function','mse')}")
         
         print(f'Saving state-dicts to: {save_path}.pth and {save_path}_last_model.pth')
@@ -512,10 +512,10 @@ class Trainer:
             print(f"  LR: {current_lr:.6e}")
 
             # ---- CHECKPOINT ----
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
+            if val_r2 < best_val_r2:
+                best_val_r2 = val_r2
                 self.save_model(save_path + ".pth")
-                print(f"    New best model saved (val loss = {val_loss:.5f})")
+                print(f"    New best model saved (val R2 = {val_r2:.5f})")
         #save last model
         self.save_model(save_path+"_last_model.pth")
         self.save_metrics(save_path+'_metrics.zarr')
