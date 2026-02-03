@@ -33,6 +33,11 @@ MODEL_PRESETS = {
     "quick_test": [
         # "ConvNeXt-Atto",
         # "ViT-T16",
+        "ResNet-18",
+    ],
+    "smallest": [
+        "ConvNeXt-Atto",
+        "ViT-T16",
         "ResNet-50",
     ],
     "small_sweep": [
@@ -89,7 +94,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 # Each list defines the values to sweep over for that hyperparameter
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
-        "single": [5e-4],  # Default single value
+        "single": [3e-4],  # Default single value
         "sweep": [1e-5, 5e-5, 1e-4, 5e-4],
     },
     "batch_size": {
@@ -97,7 +102,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [1e-1],
+        "single": [3e-1],
         "sweep": [5e-2, 1e-1, 0.3],
     },
     "num_training_samples": {
@@ -105,7 +110,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [100, 500, 1000, 5000, 10000, None],
     },
     "num_epochs": {
-        "single": [400],
+        "single": [200],
         "sweep": [1000,1500,2000],    
     },
     "decay": {
@@ -123,7 +128,7 @@ HYPERPARAM_SWEEPS = {
     },
     "loss_function": {
         'single': ['rmse'],
-        'sweep': ['mse','rmse','huber','log-cosh','rse']
+        'sweep': ['mse','L1','rmse','huber','log-cosh','rse']
     }
 }
 
@@ -162,14 +167,15 @@ SWEEP_PRESETS = {
         'pe_encoder': 'single',
         "Pe": "sweep",
     },
-    "lr_sweep": {
-        # Sweep only learning rate
-        "learning_rate": "sweep",
+    "lf_pe_sweep": {
+        "learning_rate": "single",
         "batch_size": "single",
         "weight_decay": "single",
         "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "single",
+        "loss_function": 'sweep',
+        "Pe": "sweep",
     },
     "lf_sweep": {
         # Sweep only loss function

@@ -54,7 +54,8 @@ class RelativeSquaredErrorLoss(nn.Module):
     
 loss_functions = {
     'mse': nn.MSELoss(),
-    'huber': nn.SmoothL1Loss(),
+    'L1': nn.L1Loss(),
+    'huber': nn.HuberLoss(),
     'rmse': RMSELoss(),
     'log-cosh': LogCoshLoss(),
     'rse': RelativeSquaredErrorLoss(),

@@ -22,10 +22,17 @@ split_styles = {
     'train': '--',
     'val': '-'
 }
-
+plt.rcParams.update({
+    "font.size": 9,
+    "axes.labelsize": 9,
+    "axes.titlesize": 9,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "legend.fontsize": 8,
+})
 fig, axes = plt.subplots(
     2, len(models),
-    figsize=(6.4 * len(models) / 2, 8.0),
+    figsize=(4 * 1.4, 4),
     sharex=True,
     sharey='row'
 )
@@ -60,10 +67,12 @@ for col, m in enumerate(models):
 
     ax_loss.set_title(m)
     ax_loss.set_yscale('log')
+    ax_loss.grid(alpha=0.3)
 
     # ax_r2.set_ylim(-0.05, 1.05)
     ax_r2.set_xlabel('Epoch')
     ax_r2.set_yscale('log')
+    ax_r2.grid(alpha=0.3)
 
 axes[0, 0].set_ylabel('Loss')
 axes[1, 0].set_ylabel(r'$1-R^2$')
