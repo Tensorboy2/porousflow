@@ -51,7 +51,7 @@ class Trainer:
 
         # gradient clipping
         self.clip_grad = config.get('clip_grad', True)
-        self.max_grad_norm = config.get('max_grad_norm', 5.0)
+        self.max_grad_norm = config.get('max_grad_norm', 1.0)
 
         # lr scheduler
         warmup_steps = config.get('warmup_steps', 0)
@@ -233,6 +233,7 @@ class Trainer:
             # Compute loss in FP32 (outside autocast) to ensure stable scaling
             outputs_fp32 = outputs.float()
             outputs = self.inverse_scale(outputs)
+            # outputs = self.inverse_scale(outputs)
             D_fp32 = D.float()
             # a = self.a.to(self.device)
             # scaled_outputs = torch.arcsinh(outputs_fp32*a)
@@ -244,6 +245,7 @@ class Trainer:
             # scaled_outputs = self.scale(outputs_fp32)
             # scaled_outputs = self.scale(scaled_outputs)
             scaled_D = self.scale(D_fp32)
+            # scaled_D = self.scale(D)
             # scaled_D = self.scale(scaled_D)
             # scaled_outputs = torch.sign(outputs_fp32) * torch.log1p(torch.abs(outputs_fp32)/100)
             # scaled_D = torch.sign(D_fp32) * torch.log1p(torch.abs(D_fp32)/100)
@@ -387,6 +389,7 @@ class Trainer:
                 loss = self.criterion(outputs, scaled_D)
                 # loss = self.criterion(outputs, D)
                 outputs = self.inverse_scale(outputs)
+                # outputs = self.inverse_scale(outputs)
 
                 running_loss += loss.item() * inputs.size(0)
                 total_samples += inputs.size(0)

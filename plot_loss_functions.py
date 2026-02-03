@@ -34,7 +34,7 @@ fig, axes = plt.subplots(
     2, len(models),
     figsize=(4 * 1.4, 4),
     sharex=True,
-    sharey='row'
+    # sharey='row'
 )
 
 if len(models) == 1:
@@ -68,8 +68,9 @@ for col, m in enumerate(models):
     ax_loss.set_title(m)
     ax_loss.set_yscale('log')
     ax_loss.grid(alpha=0.3)
+    # ax_loss.set_xlim(90, 100)
 
-    # ax_r2.set_ylim(-0.05, 1.05)
+    # ax_r2.set_xlim(90, 100)
     ax_r2.set_xlabel('Epoch')
     ax_r2.set_yscale('log')
     ax_r2.grid(alpha=0.3)

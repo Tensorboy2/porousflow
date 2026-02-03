@@ -124,7 +124,7 @@ HYPERPARAM_SWEEPS = {
     },
     'Pe': {
         'single': [0],
-        'sweep': [0,1,2,3,4],
+        'sweep': [4,3,2,1,0],
     },
     "loss_function": {
         'single': ['rmse'],
@@ -281,14 +281,14 @@ TASK_CONFIGS = {
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
-        "loss_function": 'rmse',
+        "loss_function": 'log-cosh',
         "pe": {
             "pe_encoder": None,
-            "pe": 2,
+            "pe": 4,
             "include_direction": False,
         },
         "pe_encoder": None,
-        "Pe": 2,
+        "Pe": 4,
     },
 }
 
@@ -313,13 +313,13 @@ DEVICE_CONFIGS = {
         },
         "training_overrides": {
             "batch_size": 8,
-            "num_epochs": 10,
+            "num_epochs": 20,
             "warmup_steps": int(0.1*10*32*10/8),
             "weight_decay": 1e-3,
             "decay": "cosine",
             "learning_rate": 8e-4,
-            "num_training_samples": 32,
-            "num_validation_samples": 4,
+            "num_training_samples": 128*2,
+            "num_validation_samples": 32,
             "num_test_samples": 4,
             "pe_encoder": None,
             "prefetch_factor": None,
