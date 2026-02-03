@@ -32,8 +32,8 @@ Run plans:
 MODEL_PRESETS = {
     "quick_test": [
         # "ConvNeXt-Atto",
-        "ViT-T16",
-        # "ResNet-18",
+        # "ViT-T16",
+        "ResNet-50",
     ],
     "small_sweep": [
         "ResNet-152",
@@ -97,7 +97,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [1e-2],
+        "single": [1e-1],
         "sweep": [5e-2, 1e-1, 0.3],
     },
     "num_training_samples": {
