@@ -13,7 +13,8 @@ plt.figure(figsize=(6,6))
 for i in range(5):
     c = colors[i % len(colors)]
     # results/pe_sweep_2/ResNet-152_lr-0.0005_wd-0.01_bs-128_epochs-400_cosine_warmup-625.0_clipgrad-True_pe-encoder-None_pe-0_rmse_metrics.zarr
-    data = zarr.open(f'results/pe_sweep_2/ResNet-152_lr-0.0005_wd-0.01_bs-128_epochs-400_cosine_warmup-625.0_clipgrad-True_pe-encoder-None_pe-{i}_rmse_metrics.zarr', mode='r')
+    #results/pe_sweep_4/ResNet-18_lr-0.001_wd-0.3_bs-128_epochs-100_cosine_warmup-625.0_clipgrad-True_pe-encoder-None_pe-0_log-cosh_metrics.zarr
+    data = zarr.open(f'results/pe_sweep_4/ResNet-18_lr-0.001_wd-0.3_bs-128_epochs-100_cosine_warmup-625.0_clipgrad-True_pe-encoder-None_pe-{i}_log-cosh_metrics.zarr', mode='r')
     # train_loss = data['train_loss'][:]
     # val_loss = data['val_loss'][:]
     R2_train = data['R2_train'][:]
@@ -29,12 +30,12 @@ Line2D([0], [0], color='black', lw=2, linestyle='--', label='Train'),
 plt.legend(handles=plt.gca().get_legend_handles_labels()[0] + style_legend)
 
 plt.yscale('log')
-# plt.xscale('log')
+# plt.xscale('log') 
 plt.xlabel('Epochs')
 plt.ylabel(r'$1-R^2$')
-plt.title("ResNet-152 Pe-sweep with archsinh scaling")
+plt.title("ResNet-50 Pe-sweep with log-cosh")
 plt.grid(alpha=0.3)
-plt.savefig('resnet_pe_sweep_r2.pdf')
+plt.savefig('resnet50_pe_sweep_r2.pdf')
 plt.close()
 
 # plt.figure(figsize=(6,6))
