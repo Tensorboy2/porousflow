@@ -515,7 +515,7 @@ class Trainer:
             print(f"  LR: {current_lr:.6e}")
 
             # ---- CHECKPOINT ----
-            if val_r2 < best_val_r2:
+            if val_r2 > best_val_r2:
                 best_val_r2 = val_r2
                 self.save_model(save_path + ".pth")
                 print(f"    New best model saved (val R2 = {val_r2:.5f})")
