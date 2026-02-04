@@ -32,8 +32,8 @@ Run plans:
 MODEL_PRESETS = {
     "quick_test": [
         # "ConvNeXt-Tiny",
-        # "ViT-T16",
-        "ResNet-18",
+        "ViT-T16",
+        # "ResNet-18",
     ],
     "smallest": [
         "ConvNeXt-Atto",
