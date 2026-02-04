@@ -31,8 +31,8 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        # "ConvNeXt-Base",
-        "ViT-L16",
+        "ConvNeXt-Tiny",
+        "ViT-S16",
         # "ResNet-18",
     ],
     "smallest": [
@@ -94,7 +94,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 # Each list defines the values to sweep over for that hyperparameter
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
-        "single": [1e-3],  # Default single value
+        "single": [3e-4],  # Default single value
         "sweep": [1e-5, 5e-5, 1e-4, 5e-4],
     },
     "batch_size": {
@@ -110,8 +110,8 @@ HYPERPARAM_SWEEPS = {
         "scaling": [100, 500, 1000, 5000, 10000, None],
     },
     "num_epochs": {
-        "single": [100],
-        "sweep": [1000,1500,2000],    
+        "single": [200],
+        "sweep": [2000,1500,1000],    
     },
     "decay": {
         "single": ["cosine"],
@@ -127,7 +127,7 @@ HYPERPARAM_SWEEPS = {
         'sweep': [4,3,2,1,0],
     },
     "loss_function": {
-        'single': ['log-cosh'],
+        'single': ['mse'],
         'sweep': ['mse','L1','rmse','huber','log-cosh','rse']
     }
 }
@@ -271,23 +271,23 @@ TASK_CONFIGS = {
         'loss_function': 'mse'
     },
     "dispersion": {
-        "learning_rate": 3e-3,
+        "learning_rate": 3e-4,
         "weight_decay": 3e-1,
         "batch_size": 128,
-        "num_epochs": 2000,
+        "num_epochs": 200,
         "decay": "cosine",
-        "warmup_steps": 30*5*16000/128, # steps per epoch * warmup epochs
+        "warmup_steps": 5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
         "loss_function": 'log-cosh',
         "pe": {
-            "pe_encoder": 'log',
+            "pe_encoder": None,
             "pe": 4,
             "include_direction": False,
         },
-        "pe_encoder": 'log',
+        "pe_encoder": None,
         "Pe": 4,
     },
 }
