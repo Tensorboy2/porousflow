@@ -31,8 +31,8 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-Tiny",
-        # "ViT-T16",
+        # "ConvNeXt-Tiny",
+        "ViT-B16",
         # "ResNet-18",
     ],
     "smallest": [
@@ -271,12 +271,12 @@ TASK_CONFIGS = {
         'loss_function': 'mse'
     },
     "dispersion": {
-        "learning_rate": 8e-4,
-        "weight_decay": 1e-1,
+        "learning_rate": 3e-3,
+        "weight_decay": 3e-1,
         "batch_size": 128,
-        "num_epochs": 400,
+        "num_epochs": 2000,
         "decay": "cosine",
-        "warmup_steps": 2*5*16000/128, # steps per epoch * warmup epochs
+        "warmup_steps": 30*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
