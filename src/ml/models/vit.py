@@ -190,8 +190,8 @@ class ViT(nn.Module):
         # Final classifier head
         self.fc = nn.Sequential(
             nn.LayerNorm(fc_in + extra_dim),
-            nn.Linear(fc_in + extra_dim, fc_in + extra_dim),
-            nn.GELU(),
+            # nn.Linear(fc_in + extra_dim, fc_in + extra_dim),
+            # nn.GELU(),
             nn.Linear(fc_in + extra_dim, num_classes),
         )
 

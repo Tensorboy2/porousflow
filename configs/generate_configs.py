@@ -31,9 +31,9 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-Tiny",
-        "ViT-S16",
-        # "ResNet-18",
+        # "ConvNeXt-Tiny",
+        # "ViT-T16",
+        "ResNet-18",
     ],
     "smallest": [
         "ConvNeXt-Atto",
@@ -271,7 +271,7 @@ TASK_CONFIGS = {
         'loss_function': 'mse'
     },
     "dispersion": {
-        "learning_rate": 3e-4,
+        "learning_rate": 3e-3,
         "weight_decay": 3e-1,
         "batch_size": 128,
         "num_epochs": 200,
@@ -281,7 +281,7 @@ TASK_CONFIGS = {
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
-        "loss_function": 'log-cosh',
+        "loss_function": 'rmse',
         "pe": {
             "pe_encoder": None,
             "pe": 4,
@@ -313,13 +313,13 @@ DEVICE_CONFIGS = {
         },
         "training_overrides": {
             "batch_size": 8,
-            "num_epochs": 20,
+            "num_epochs": 100,
             "warmup_steps": int(0.1*32*10/8),
             "weight_decay": 1e-3,
             "decay": "cosine",
-            "learning_rate": 8e-4,
-            "num_training_samples": 128*2,
-            "num_validation_samples": 32,
+            "learning_rate": 5e-3,
+            "num_training_samples": 32,
+            "num_validation_samples": 8,
             "num_test_samples": 4,
             "pe_encoder": None,
             "prefetch_factor": None,
