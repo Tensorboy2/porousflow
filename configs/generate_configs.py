@@ -271,7 +271,7 @@ TASK_CONFIGS = {
         'loss_function': 'mse'
     },
     "dispersion": {
-        "learning_rate": 3e-3,
+        "learning_rate": 5e-4,
         "weight_decay": 3e-1,
         "batch_size": 128,
         "num_epochs": 2000,
@@ -283,11 +283,11 @@ TASK_CONFIGS = {
         "pin_memory": True,
         "loss_function": 'rmse',
         "pe": {
-            "pe_encoder": 'straight',
+            "pe_encoder": 'log',
             "pe": 4,
             "include_direction": False,
         },
-        "pe_encoder": 'straight',
+        "pe_encoder": 'log',
         "Pe": 4,
     },
 }
