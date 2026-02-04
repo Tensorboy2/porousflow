@@ -174,11 +174,12 @@ HIER_SHVIT_CONFIGS = {
     }
 }
 
-def load_hierarchical_shvit(size='T', in_chans=1, task='permeability', **kwargs):
+def load_hierarchical_shvit(mdl_cfg, in_chans=1, task='permeability', **kwargs):
     """
     Loader for Hierarchical SHViT models with standard size variants.
     """
     # Resolve size mapping
+    size = mdl_cfg['size']
     size_key = size.upper()[0] if size.upper().startswith('V') else size.upper()
     if size_key not in HIER_SHVIT_CONFIGS:
         print(f"Size {size} not found, defaulting to Tiny (T)")

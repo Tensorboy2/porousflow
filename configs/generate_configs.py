@@ -31,9 +31,10 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        # "ConvNeXt-Tiny",
-        "ViT-B16",
-        # "ResNet-18",
+        # "ConvNeXt-Atto",
+        # "SHViT-T",
+        # "ViT-B16",
+        "ResNet-18",
     ],
     "smallest": [
         "ConvNeXt-Atto",
@@ -276,18 +277,18 @@ TASK_CONFIGS = {
         "batch_size": 128,
         "num_epochs": 2000,
         "decay": "cosine",
-        "warmup_steps": 30*5*16000/128, # steps per epoch * warmup epochs
+        "warmup_steps": 5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
         "loss_function": 'rmse',
         "pe": {
-            "pe_encoder": 'log',
+            "pe_encoder": None,
             "pe": 4,
             "include_direction": False,
         },
-        "pe_encoder": 'log',
+        "pe_encoder": None,
         "Pe": 4,
     },
 }
@@ -382,6 +383,31 @@ class ModelRegistry:
     """Registry for available model configurations."""
     
     DEFAULT_MODELS = {
+        # Single Head Transformer
+        "SHViT-T": {
+            "type": "shvit",
+            "size": "T",
+            "clip_grad": True,
+            "description": "Single Head Vision Transformer Tiny with 4x4 patches"
+        },
+        "SHViT-S": {
+            "type": "shvit",
+            "size": "S",
+            "clip_grad": True,
+            "description": "Single Head Vision Transformer Small with 4x4 patches"
+        },
+        "SHViT-B": {
+            "type": "shvit",
+            "size": "B",
+            "clip_grad": True,
+            "description": "Single Head Vision Transformer Base with 4x4 patches"
+        },
+        "SHViT-L": {
+            "type": "shvit",
+            "size": "L",
+            "clip_grad": True,
+            "description": "Single Head Vision Transformer Large with 4x4 patches"
+        },
         # Vision Transformers
         "ViT-T16": {
             "type": "vit",
