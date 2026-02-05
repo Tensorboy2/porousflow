@@ -5,7 +5,7 @@ from matplotlib.lines import Line2D
 
 folder = 'results/vit_long_run/'
 
-models = ['ViT-T16','ViT-S16','ViT-B16']
+models = ['ViT-T16','ViT-S16','ViT-B16','ViT-L16']
 length = [2000,1500,1000]
 
 # Color per loss function

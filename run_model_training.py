@@ -11,6 +11,7 @@ from src.ml.models.convnext import load_convnext_model
 from src.ml.models.vit import load_vit_model
 from src.ml.models.resnet import load_resnet_model
 from src.ml.models.SHViT import load_hierarchical_shvit
+from src.ml.models.swin import load_swin_model
 from src.ml.data_loader import get_permeability_dataloader, get_dispersion_dataloader
 from src.ml.trainer import Trainer
 from torch import optim
@@ -92,6 +93,8 @@ def main(config):
         model = load_resnet_model(model_cfg,task=task,Pe_encoder=pe_encoder,include_direction=include_direction)
     elif model_type == 'shvit':
         model = load_hierarchical_shvit(model_cfg,task=task,Pe_encoder=pe_encoder,include_direction=include_direction)
+    elif model_type == 'swin':
+        model = load_swin_model(model_cfg,task=task,Pe_encoder=pe_encoder,include_direction=include_direction)
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
 

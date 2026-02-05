@@ -384,9 +384,74 @@ if __name__ == '__main__':
     img, tgt, pe, dir_vec = ds[0]
     print(f"Dataset ready — len = {len(ds):,}")
     print(f"Content: image {img.shape} | D {tgt.shape} | pe {pe} | dir {dir_vec}")
-    # root = zarr.open('data/train.zarr', mode='r')
-    # Dx_array = np.amax(root['dispersion_results']['Dx'][:])  # shape: [N, 5]
-    # print(f"Max value {Dx_array}")
+
+class DispersionDatasetFused(Dataset):
+    """
+    Ultra-optimized version: cache images in RAM since they're reused 10x.
+    Each base image produces 10 samples: 5 Pe values × 2 directions (x/y).
+    """
+    def __init__(self, file_path, transform=None, num_samples=None):
+        self.root = zarr.open(file_path, mode='r')
+        self.transform = transform
+        
+        self.pe_values = torch.tensor([0.1, 10, 50, 100, 500], dtype=torch.float32)
+        self.directions = torch.tensor([[1.0, 0.0], [0.0, 1.0]], dtype=torch.float32)
+        
+        self.num_pe = len(self.pe_values)          # 5
+        self.num_dir = self.directions.shape[0]    # 2
+        self.samples_per_image = self.num_pe * self.num_dir  # 10
+        
+        # Determine length
+        base_len = self.root['filled_images']['filled_images'].shape[0]
+        if num_samples is not None:
+            base_len = min(num_samples, base_len)
+        
+        self.base_len = base_len
+        self.total_len = base_len * self.samples_per_image
+        
+        # Cached array references (Zarr loads on-demand but keeps in RAM if possible)
+        self.images = self.root['filled_images']['filled_images']
+        self.Dx_array = self.root['dispersion_results']['Dx']   # shape: [N, 5]
+        self.Dy_array = self.root['dispersion_results']['Dy']   # shape: [N, 5]
+    
+    def __len__(self):
+        return self.total_len
+    
+    def __getitem__(self, idx):
+        # Map global idx → base image + Pe + direction
+        base_idx = idx // self.samples_per_image
+        inner_idx = idx % self.samples_per_image
+        
+        pe_idx = inner_idx % self.num_pe
+        dir_idx = inner_idx // self.num_pe   # 0 or 1
+        
+        # Load data
+        image_np = self.images[base_idx]                     # numpy array
+        if dir_idx == 0:  # x-direction
+            target_np = self.Dx_array[base_idx, pe_idx]
+            direction = self.directions[0]
+        else:             # y-direction
+            target_np = self.Dy_array[base_idx, pe_idx]
+            direction = self.directions[1]
+        
+        # Convert to tensors
+        image = torch.from_numpy(image_np).float().unsqueeze(0)  # add channel dim
+        target = torch.from_numpy(target_np).float()
+        if target.ndim > 0:
+            target = target.flatten()  # ensure 1D vector
+        pe = self.pe_values[pe_idx].unsqueeze(0)  # shape (1,)
+        
+        if self.transform:
+            # Assuming transform takes (image, target) and returns the same
+            image, target = self.transform(image, target)
+        
+        return image, target, pe, direction
+
+if __name__ == '__main__':
+    ds = DispersionDatasetFull('data/train.zarr')
+    img, tgt, pe, dir_vec = ds[0]
+    print(f"Dataset ready — len = {len(ds):,}")
+    print(f"Content: image {img.shape} | D {tgt.shape} | pe {pe} | dir {dir_vec}")
 
 def get_dispersion_dataloader(file_path,config):
     '''

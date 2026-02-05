@@ -34,7 +34,8 @@ MODEL_PRESETS = {
         # "ConvNeXt-Atto",
         # "SHViT-T",
         # "ViT-B16",
-        "ResNet-18",
+        # "ResNet-18",
+        "Swin-T",
     ],
     "smallest": [
         "ConvNeXt-Atto",
@@ -64,6 +65,24 @@ MODEL_PRESETS = {
         "ConvNeXt-Small",
         "ConvNeXt-Base",
     ],
+    "full_convnext_v2": [
+        "ConvNeXt-V2-Atto",
+        "ConvNeXt-V2-Femto",
+        "ConvNeXt-V2-Pico",
+        "ConvNeXt-V2-Nano",
+        "ConvNeXt-V2-Tiny",
+        "ConvNeXt-V2-Small",
+        "ConvNeXt-V2-Base",
+    ],
+    "full_convnext_rms": [
+        "ConvNeXt-RMS-Atto",
+        "ConvNeXt-RMS-Femto",
+        "ConvNeXt-RMS-Pico",
+        "ConvNeXt-RMS-Nano",
+        "ConvNeXt-RMS-Tiny",
+        "ConvNeXt-RMS-Small",
+        "ConvNeXt-RMS-Base",
+    ],
     "full_resnet": [
         "ResNet-18",
         "ResNet-34",
@@ -74,6 +93,8 @@ MODEL_PRESETS = {
     "all_models": [
         # All ViT
         "ViT-T16", "ViT-S16", "ViT-B16", "ViT-L16",
+        # All Swin
+        "Swin-T", "Swin-S", "Swin-B", "Swin-L",
         # All ConvNeXt
         "ConvNeXt-Atto", "ConvNeXt-Femto", "ConvNeXt-Pico", "ConvNeXt-Nano",
         "ConvNeXt-Tiny", "ConvNeXt-Small", "ConvNeXt-Base", "ConvNeXt-Large",
@@ -95,7 +116,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 # Each list defines the values to sweep over for that hyperparameter
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
-        "single": [3e-4],  # Default single value
+        "single": [8e-4],  # Default single value
         "sweep": [1e-5, 5e-5, 1e-4, 5e-4],
     },
     "batch_size": {
@@ -103,7 +124,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [3e-1],
+        "single": [1e-1],
         "sweep": [5e-2, 1e-1, 0.3],
     },
     "num_training_samples": {
@@ -111,7 +132,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [100, 500, 1000, 5000, 10000, None],
     },
     "num_epochs": {
-        "single": [200],
+        "single": [500],
         "sweep": [2000,1500,1000],    
     },
     "decay": {
@@ -407,6 +428,31 @@ class ModelRegistry:
             "size": "L",
             "clip_grad": True,
             "description": "Single Head Vision Transformer Large with 4x4 patches"
+        },
+        # Swin
+        "Swin-T": {
+            "type": "swin",
+            "size": "T",
+            "clip_grad": True,
+            "description": "Sliding window Vision Transformer Tiny with 4x4 patches"
+        },
+        "Swin-S": {
+            "type": "swin",
+            "size": "S",
+            "clip_grad": True,
+            "description": "Sliding window Vision Transformer Small with 4x4 patches"
+        },
+        "Swin-B": {
+            "type": "swin",
+            "size": "B",
+            "clip_grad": True,
+            "description": "Sliding window Vision Transformer Base with 4x4 patches"
+        },
+        "Swin-L": {
+            "type": "swin",
+            "size": "L",
+            "clip_grad": True,
+            "description": "Sliding window Vision Transformer Large with 4x4 patches"
         },
         # Vision Transformers
         "ViT-T16": {
