@@ -78,15 +78,18 @@ class DispersionTransform:
 
 
 class PermeabilityDataset(Dataset):
-    def __init__(self, file_path, transform=None):
+    def __init__(self, file_path, transform=None, num_samples=None):
         self.root = zarr.open(file_path, mode='r')
         self.filled_images_ds = self.root['filled_images']['filled_images']
         self.targets_ds = self.root['lbm_results']['K']
 
         self.transform = transform
+        self.len = self.filled_images_ds.shape[0]
+        if num_samples is not None:
+            self.len = min(self.len,num_samples)
 
     def __len__(self):
-        return self.filled_images_ds.shape[0]
+        return self.len
 
     def __getitem__(self, idx):
         # Fetch numpy versions of the data
@@ -220,8 +223,8 @@ def get_permeability_dataloader(file_path,config):
     val_path = os.path.join(file_path,'validation.zarr')
     test_path = os.path.join(file_path,'test.zarr')
 
-    train_dataset = PermeabilityDataset(train_path, transform=PermeabilityTransform())
-    val_dataset = PermeabilityDataset(val_path)
+    train_dataset = PermeabilityDataset(train_path, transform=PermeabilityTransform(),num_samples=config.get('num_training_samples'))
+    val_dataset = PermeabilityDataset(val_path,num_samples=config.get('num_validation_samples'))
     test_dataset = PermeabilityDataset(test_path)
 
     train_loader = DataLoader(train_dataset, 

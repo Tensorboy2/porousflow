@@ -10,6 +10,8 @@
 *.zarr/
 *.zarr
 *.ipynb
+*.h5
+*.h5:Zone.Identifier
 bin/
 lib64
 pyvenv.cfg
