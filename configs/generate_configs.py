@@ -79,6 +79,7 @@ MODEL_PRESETS = {
         "ConvNeXt-Tiny",
         "ConvNeXt-Small",
         "ConvNeXt-Base",
+        "ConvNeXt-Large",
     ],
     "full_convnext_v2": [
         "ConvNeXt-V2-Atto",
@@ -88,6 +89,7 @@ MODEL_PRESETS = {
         "ConvNeXt-V2-Tiny",
         "ConvNeXt-V2-Small",
         "ConvNeXt-V2-Base",
+        "ConvNeXt-V2-Large",
     ],
     "full_convnext_rms": [
         "ConvNeXt-RMS-Atto",
@@ -97,6 +99,7 @@ MODEL_PRESETS = {
         "ConvNeXt-RMS-Tiny",
         "ConvNeXt-RMS-Small",
         "ConvNeXt-RMS-Base",
+        "ConvNeXt-RMS-Large",
     ],
     "full_resnet": [
         "ResNet-18",
