@@ -65,6 +65,12 @@ MODEL_PRESETS = {
         "ViT-B16",
         "ViT-L16",
     ],
+    "full_swin": [
+        "Swin-T",
+        "Swin-S",
+        "Swin-B",
+        "Swin-L",
+    ],
     "full_convnext": [
         "ConvNeXt-Atto",
         "ConvNeXt-Femto",
