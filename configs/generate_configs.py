@@ -42,6 +42,15 @@ MODEL_PRESETS = {
         "ViT-T16",
         "ResNet-50",
     ],
+    "biggest": [
+        "ConvNeXt-Large",
+        "ConvNeXt-V2-Large",
+        "ConvNeXt-RMS-Large",
+        "ViT-L16",
+        "ResNet-152",
+        "Swin-L",
+        "SHViT-L",
+    ],
     "small_sweep": [
         "ResNet-152",
         "ConvNeXt-Large",
@@ -133,7 +142,7 @@ HYPERPARAM_SWEEPS = {
     },
     "num_epochs": {
         "single": [500],
-        "sweep": [2000,1500,1000],    
+        "sweep": [100,300,500,700,1000],    
     },
     "decay": {
         "single": ["cosine"],
@@ -149,7 +158,7 @@ HYPERPARAM_SWEEPS = {
         'sweep': [4,3,2,1,0],
     },
     "loss_function": {
-        'single': ['mse'],
+        'single': ['rmse'],
         'sweep': ['mse','L1','rmse','huber','log-cosh','rse']
     }
 }
