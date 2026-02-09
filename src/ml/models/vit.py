@@ -319,7 +319,7 @@ def load_vit_model(config_or_size='T16', in_channels: int = 1, task = 'permeabil
     if task == 'permeability':
         num_classes = 4
     elif task == 'dispersion':
-        num_classes = 4
+        num_classes = 2
     else:
         raise ValueError(f"Unknown task: {cfg['task']}. Supported tasks: ['permeability', 'dispersion']")
 

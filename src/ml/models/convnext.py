@@ -406,7 +406,7 @@ def load_convnext_model(config_or_version='v1',
     if task == 'permeability':
         num_classes = 4
     elif task == 'dispersion':
-        num_classes = 4
+        num_classes = 2
     else:
         raise ValueError(f"Unknown task: {cfg['task']}. Supported tasks: ['permeability', 'dispersion']")
     

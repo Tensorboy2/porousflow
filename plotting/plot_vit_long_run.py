@@ -30,7 +30,7 @@ plt.rcParams.update({
 })
 fig, axes = plt.subplots(
     1, len(models),
-    figsize=(3.2 * 1.6, 3.2),
+    figsize=(3.5 * 1.6, 3.2),
     sharex=True,
     sharey='row'
 )

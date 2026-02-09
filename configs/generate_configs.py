@@ -31,10 +31,10 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-Atto",
+        # "ConvNeXt-Atto",
         # "SHViT-T",
         # "ViT-B16",
-        # "ResNet-18",
+        "ResNet-34",
         # "Swin-T",
     ],
     "smallest": [
@@ -134,7 +134,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 # Each list defines the values to sweep over for that hyperparameter
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
-        "single": [8e-4],  # Default single value
+        "single": [5e-4],  # Default single value
         "sweep": [1e-5, 5e-5, 1e-4, 5e-4],
     },
     "batch_size": {
@@ -142,7 +142,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [1e-1],
+        "single": [3e-1],
         "sweep": [5e-2, 1e-1, 0.3],
     },
     "num_training_samples": {

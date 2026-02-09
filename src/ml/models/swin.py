@@ -562,7 +562,7 @@ def load_swin_model(config_or_size='T', in_channels=1, task='permeability',
     if task == 'permeability':
         num_classes = 4
     elif task == 'dispersion':
-        num_classes = 4
+        num_classes = 2
     else:
         raise ValueError(f"Unknown task: {task}. Supported tasks: ['permeability', 'dispersion']")
 

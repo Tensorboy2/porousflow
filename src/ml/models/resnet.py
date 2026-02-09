@@ -298,7 +298,7 @@ def load_resnet_model(config_or_size='18', in_channels=1, pretrained_path: str =
     if task == 'permeability':
         num_classes = 4
     elif task == 'dispersion':
-        num_classes = 4
+        num_classes = 2
     else:
         raise ValueError(f"Unknown task: {cfg['task']}. Supported tasks: ['permeability', 'dispersion']")
     

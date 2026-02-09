@@ -139,14 +139,19 @@ class DispersionDataset(Dataset):
 
         # turn into torch tensors
         image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
-        Dx = torch.from_numpy(Dx).float().flatten()
+        D = torch.tensor([Dx[0,0],Dx[1,1]]).float()
+        # Dx = torch.from_numpy(Dx).float().flatten()
         # Dy = torch.from_numpy(Dy).float()
         
         # transform if needed
-        if self.transform:
-            image, Dx = self.transform(image, Dx)
+        # if self.transform:
+        #     image, Dx = self.transform(image, Dx)
 
-        return image, Dx, self.Pe 
+        return image, D, self.Pe 
+if __name__ == '__main__':
+    dataset = DispersionDataset(file_path='data/train.zarr',Pe=2)
+    print(f"Dispersion dataset with len: {len(dataset)}")    
+
 class DispersionDataset_2(Dataset):
     def __init__(self, file_path, transform=None, num_samples=None):
         self.root = zarr.open(file_path, mode='r')
@@ -391,7 +396,7 @@ if __name__ == '__main__':
 class DispersionDatasetFused(Dataset):
     """
     Ultra-optimized version: cache images in RAM since they're reused 10x.
-    Each base image produces 10 samples: 5 Pe values × 2 directions (x/y).
+    Each base image produces 10 samples: 5 Pe values x 2 directions (x/y).
     """
     def __init__(self, file_path, transform=None, num_samples=None):
         self.root = zarr.open(file_path, mode='r')
