@@ -31,10 +31,10 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        # "ConvNeXt-Atto",
+        "ConvNeXt-Atto",
         # "SHViT-T",
         # "ViT-B16",
-        "ResNet-34",
+        # "ResNet-18",
         # "Swin-T",
     ],
     "smallest": [
@@ -352,9 +352,9 @@ DEVICE_CONFIGS = {
             "mem": "16G",
         },
         "training_overrides": {
-            "batch_size": 4,
-            "num_epochs": 50,
-            "warmup_steps": 0,#int(0.1*32*10/8),
+            "batch_size": 8,
+            "num_epochs": 500,
+            "warmup_steps": 10,#int(0.1*32*10/8),
             "weight_decay": 1e-1,
             "decay": "cosine",
             "learning_rate": 1e-3,

@@ -119,7 +119,7 @@ class DispersionDataset(Dataset):
         self.root = zarr.open(file_path, mode='r')
         self.filled_images_ds = self.root['filled_images']['filled_images']
         self.targets_ds_x = self.root['dispersion_results']['Dx']
-        # self.targets_ds_y = self.root['dispersion_results']['Dy']
+        self.targets_ds_y = self.root['dispersion_results']['Dy']
         self.Pe = Pe
         self.pe_hash = [0.1,10,50,100,500]
         self.pe_out = torch.tensor([self.pe_hash[Pe]], dtype=torch.float32)
@@ -135,17 +135,18 @@ class DispersionDataset(Dataset):
         # Fetch numpy versions of the data
         image = self.filled_images_ds[idx]
         Dx = self.targets_ds_x[idx][self.Pe] # shape (1,5,2,2)
-        # Dy = self.targets_ds_y[idx].reshape(5,4)
+        Dy = self.targets_ds_y[idx][self.Pe]
 
         # turn into torch tensors
         image = torch.from_numpy(image).float().unsqueeze(0)  # add channel dimension
-        D = torch.tensor([Dx[0,0],Dx[1,1]]).float()
-        # Dx = torch.from_numpy(Dx).float().flatten()
-        # Dy = torch.from_numpy(Dy).float()
-        
+        Dx = torch.from_numpy(Dx).float().flatten()
+
         # transform if needed
-        # if self.transform:
-        #     image, Dx = self.transform(image, Dx)
+        if self.transform:
+            image, Dx = self.transform(image, Dx)
+            # _, D
+        
+        D = torch.tensor([Dx[0],Dx[3]]).float()
 
         return image, D, self.Pe 
 if __name__ == '__main__':

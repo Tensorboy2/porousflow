@@ -68,14 +68,14 @@ class ConvNeXtBlockV1(nn.Module):
         dw = self.dwconv(x.permute(0, 3, 1, 2))          # conv expects channels-first
         dw = dw.permute(0, 2, 3, 1)                      # back to channels-last
         dw = self.norm(dw)
-        dw = self.gamma_dw * dw
-        x = shortcut + dw                                # first residual
+        # dw = self.gamma_dw * dw
+        # x = shortcut + dw                                # first residual
 
         # MLP residual
         mlp = self.pwconv1(dw)
         mlp = self.act(mlp)
         mlp = self.pwconv2(mlp)
-        mlp = self.gamma_mlp * mlp
+        # mlp = self.gamma_mlp * mlp
         x = x + mlp                                      # second residual
 
         # Convert back to channels-first for output
@@ -103,8 +103,8 @@ class ConvNeXtBlockV2(nn.Module):
         x = self.act(x)
         x = self.grn(x)  # GRN now expects (B, H, W, C)
         x = self.pwconv2(x)
-        if self.gamma is not None:
-            x = self.gamma * x
+        # if self.gamma is not None:
+        #     x = self.gamma * x
         x = x.permute(0, 3, 1, 2)  # (B, H, W, C) -> (B, C, H, W)
         x = shortcut + x
         return x
@@ -127,8 +127,8 @@ class ConvNeXtBlockRMS(nn.Module):
         x = self.pwconv1(x)
         x = self.act(x)
         x = self.pwconv2(x)
-        if self.gamma is not None:
-            x = self.gamma * x
+        # if self.gamma is not None:
+        #     x = self.gamma * x
         x = x.permute(0, 3, 1, 2)  # (B, H, W, C) -> (B, C, H, W)
         x = shortcut + x
         return x
