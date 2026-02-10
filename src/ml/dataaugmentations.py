@@ -36,13 +36,21 @@ class PermeabilityTransform:
 
 
 class DispersionTransform:
-    def __init__(self):
+    def __init__(self, enable_shift=True):
+        self.enable_shift = enable_shift
         self.permutations = [
             lambda img, Dx, Dy: (img, torch.tensor([Dx[0],Dx[3]])),
             lambda img, Dx, Dy: (tf.rotate(img, 90), torch.tensor([Dy[3],Dy[0]])),
             lambda img, Dx, Dy: (tf.rotate(tf.hflip(img), 180), torch.tensor([Dx[0],Dx[3]])),
             lambda img, Dx, Dy: (tf.rotate(tf.hflip(img), 270), torch.tensor([Dy[3],Dy[0]])),
         ]
+    def periodic_shift(self, img):
+        sx = random.randint(0, img.shape[-2] - 1)
+        sy = random.randint(0, img.shape[-1] - 1)
+        return torch.roll(img, shifts=(sx, sy), dims=(-2, -1))
+
     def __call__(self, image, Dx, Dy):
+        if self.enable_shift:
+            image = self.periodic_shift(image)
         t = random.choice(self.permutations)
         return t(image, Dx, Dy)
