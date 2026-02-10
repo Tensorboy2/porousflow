@@ -31,11 +31,11 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        # "ConvNeXt-V2-Atto",
+        "ConvNeXt-V2-Atto",
         # "SHViT-T",
         # "ViT-B16",
         # "ResNet-101",
-        "Swin-T",
+        # "Swin-T",
     ],
     "smallest": [
         "ConvNeXt-Atto",
@@ -301,9 +301,9 @@ TASK_CONFIGS = {
         "learning_rate": 8e-4,
         "weight_decay": 1e-1,
         "batch_size": 128,
-        "num_epochs": 100,
+        "num_epochs": 400,
         "decay": "cosine",
-        "warmup_steps": 125*10, # steps per epoch * warmup epochs
+        "warmup_steps": 0*125*10, # steps per epoch * warmup epochs
         "num_training_samples": None,  # None = use all data
         "num_validation_samples": None,
         "prefetch_factor": 4,
@@ -502,7 +502,7 @@ class ModelRegistry:
         "ConvNeXt-Atto": {
             "type": "convnext",
             "size": "atto",
-            "clip_grad": False,
+            "clip_grad": True,
             "description": "ConvNeXt Atto (smallest)",
             # "training_overrides": {"batch_size": 1024}
         },
