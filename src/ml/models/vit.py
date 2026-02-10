@@ -3,6 +3,7 @@ vit.py
 A module for implementing modular Vision Transformers for permeability and dispersion predictions
 '''
 import torch
+torch.manual_seed(0)
 import torch.nn as nn
 import os
 

@@ -76,7 +76,7 @@ class ConvNeXtBlockV1(nn.Module):
         mlp = self.act(mlp)
         mlp = self.pwconv2(mlp)
         # mlp = self.gamma_mlp * mlp
-        x = x + mlp                                      # second residual
+        x = shortcut + mlp                                      # second residual
 
         # Convert back to channels-first for output
         x = x.permute(0, 3, 1, 2)                        # (B, C, H, W)

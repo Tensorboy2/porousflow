@@ -5,6 +5,7 @@ This module implements the training loop for the permeability and dispersion mod
 It is independent of the data loading and model definition modules.
 '''
 import torch
+torch.manual_seed(0)
 import torch.nn as nn
 import math
 import os
@@ -174,15 +175,15 @@ class Trainer:
         return epoch_loss, r2, avg_grad_norm
     
     def scale(self,x):
-        # return x
-        return torch.asinh(x)
+        return x
+        # return torch.asinh(x)
     
         # return torch.sign(x)*torch.log(torch.abs(x)+1)
     
     def inverse_scale(self,y):
         # return torch.sign(y) * (torch.exp(torch.abs(y)) - 1)
-        # return y
-        return torch.sinh(y)
+        return y
+        # return torch.sinh(y)
 
     def train_epoch_dispersion(self):
         self.model.train()

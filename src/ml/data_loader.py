@@ -9,6 +9,7 @@ import zarr
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import torch
+torch.manual_seed(0)
 import torchvision.transforms.functional as tf
 import random
 
@@ -311,7 +312,7 @@ class DispersionDatasetCached(Dataset):
         
         # Convert to tensors
         image = torch.from_numpy(image).float().unsqueeze(0)
-        Dx_single = torch.from_numpy(Dx).float().flatten()
+        Dx = torch.from_numpy(Dx).float().flatten()
         Pe = self.pe_values[pe_idx:pe_idx+1]
         
         if self.transform:
@@ -323,8 +324,8 @@ class DispersionDatasetCached(Dataset):
 
         # if self.transform:
         #     image = self.transform(image)      # Transform expects torch tensor
-        
-        return image, Dx_single, Pe
+        D = torch.tensor([Dx[0],Dx[3]]).float()
+        return image, D, Pe
     
 class DispersionDatasetFull(Dataset):
     """
@@ -515,7 +516,7 @@ def get_dispersion_dataloader(file_path,config):
             test_dataset = DispersionDatasetCached(test_path,cache_images=False)
     else:
         Pe = config.get('Pe',0)
-        train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None),Pe=Pe, transform=aug)
+        train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None),Pe=Pe, transform=None)
         val_dataset = DispersionDataset(val_path,num_samples=config.get('num_validation_samples',None),Pe=Pe)
         test_dataset = DispersionDataset(test_path,Pe=Pe)
 

@@ -8,7 +8,7 @@ models = {
     'resnet': ['ResNet-18', 'ResNet-34', 'ResNet-50', 'ResNet-101', 'ResNet-152'],
     'swin': ['Swin-T', 'Swin-S', 'Swin-B', 'Swin-L'],
     'convnext': ['ConvNeXt-Atto', 'ConvNeXt-Femto', 'ConvNeXt-Pico', 'ConvNeXt-Nano', 
-                 'ConvNeXt-Tiny', 'ConvNeXt-Small', 'ConvNeXt-Base', 'ConvNeXt-Large'],
+                 'ConvNeXt-Tiny', 'ConvNeXt-Small', 'ConvNeXt-Base'],
 }
 length = [1000, 700, 500, 300, 100]
 
@@ -66,11 +66,13 @@ for model_family, model_list in models.items():
             
             # Plot R2
             ax_r2.plot(1 - train_r2, color=length_colors[l], linestyle=split_styles['train'], alpha=0.3)
-            ax_r2.plot(1 - val_r2, color=length_colors[l], linestyle=split_styles['val'], alpha=0.9)
+            ax_r2.plot(1 - val_r2, color=length_colors[l], linestyle=split_styles['val'], alpha=1.,linewidth=1.)
         
         ax_r2.set_title(m)
         ax_r2.set_xlabel('Epoch')
         ax_r2.set_yscale('log')
+        ax_r2.set_xscale('log')
+        ax_r2.set_xlim(10, 1100)
         ax_r2.grid(alpha=0.3)
     
     axes[0].set_ylabel(r'$1-R^2$')

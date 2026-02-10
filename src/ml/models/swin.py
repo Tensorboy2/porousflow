@@ -3,6 +3,7 @@ swin.py
 A module for implementing Swin Transformer for permeability and dispersion predictions
 '''
 import torch
+torch.manual_seed(0)
 import torch.nn as nn
 import numpy as np
 import os

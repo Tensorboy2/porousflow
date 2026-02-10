@@ -16,6 +16,7 @@ from src.ml.data_loader import get_permeability_dataloader, get_dispersion_datal
 from src.ml.trainer import Trainer
 from torch import optim
 import torch
+torch.manual_seed(0)
 import torch.nn as nn
 import yaml
 import os
