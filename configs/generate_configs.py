@@ -31,10 +31,10 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        # "ConvNeXt-Atto",
+        "ConvNeXt-Atto",
         # "SHViT-T",
         # "ViT-B16",
-        "ResNet-101",
+        # "ResNet-101",
         # "Swin-T",
     ],
     "smallest": [

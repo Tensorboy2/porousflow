@@ -46,7 +46,7 @@ class Trainer:
             'R2_val': [],
             'R2_test': [],
             'grad_norm': [],
-            'grad_norm_clipped': [],  # NEW: track how often clipping occurs
+            'grad_norm_clipped': [],
             # 'test_pred': []
         }
 
