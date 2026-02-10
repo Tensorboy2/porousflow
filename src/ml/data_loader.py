@@ -511,7 +511,7 @@ def get_dispersion_dataloader(file_path,config):
             val_dataset = DispersionDatasetFull(val_path,num_samples=config.get('num_validation_samples',None))
             test_dataset = DispersionDatasetFull(test_path)
         else:
-            train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=False,transform=aug)
+            train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=False,transform=None)
             val_dataset = DispersionDatasetCached(val_path,num_samples=config.get('num_validation_samples',None),cache_images=False)
             test_dataset = DispersionDatasetCached(test_path,cache_images=False)
     else:
