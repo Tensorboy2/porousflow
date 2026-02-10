@@ -311,8 +311,8 @@ TASK_CONFIGS = {
         'loss_function': 'mse'
     },
     "dispersion": {
-        "learning_rate": 5e-4,
-        "weight_decay": 5e-2,
+        "learning_rate": 5e-5,
+        "weight_decay": 1e-8,
         "batch_size": 128,
         "num_epochs": 500,
         "decay": "cosine",
@@ -502,7 +502,7 @@ class ModelRegistry:
         "ConvNeXt-Atto": {
             "type": "convnext",
             "size": "atto",
-            "clip_grad": True,
+            "clip_grad": False,
             "description": "ConvNeXt Atto (smallest)",
             # "training_overrides": {"batch_size": 1024}
         },
