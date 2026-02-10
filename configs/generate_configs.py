@@ -31,7 +31,7 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-Atto",
+        "ConvNeXt-V2-Atto",
         # "SHViT-T",
         # "ViT-B16",
         # "ResNet-101",
@@ -311,12 +311,12 @@ TASK_CONFIGS = {
         'loss_function': 'mse'
     },
     "dispersion": {
-        "learning_rate": 5e-5,
-        "weight_decay": 1e-8,
-        "batch_size": 128,
-        "num_epochs": 500,
+        "learning_rate": 2e-4,
+        "weight_decay": 3e-1,
+        "batch_size": 1024,
+        "num_epochs": 600,
         "decay": "cosine",
-        "warmup_steps": 5*16000/128, # steps per epoch * warmup epochs
+        "warmup_steps": 0*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
@@ -556,7 +556,7 @@ class ModelRegistry:
             "type": "convnext",
             "size": "atto",
             "version": "v2",
-            "clip_grad": True,
+            "clip_grad": False,
             "description": "ConvNeXt V2 Atto"
         },
         "ConvNeXt-V2-Femto": {
