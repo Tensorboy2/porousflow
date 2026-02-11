@@ -142,7 +142,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [3e-1],
+        "single": [1e-1],
         "sweep": [5e-2, 1e-1, 0.3],
     },
     "num_training_samples": {
@@ -150,7 +150,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [100, 500, 1000, 5000, 10000, None],
     },
     "num_epochs": {
-        "single": [500],
+        "single": [100],
         "sweep": [100,300,500,700,1000],    
     },
     "decay": {
@@ -167,7 +167,7 @@ HYPERPARAM_SWEEPS = {
         'sweep': [4,3,2,1,0],
     },
     "loss_function": {
-        'single': ['rmse'],
+        'single': ['mse'],
         'sweep': ['mse','L1','rmse','huber','log-cosh','rse']
     }
 }
@@ -323,11 +323,11 @@ TASK_CONFIGS = {
         "pin_memory": True,
         "loss_function": 'mse',
         "pe": {
-            "pe_encoder": 'log',
+            "pe_encoder": None,
             "pe": 4,
             "include_direction": False,
         },
-        "pe_encoder": 'log',
+        "pe_encoder": None,
         "Pe": 4,
     },
 }
