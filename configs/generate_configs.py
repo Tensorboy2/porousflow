@@ -31,7 +31,7 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-RMS-Tiny",
+        "ConvNeXt-RMS-Atto",
         # "SHViT-T",
         # "ViT-B16",
         # "ResNet-101",
@@ -323,11 +323,11 @@ TASK_CONFIGS = {
         "pin_memory": True,
         "loss_function": 'mse',
         "pe": {
-            "pe_encoder": None,
+            "pe_encoder": 'straight',
             "pe": 4,
             "include_direction": False,
         },
-        "pe_encoder": None,
+        "pe_encoder": 'straight',
         "Pe": 4,
     },
 }
