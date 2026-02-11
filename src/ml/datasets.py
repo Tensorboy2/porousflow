@@ -71,7 +71,7 @@ class DispersionDataset(Dataset):
 
         # transform if needed
         if self.transform:
-            image, Dx = self.transform(image, Dx, Dy)
+            image, D = self.transform(image, Dx, Dy)
             # _, D
         else:
             D = torch.tensor([Dx[0],Dx[3]]).float()
