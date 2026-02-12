@@ -6,6 +6,7 @@ from matplotlib.lines import Line2D
 folder = 'results//'
 models = ['ConvNeXt-RMS-Atto']
 paths= [
+    'results/rms_atto_dispersion/ConvNeXt-RMS-Atto_lr-0.00025_wd-0.005_bs-128_epochs-400_cosine_warmup-0.0_clipgrad-True_pe-encoder-straight_pe-4_rmse_metrics.zarr',
     'results/pe_encoder_sweep_convnext/ConvNeXt-Atto_lr-0.0008_wd-0.01_bs-128_epochs-200_cosine_warmup-1000_clipgrad-True_pe-encoder-straight_metrics.zarr',
     'results/rms_atto_dispersion_no_asinh_test/ConvNeXt-RMS-Atto_lr-0.0005_wd-0.05_bs-128_epochs-200_cosine_warmup-0.0_clipgrad-True_pe-encoder-straight_pe-4_rmse_metrics.zarr',
 ]
@@ -17,8 +18,8 @@ length_colors = {
     300: 'C1',
     100: 'C0',
 }
-colors = ['C0','C1']
-labels = ['Old aug','New aug']
+colors = ['C0','C1','C2']
+labels = ['new long','Old aug','New aug']
 
 # Linestyle per split
 split_styles = {

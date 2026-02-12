@@ -312,7 +312,7 @@ TASK_CONFIGS = {
     },
     "dispersion": {
         "learning_rate": 2.5e-4,
-        "weight_decay": 5e-3,
+        "weight_decay": 1e-1,
         "batch_size": 128,
         "num_epochs": 400,
         "decay": "cosine",
@@ -321,7 +321,7 @@ TASK_CONFIGS = {
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
-        "loss_function": 'rmse',
+        "loss_function": 'mse',
         "pe": {
             "pe_encoder": 'straight',
             "pe": 4,
