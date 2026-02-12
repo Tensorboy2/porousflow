@@ -311,13 +311,13 @@ TASK_CONFIGS = {
         'loss_function': 'mse'
     },
     "dispersion": {
-        "learning_rate": 1e-5,
+        "learning_rate": 5e-4,
         "weight_decay": 5e-2,
         "batch_size": 128,
-        "num_epochs": 100,
+        "num_epochs": 1000,
         "decay": "cosine",
-        "warmup_steps": 2*5*16000/128, # steps per epoch * warmup epochs
-        "num_training_samples": None,
+        "warmup_steps": 0*5*16000/128, # steps per epoch * warmup epochs
+        "num_training_samples": 1600,
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
