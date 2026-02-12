@@ -317,7 +317,7 @@ TASK_CONFIGS = {
         "num_epochs": 1000,
         "decay": "cosine",
         "warmup_steps": 0*5*16000/128, # steps per epoch * warmup epochs
-        "num_training_samples": 1600,
+        "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
