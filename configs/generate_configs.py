@@ -311,17 +311,17 @@ TASK_CONFIGS = {
         'loss_function': 'mse'
     },
     "dispersion": {
-        "learning_rate": 2.5e-4,
-        "weight_decay": 1e-1,
+        "learning_rate": 1e-5,
+        "weight_decay": 5e-2,
         "batch_size": 128,
-        "num_epochs": 400,
+        "num_epochs": 100,
         "decay": "cosine",
-        "warmup_steps": 0*5*16000/128, # steps per epoch * warmup epochs
+        "warmup_steps": 2*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
-        "loss_function": 'mse',
+        "loss_function": 'rmse',
         "pe": {
             "pe_encoder": 'straight',
             "pe": 4,
@@ -354,7 +354,7 @@ DEVICE_CONFIGS = {
         "training_overrides": {
             "batch_size": 8,
             "num_epochs": 500,
-            "warmup_steps": 1,#int(0.1*32*10/8),
+            "warmup_steps": 10,#int(0.1*32*10/8),
             "weight_decay": 5e-2,
             "decay": "cosine",
             "learning_rate": 1e-3,
@@ -452,24 +452,28 @@ class ModelRegistry:
             "type": "swin",
             "size": "T",
             "clip_grad": True,
+            "warmup_steps": 20*16000/128,
             "description": "Sliding window Vision Transformer Tiny with 4x4 patches"
         },
         "Swin-S": {
             "type": "swin",
             "size": "S",
             "clip_grad": True,
+            "warmup_steps": 20*16000/128,
             "description": "Sliding window Vision Transformer Small with 4x4 patches"
         },
         "Swin-B": {
             "type": "swin",
             "size": "B",
             "clip_grad": True,
+            "warmup_steps": 20*16000/128,
             "description": "Sliding window Vision Transformer Base with 4x4 patches"
         },
         "Swin-L": {
             "type": "swin",
             "size": "L",
             "clip_grad": True,
+            "warmup_steps": 20*16000/128,
             "description": "Sliding window Vision Transformer Large with 4x4 patches"
         },
         # Vision Transformers
@@ -477,24 +481,28 @@ class ModelRegistry:
             "type": "vit",
             "size": "T16",
             "clip_grad": True,
+            "warmup_steps": 20*16000/128,
             "description": "Vision Transformer Tiny with 16x16 patches"
         },
         "ViT-S16": {
             "type": "vit",
             "size": "S16",
             "clip_grad": True,
+            "warmup_steps": 20*16000/128,
             "description": "Vision Transformer Small with 16x16 patches"
         },
         "ViT-B16": {
             "type": "vit",
             "size": "B16",
             "clip_grad": True,
+            "warmup_steps": 20*16000/128,
             "description": "Vision Transformer Base with 16x16 patches"
         },
         "ViT-L16": {
             "type": "vit",
             "size": "L16",
             "clip_grad": True,
+            "warmup_steps": 20*16000/128,
             "description": "Vision Transformer Large with 16x16 patches"
         },
         
