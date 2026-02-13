@@ -360,18 +360,18 @@ if __name__ == "__main__":
     
     # Test ResNet-18 (BasicBlock)
     x = torch.randn(2, 1, 128, 128)
-    model18 = load_resnet_model(size='18', in_channels=1, num_classes=4)
+    model18 = load_resnet_model('18', in_channels=1, num_classes=4)
     output18 = model18(x)
     print(f"ResNet-18 output shape: {output18.shape}")
     
     # Test ResNet-50 (Bottleneck)
-    model50 = load_resnet_model(size='50', in_channels=1, num_classes=4)
+    model50 = load_resnet_model('50', in_channels=1, num_classes=4)
     output50 = model50(x)
     print(f"ResNet-50 output shape: {output50.shape}")
     
     # Test with grayscale input
     x_gray = torch.randn(2, 1, 128, 128)
-    model_gray = load_resnet_model(size='34', in_channels=1, task='dispersion')
+    model_gray = load_resnet_model('34', in_channels=1, task='dispersion')
     output_gray = model_gray(x_gray, Pe=100)
     print(f"ResNet-34 (grayscale) dispersion output shape: {output_gray.shape}")
     
