@@ -59,16 +59,16 @@ MODEL_PRESETS = {
         "ResNet-18",
 
         #medium
-        "ConvNeXt-Tiny",
+        "ConvNeXt-Small",
         "ViT-S16",
         "Swin-S",
         "ResNet-50",
 
         #base
-        "Swin-B",
-        "ResNet-101",
-        "ConvNeXt-Base",
-        "ViT-B16",
+        # "Swin-B",
+        # "ResNet-101",
+        # "ConvNeXt-Base",
+        # "ViT-B16",
     ],
     "full_vit": [
         "ViT-T16",
@@ -158,11 +158,11 @@ HYPERPARAM_SWEEPS = {
     },
     "num_training_samples": {
         "single": [None],  # None means use all available data
-        "scaling": [100, 500, 1000, 5000, 10000, None],
+        "scaling": [20, 50, 100, 100, 10000, None],
     },
     "num_epochs": {
         "single": [100],
-        "sweep": [100,200,300,400,500],    
+        "sweep": [20,50,100,150,200],    
     },
     "decay": {
         "single": ["cosine"],
