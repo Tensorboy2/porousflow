@@ -11,12 +11,12 @@ paths= [
     'results/rms_atto_dispersion/ConvNeXt-RMS-Atto_lr-0.00025_wd-0.1_bs-128_epochs-400_cosine_warmup-0.0_clipgrad-True_pe-encoder-straight_pe-4_mse_metrics.zarr',
     # 'results/pe_encoder_sweep_convnext/ConvNeXt-Atto_lr-0.0008_wd-0.01_bs-128_epochs-200_cosine_warmup-1000_clipgrad-True_pe-encoder-log_metrics.zarr',
     # 'results/pe_encoder_sweep_convnext/ConvNeXt-Atto_lr-0.0008_wd-0.01_bs-128_epochs-200_cosine_warmup-1000_clipgrad-True_pe-encoder-vector_metrics.zarr',
-    # 'results/pe_encoder_sweep_convnext/ConvNeXt-Atto_lr-0.0008_wd-0.01_bs-128_epochs-200_cosine_warmup-1000_clipgrad-True_pe-encoder-straight_metrics.zarr',
+    'results/pe_encoder_sweep_convnext/ConvNeXt-Atto_lr-0.0008_wd-0.01_bs-128_epochs-200_cosine_warmup-1000_clipgrad-True_pe-encoder-straight_metrics.zarr',
     'results/rms_atto_dispersion_no_asinh_test/ConvNeXt-RMS-Atto_lr-0.0005_wd-0.05_bs-128_epochs-200_cosine_warmup-0.0_clipgrad-True_pe-encoder-straight_pe-4_rmse_metrics.zarr',
 ]
 
 colors = ['C0','C1','C2','C3','C4']
-labels = ['wd=0.05','wd=0.005','wd=0.1','wd=0.05']
+labels = ['wd=0.05','wd=0.005','wd=0.1','old aug','wd=0.05']
 
 # Linestyle per split
 split_styles = {

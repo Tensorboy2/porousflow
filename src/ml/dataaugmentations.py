@@ -51,7 +51,7 @@ class DispersionTransform:
             lambda img, Dx, Dy: (tf.rotate(tf.hflip(img), 180), torch.tensor([Dx[0],Dx[3]])),
             lambda img, Dx, Dy: (tf.rotate(tf.hflip(img), 270), torch.tensor([Dy[3],Dy[0]])),
         ]
-    def periodic_shift(self, img):
+    def periodic_shift(self, img, num_shifts=128):
         sx = random.randint(0, img.shape[-2] - 1)
         sy = random.randint(0, img.shape[-1] - 1)
         return torch.roll(img, shifts=(sx, sy), dims=(-2, -1))

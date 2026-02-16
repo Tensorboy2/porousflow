@@ -52,12 +52,23 @@ MODEL_PRESETS = {
         "SHViT-L",
     ],
     "small_sweep": [
-        "ResNet-152",
-        "ConvNeXt-Large",
-        "ResNet-18",
-        "ViT-L16",
-        "ViT-T16",
+        #smallest
         "ConvNeXt-Atto",
+        "ViT-T16",
+        "Swin-T",
+        "ResNet-18",
+
+        #medium
+        "ConvNeXt-Tiny",
+        "ViT-S16",
+        "Swin-S",
+        "ResNet-50",
+
+        #base
+        "Swin-B",
+        "ResNet-101",
+        "ConvNeXt-Base",
+        "ViT-B16",
     ],
     "full_vit": [
         "ViT-T16",
@@ -142,7 +153,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [1e-1],
+        "single": [5e-2],
         "sweep": [5e-2, 1e-1, 0.3],
     },
     "num_training_samples": {
@@ -151,7 +162,7 @@ HYPERPARAM_SWEEPS = {
     },
     "num_epochs": {
         "single": [100],
-        "sweep": [100,300,500,700,1000],    
+        "sweep": [100,200,300,400,500],    
     },
     "decay": {
         "single": ["cosine"],
