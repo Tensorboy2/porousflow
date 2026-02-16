@@ -162,7 +162,7 @@ HYPERPARAM_SWEEPS = {
     },
     "num_epochs": {
         "single": [100],
-        "sweep": [20,50,100,150,200],    
+        "sweep": [50,100,200],    
     },
     "decay": {
         "single": ["cosine"],
@@ -246,6 +246,17 @@ SWEEP_PRESETS = {
         "num_training_samples": "single",
         "num_epochs": "sweep",
         "decay": "single",
+        "loss_function": 'single'
+    },
+    "epoch_pe_encoder_sweep": {
+        # Sweep only loss function
+        "learning_rate": "single",
+        "batch_size": "single",
+        "weight_decay": "single",
+        "num_training_samples": "single",
+        "num_epochs": "sweep",
+        "decay": "single",
+        'pe_encoder': 'sweep',
         "loss_function": 'single'
     },
     "bs_sweep": {
