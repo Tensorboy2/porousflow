@@ -53,15 +53,15 @@ MODEL_PRESETS = {
     ],
     "small_sweep": [
         #smallest
-        "ConvNeXt-Atto",
-        "ViT-T16",
-        "Swin-T",
+        # "ConvNeXt-Atto",
+        # "ViT-T16",
+        # "Swin-T",
         "ResNet-18",
 
         #medium
         "ConvNeXt-Small",
-        "ViT-S16",
-        "Swin-S",
+        # "ViT-S16",
+        # "Swin-S",
         "ResNet-50",
 
         #base
@@ -171,7 +171,7 @@ HYPERPARAM_SWEEPS = {
     },
     'pe_encoder': {
         'single': [None],
-        'sweep': ['straight', 'log', 'vector'],
+        'sweep': ['straight', 'log'],#, 'vector'],
     },
     'Pe': {
         'single': [0],

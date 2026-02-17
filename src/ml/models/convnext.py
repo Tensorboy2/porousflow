@@ -304,7 +304,7 @@ class ConvNeXt(nn.Module):
         in_channels=1,
         num_classes=4,
         pe_encoder=None,
-        include_direction=True,
+        include_direction=False,
         use_transformer=False
     ):
         super().__init__()
@@ -371,22 +371,22 @@ class ConvNeXt(nn.Module):
         cond = self.cond_encoder(Pe, Direction)
         
         # Transformer mode → additive fusion
-        if self.token_mixer.use_transformer:
-            if cond is not None:
-                # If the condition vector size doesn't match pooled features,
-                # project it to the pooled size when a projection exists.
-                if cond.size(-1) != pooled.size(-1):
-                    if hasattr(self, 'cond_proj') and self.cond_proj is not None:
-                        cond = self.cond_proj(cond)
-                    else:
-                        # Fallback: trim or pad (trim here) to match pooled size
-                        cond = cond[:, :pooled.size(-1)]
-                pooled = pooled + cond
+        # if self.token_mixer.use_transformer:
+        #     if cond is not None:
+        #         # If the condition vector size doesn't match pooled features,
+        #         # project it to the pooled size when a projection exists.
+        #         if cond.size(-1) != pooled.size(-1):
+        #             if hasattr(self, 'cond_proj') and self.cond_proj is not None:
+        #                 cond = self.cond_proj(cond)
+        #             else:
+        #                 # Fallback: trim or pad (trim here) to match pooled size
+        #                 cond = cond[:, :pooled.size(-1)]
+        #         pooled = pooled + cond
         
         # CNN mode → concatenative fusion
-        else:
-            if cond is not None:
-                pooled = torch.cat([pooled, cond], dim=-1)
+        # else:
+        if cond is not None:
+            pooled = torch.cat([pooled, cond], dim=-1)
         
         return self.head(pooled)
 
@@ -431,7 +431,29 @@ def load_convnext_model(config_or_version='v1',
     if pretrained_path:
         if not os.path.exists(pretrained_path):
             raise FileNotFoundError(f"Pretrained model not found at: {pretrained_path}")
-        model.load_state_dict(torch.load(pretrained_path, map_location='cpu'))
+        # Load the saved state
+        checkpoint = torch.load(pretrained_path, map_location='cpu')
+        
+        # If the checkpoint is a full training state, extract just the model weights
+        state_dict = checkpoint.get('state_dict', checkpoint) 
+
+        # Check for dimension mismatch in the head and load accordingly
+        if 'head.1.weight' in state_dict:
+            ckpt_out_features = state_dict['head.1.weight'].shape[0]
+            if ckpt_out_features != num_classes:
+                print(f"(!) Task mismatch: Loading backbone from {ckpt_out_features}-class "
+                      f"model into {num_classes}-class {task} model. Skipping head weights.")
+                
+                # Filter out the head parameters
+                state_dict = {k: v for k, v in state_dict.items() if not k.startswith('head.')}
+                
+                # Load remaining weights (backbone, encoders, mixer)
+                model.load_state_dict(state_dict, strict=False)
+            else:
+                # Standard load if dimensions match
+                model.load_state_dict(state_dict, strict=True)
+        else:
+            model.load_state_dict(state_dict, strict=True)
 
     return model
 
@@ -447,18 +469,32 @@ if __name__ == "__main__":
     torch.manual_seed(42)
     
     x = torch.randn(2, 1, 128, 128)
+
+    # model_perm = load_convnext_model(config_or_version='v2', size='tiny', in_channels=1, task='permeability')
+
+    # model_disp = load_convnext_model(config_or_version='v2', size='tiny', in_channels=1, task='dispersion')
+
+    # perm_state_dict = model_perm.state_dict()
+
+    # # Test loading permeability weights into dispersion model (should load backbone but skip head)
+    # perm_state_dict = {k: v for k, v in perm_state_dict.items() if not k.startswith('head.')}
+                
+    # model_disp.load_state_dict(perm_state_dict, strict=False)
+    # out_disp = model_disp(x)
+    # print(f"Dispersion model output shape after loading permeability weights: {out_disp.shape}")
+
     # Test different versions and sizes
     for version in ['v1', 'v2', 'rms']:
         sizes=[]
         for size in ['atto', 'femto', 'pico', 'nano', 'tiny', 'small', 'base', 'large']:
-            # try:
-            model = load_convnext_model(config_or_version=version, size=size, in_channels=1)
-            # out = model(x)
-            params = count_parameters(model)
-            sizes.append(params)
-            #     print(f"ConvNeXt-{version}-{size}: output shape {out.shape}, params {params:,}")
-            # except Exception as e:
-            #     print(f"Error with ConvNeXt-{version}-{size}: {e}")
+            try:
+                model = load_convnext_model(config_or_version=version, size=size, in_channels=1,task='permeability')
+                out = model(x)
+                params = count_parameters(model)
+                sizes.append(params)
+                print(f"ConvNeXt-{version}-{size}: output shape {out.shape}, params {params:,}")
+            except Exception as e:
+                print(f"Error with ConvNeXt-{version}-{size}: {e}")
         print(f"{version}: {sizes}")
     # # Test large model
     # try:
@@ -470,11 +506,11 @@ if __name__ == "__main__":
 
     # Test with Peclet number input
     # try:
-    for encoder in [None, 'straight', 'log', 'vector']:
-        model = load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='dispersion', Pe_encoder=encoder)
-        Pe = torch.tensor([[10.0],[100.0]])
-        out = model(x, Pe=Pe)
-        print(f"\nConvNeXt-v1-tiny with Peclet encoder '{encoder}': output shape {out.shape}")
+    # for encoder in [None, 'straight', 'log', 'vector']:
+    #     model = load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='dispersion', Pe_encoder=encoder)
+    #     Pe = torch.tensor([[10.0],[100.0]])
+    #     out = model(x, Pe=Pe)
+    #     print(f"\nConvNeXt-v1-tiny with Peclet encoder '{encoder}': output shape {out.shape}")
     # model = load_convnext_model(config_or_version='v1', size='tiny', in_channels=1, task='dispersion', Pe_encoder='vector')
     # Pe = torch.tensor([[1,0,0,0,0],[0,1,0,0,0]])
     # out = model(x, Pe=Pe)

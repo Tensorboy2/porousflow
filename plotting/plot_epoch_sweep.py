@@ -3,12 +3,17 @@ import numpy as np
 import zarr
 from matplotlib.lines import Line2D
 
-folder = 'results/permeability_epoch_sweep/'
+folder = 'results/epoch_sweep_all_models/'
 models = {
     'resnet': ['ResNet-18', 'ResNet-34', 'ResNet-50', 'ResNet-101', 'ResNet-152'],
     'swin': ['Swin-T', 'Swin-S', 'Swin-B', 'Swin-L'],
+    'vit': ['ViT-T16', 'ViT-S16', 'ViT-B16', 'ViT-L16'],
     'convnext': ['ConvNeXt-Atto', 'ConvNeXt-Femto', 'ConvNeXt-Pico', 'ConvNeXt-Nano', 
                  'ConvNeXt-Tiny', 'ConvNeXt-Small', 'ConvNeXt-Base'],
+    'convnext-v2': ['ConvNeXt-V2-Atto', 'ConvNeXt-V2-Femto', 'ConvNeXt-V2-Pico', 'ConvNeXt-V2-Nano', 
+                 'ConvNeXt-V2-Tiny', 'ConvNeXt-V2-Small', 'ConvNeXt-V2-Base'],
+    'convnext-rms': ['ConvNeXt-RMS-Atto', 'ConvNeXt-RMS-Femto', 'ConvNeXt-RMS-Pico', 'ConvNeXt-RMS-Nano', 
+                 'ConvNeXt-RMS-Tiny', 'ConvNeXt-RMS-Small', 'ConvNeXt-RMS-Base'],
 }
 length = [1000, 700, 500, 300, 100]
 
@@ -53,7 +58,7 @@ for model_family, model_list in models.items():
         ax_r2 = axes[col]
         #results/permeability_epoch_sweep/ConvNeXt-Atto_lr-0.0008_wd-0.1_bs-128_epochs-100_cosine_warmup-1250_clipgrad-True_pe-encoder-None_pe-None_rmse_metrics.zarr
         for l in length:
-            path = folder + f'{m}_lr-0.0008_wd-0.1_bs-128_epochs-{l}_cosine_warmup-1250_clipgrad-True_pe-encoder-None_pe-None_rmse_metrics.zarr'
+            path = folder + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-0_clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
             try:
                 root = zarr.open(path, mode='r')
                 train_loss = root['train_loss'][:]
@@ -71,8 +76,8 @@ for model_family, model_list in models.items():
         ax_r2.set_title(m)
         ax_r2.set_xlabel('Epoch')
         ax_r2.set_yscale('log')
-        ax_r2.set_xscale('log')
-        ax_r2.set_xlim(10, 1100)
+        # ax_r2.set_xscale('log')
+        # ax_r2.set_xlim(10, 1100)
         ax_r2.grid(alpha=0.3)
     
     axes[0].set_ylabel(r'$1-R^2$')
@@ -103,5 +108,5 @@ for model_family, model_list in models.items():
     )
     
     plt.tight_layout(rect=[0, 0.10, 1.0, 1.0])
-    plt.savefig(f'thesis_plots/{model_family}_long_run.pdf')
+    plt.savefig(f'thesis_plots/{model_family}_epoch_sweep_permeability.pdf')
     plt.close()

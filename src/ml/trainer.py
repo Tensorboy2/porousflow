@@ -176,6 +176,7 @@ class Trainer:
     
     def scale(self,x):
         # return x
+        # return torch.log1p(x)
         return torch.asinh(x)
     
         # return torch.sign(x)*torch.log(torch.abs(x)+1)
@@ -183,6 +184,7 @@ class Trainer:
     def inverse_scale(self,y):
         # return torch.sign(y) * (torch.exp(torch.abs(y)) - 1)
         # return y
+        # return torch.expm1(y)
         return torch.sinh(y)
 
     def train_epoch_dispersion(self):
@@ -462,14 +464,13 @@ class Trainer:
                     D = targets[:, i]
                     inputs, D = inputs.to(self.device), D.to(self.device)
                     outputs = self.model(inputs, self.Pes[i])
-                    outputs_scaled = torch.arcsinh(outputs)
-                    outputs_scaled = torch.arcsinh(outputs.float())
-                    D_scaled = torch.arcsinh(D.float())
+                    outputs_scaled = self.inverse_scale(outputs)
+                    D_scaled = self.scale(D.float())
                     loss = self.criterion(outputs_scaled, D_scaled)
                     running_loss += loss.item() * inputs.size(0)
                     total_samples += inputs.size(0)
 
-                    outputs_cpu = outputs.detach().cpu()
+                    outputs_cpu = outputs_scaled.detach().cpu()
                     targets_cpu = D.detach().cpu()
                     sum_squared_error += torch.sum((targets_cpu - outputs_cpu) ** 2).item()
                     sum_targets += torch.sum(targets_cpu).item()

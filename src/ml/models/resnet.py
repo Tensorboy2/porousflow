@@ -330,16 +330,29 @@ def load_resnet_model(config_or_size='18', in_channels=1, pretrained_path: str =
         if not os.path.exists(pretrained_path):
             raise FileNotFoundError(f"Pretrained model not found at: {pretrained_path}")
 
+        # Load the saved state
         checkpoint = torch.load(pretrained_path, map_location='cpu')
-        if 'model_state_dict' in checkpoint:
-            state_dict = checkpoint['model_state_dict']
-        elif 'state_dict' in checkpoint:
-            state_dict = checkpoint['state_dict']
-        else:
-            state_dict = checkpoint
+        
+        # If the checkpoint is a full training state, extract just the model weights
+        state_dict = checkpoint.get('state_dict', checkpoint) 
 
-        model.load_state_dict(state_dict, strict=False)
-        print(f"Loaded pretrained weights from: {pretrained_path}")
+        # Check for dimension mismatch in the head and load accordingly
+        if 'head.1.weight' in state_dict:
+            ckpt_out_features = state_dict['head.1.weight'].shape[0]
+            if ckpt_out_features != num_classes:
+                print(f"(!) Task mismatch: Loading backbone from {ckpt_out_features}-class "
+                      f"model into {num_classes}-class {task} model. Skipping head weights.")
+                
+                # Filter out the head parameters
+                state_dict = {k: v for k, v in state_dict.items() if not k.startswith('fc')}
+                
+                # Load remaining weights (backbone, encoders, mixer)
+                model.load_state_dict(state_dict, strict=False)
+            else:
+                # Standard load if dimensions match
+                model.load_state_dict(state_dict, strict=True)
+        else:
+            model.load_state_dict(state_dict, strict=True)
 
     return model
 
@@ -351,37 +364,53 @@ def count_parameters(model):
 if __name__ == "__main__":
     # Example usage
     print("Testing ResNet models...")
-    sizes=[]
-    for size in ['18', '34', '50', '101', '152']:
-        model = load_resnet_model(size, in_channels=1, num_classes=4)
-        params = count_parameters(model)
-        sizes.append(params)
-    print(f"{sizes}")
+    # sizes=[]
+    # for size in ['18', '34', '50', '101', '152']:
+    #     model = load_resnet_model(size, in_channels=1, num_classes=4)
+    #     params = count_parameters(model)
+    #     sizes.append(params)
+    # print(f"{sizes}")
     
-    # Test ResNet-18 (BasicBlock)
+    # # Test ResNet-18 (BasicBlock)
+    # x = torch.randn(2, 1, 128, 128)
+    # model18 = load_resnet_model('18', in_channels=1, num_classes=4)
+    # output18 = model18(x)
+    # print(f"ResNet-18 output shape: {output18.shape}")
+    
+    # # Test ResNet-50 (Bottleneck)
+    # model50 = load_resnet_model('50', in_channels=1, num_classes=4)
+    # output50 = model50(x)
+    # print(f"ResNet-50 output shape: {output50.shape}")
+    
+    # # Test with grayscale input
+    # x_gray = torch.randn(2, 1, 128, 128)
+    # model_gray = load_resnet_model('34', in_channels=1, task='dispersion')
+    # output_gray = model_gray(x_gray, Pe=100)
+    # print(f"ResNet-34 (grayscale) dispersion output shape: {output_gray.shape}")
+    
+    # # Print parameter counts
+    # def count_parameters(model):
+    #     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
+    # print(f"\nParameter counts:")
+    # print(f"ResNet-18: {count_parameters(model18):,}")
+    # print(f"ResNet-50: {count_parameters(model50):,}")
+
+    torch.manual_seed(42)
+    
     x = torch.randn(2, 1, 128, 128)
-    model18 = load_resnet_model('18', in_channels=1, num_classes=4)
-    output18 = model18(x)
-    print(f"ResNet-18 output shape: {output18.shape}")
-    
-    # Test ResNet-50 (Bottleneck)
-    model50 = load_resnet_model('50', in_channels=1, num_classes=4)
-    output50 = model50(x)
-    print(f"ResNet-50 output shape: {output50.shape}")
-    
-    # Test with grayscale input
-    x_gray = torch.randn(2, 1, 128, 128)
-    model_gray = load_resnet_model('34', in_channels=1, task='dispersion')
-    output_gray = model_gray(x_gray, Pe=100)
-    print(f"ResNet-34 (grayscale) dispersion output shape: {output_gray.shape}")
-    
-    # Print parameter counts
-    def count_parameters(model):
-        return sum(p.numel() for p in model.parameters() if p.requires_grad)
-    
-    print(f"\nParameter counts:")
-    print(f"ResNet-18: {count_parameters(model18):,}")
-    print(f"ResNet-50: {count_parameters(model50):,}")
+
+    model_perm = load_resnet_model('18', in_channels=1, num_classes=4, task='permeability')
+    model_disp = load_resnet_model('18', in_channels=1, num_classes=2, task='dispersion')
+
+    perm_state_dict = model_perm.state_dict()
+
+    perm_state_dict = {k: v for k,v in perm_state_dict.items() if not k.startswith('fc')}
+    model_disp.load_state_dict(perm_state_dict, strict=False)
+    out_perm = model_perm(x)
+    out_disp = model_disp(x)
+    print(f"ResNet-18 permeability output shape: {out_perm.shape}")
+    print(f"ResNet-18 dispersion output shape: {out_disp.shape}")
 
     # # Test Pe encoder 
     # for encoder in [None, 'straight', 'log', 'vector']:

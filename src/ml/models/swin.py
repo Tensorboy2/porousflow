@@ -652,16 +652,29 @@ def load_swin_model(config_or_size='T', in_channels=1, task='permeability',
         if not os.path.exists(pretrained_path):
             raise FileNotFoundError(f"Pretrained model not found at: {pretrained_path}")
 
+        # Load the saved state
         checkpoint = torch.load(pretrained_path, map_location='cpu')
-        if 'model_state_dict' in checkpoint:
-            state_dict = checkpoint['model_state_dict']
-        elif 'state_dict' in checkpoint:
-            state_dict = checkpoint['state_dict']
-        else:
-            state_dict = checkpoint
+        
+        # If the checkpoint is a full training state, extract just the model weights
+        state_dict = checkpoint.get('state_dict', checkpoint) 
 
-        model.load_state_dict(state_dict, strict=False)
-        print(f"Loaded pretrained weights from: {pretrained_path}")
+        # Check for dimension mismatch in the head and load accordingly
+        if 'head.1.weight' in state_dict:
+            ckpt_out_features = state_dict['head.1.weight'].shape[0]
+            if ckpt_out_features != num_classes:
+                print(f"(!) Task mismatch: Loading backbone from {ckpt_out_features}-class "
+                      f"model into {num_classes}-class {task} model. Skipping head weights.")
+                
+                # Filter out the head parameters
+                state_dict = {k: v for k, v in state_dict.items() if not k.startswith('head.')}
+                
+                # Load remaining weights (backbone, encoders, mixer)
+                model.load_state_dict(state_dict, strict=False)
+            else:
+                # Standard load if dimensions match
+                model.load_state_dict(state_dict, strict=True)
+        else:
+            model.load_state_dict(state_dict, strict=True)
 
     return model
 
@@ -673,31 +686,47 @@ def count_parameters(model):
 
 if __name__ == "__main__":
     # Example usage
-    print("Testing Swin Transformer models...")
-    sizes = []
-    for size in ['T', 'S', 'B', 'L']:
-        model = load_swin_model(size, in_channels=1, task='permeability')
-        params = count_parameters(model)
-        sizes.append(params)
-        print(f"Swin-{size}: {params:,} parameters")
+    # print("Testing Swin Transformer models...")
+    # sizes = []
+    # for size in ['T', 'S', 'B', 'L']:
+    #     model = load_swin_model(size, in_channels=1, task='permeability')
+    #     params = count_parameters(model)
+    #     sizes.append(params)
+    #     print(f"Swin-{size}: {params:,} parameters")
 
-    # Test Swin-Tiny
-    x = torch.randn(2, 1, 128, 128)
-    model_tiny = load_swin_model(config_or_size='T', in_channels=1, task='permeability')
-    output_tiny = model_tiny(x)
-    print(f"\nSwin-Tiny output shape: {output_tiny.shape}")
+    # # Test Swin-Tiny
+    # x = torch.randn(2, 1, 128, 128)
+    # model_tiny = load_swin_model(config_or_size='T', in_channels=1, task='permeability')
+    # output_tiny = model_tiny(x)
+    # print(f"\nSwin-Tiny output shape: {output_tiny.shape}")
     
-    # Test Swin-Base for dispersion
-    peclet = torch.tensor([[10.0], [20.0]])
-    model_base = load_swin_model(config_or_size='B', in_channels=1, task='dispersion')
-    output_base = model_base(x)
-    print(f"Swin-Base (dispersion) output shape: {output_base.shape}")
+    # # Test Swin-Base for dispersion
+    # peclet = torch.tensor([[10.0], [20.0]])
+    # model_base = load_swin_model(config_or_size='B', in_channels=1, task='dispersion')
+    # output_base = model_base(x)
+    # print(f"Swin-Base (dispersion) output shape: {output_base.shape}")
 
-    # Print number of parameters
-    print(f"\nSwin-Tiny parameters: {model_tiny.get_num_params():,}")
-    print(f"Swin-Base parameters: {model_base.get_num_params():,}")
+    # # Print number of parameters
+    # print(f"\nSwin-Tiny parameters: {model_tiny.get_num_params():,}")
+    # print(f"Swin-Base parameters: {model_base.get_num_params():,}")
 
-    # Test Swin with Péclet encoding
-    model_disp_pe = load_swin_model(config_or_size='S', in_channels=1, task='dispersion', Pe_encoder='log')
-    output_disp_pe = model_disp_pe(x, Pe=peclet)
-    print(f"Swin-Small (dispersion with Pe) output shape: {output_disp_pe.shape}")
+    # # Test Swin with Péclet encoding
+    # model_disp_pe = load_swin_model(config_or_size='S', in_channels=1, task='dispersion', Pe_encoder='log')
+    # output_disp_pe = model_disp_pe(x, Pe=peclet)
+    # print(f"Swin-Small (dispersion with Pe) output shape: {output_disp_pe.shape}")
+
+    torch.manual_seed(42)
+    
+    x = torch.randn(2, 1, 128, 128)
+
+    model_perm = load_swin_model(config_or_size='T', in_channels=1, task='permeability')
+
+    model_disp = load_swin_model(config_or_size='T', in_channels=1, task='dispersion')
+
+    perm_state_dict = model_perm.state_dict()
+
+    perm_state_dict = {k: v for k, v in perm_state_dict.items() if not k.startswith('head.')}
+
+    model_disp.load_state_dict(perm_state_dict, strict=False)
+    output_disp = model_disp(x)
+    print(f"Swin-Tiny (dispersion) output shape: {output_disp.shape}")
