@@ -112,7 +112,7 @@ def run_lbm_single(x):
     """Run LBM for a single sample"""
     out = LBM_solver(
         x,
-        max_iterations=1000,
+        max_iterations=100_000,
         L_physical=L_physical,
         tau=tau,
         force_strength=force_scaling
@@ -121,7 +121,7 @@ def run_lbm_single(x):
     out_2 = LBM_solver(
         x,
         force_dir=1,
-        max_iterations=1000,
+        max_iterations=100_000,
         L_physical=L_physical,
         tau=tau,
         force_strength=force_scaling

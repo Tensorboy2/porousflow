@@ -11,7 +11,7 @@ models = {
     'convnext': ['ConvNeXt-Atto','ConvNeXt-Small'],
 }
 length = [200, 100, 50]
-pe_encoders = ['straight', 'log', 'vector']
+pe_encoders = ['straight', 'log']
 
 # Color per length
 length_colors = {

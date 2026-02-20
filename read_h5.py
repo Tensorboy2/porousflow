@@ -7,21 +7,32 @@ import numpy as np
 from src.ml.models.vit import load_vit_model
 from src.ml.models.convnext import load_convnext_model
 
-file_name = 'rough_validation_2D.h5'
+# file_name = 'rough_validation_2D.h5'
 # file_name = 'smooth_validation_2D.h5'
+file_name = 'rocks_validation.h5'
 
-with h5py.File(file_name, 'r') as f:
-    # Inspect dataset shapes
-    # print("bounds shape:", f['bounds'].shape)
-    # print("input/fill shape:", f['input/fill'].shape)
-    # print("output/p shape:", f['output/p'].shape)
-    # print("name shape:", f['name'].shape)
+file_names = {
+    'rocks': 'rocks_validation.h5',
+    'rough': 'rough_validation_2D.h5',
+    'smooth': 'smooth_validation_2D.h5',
+}
 
-    # Load data
-    bounds = f['bounds'][:]
-    X = f['input/fill'][:]     # inputs
-    Y = f['output/p'][:]       # targets
-    names = f['name'][:]       # sample names (likely bytes)
+num_images=5
+fig, ax = plt.subplots(num_images,3,figsize=(10,3*num_images))
+j=0
+for tag, file_name in file_names.items():
+    with h5py.File(file_name, 'r') as f:
+        X = f['input/fill'][:]     # inputs
+        # Y = f['output/K'][:]      # outputs
+        # names = f['names'][:]
+    #  print(f"Loaded {len(X)} samples from {file_name} with tag '{tag}'")
+    for i in range(num_images):
+        ax[i,j].set_title(f"{tag}")
+        ax[i,j].imshow(X[i,0], cmap="gray")
+        ax[i,j].axis('off')
+    j+=1
+plt.tight_layout()
+plt.savefig('update_plots/real_media.pdf')
 
 # print("X shape:", X.shape)
 # print("Y shape:", Y.shape)
@@ -75,27 +86,7 @@ def sim(X):
     u_2 = out_2[0]
     u_mag_2 = np.sqrt(u_2[:,:,0]**2 + u_2[:,:,1]**2)
     return u_mag, u_mag_2
-num_images=5
-fig, ax = plt.subplots(num_images,3,figsize=(10,3*num_images))
 
-for i in range(num_images):
-    u_mag, u_mag_2 = sim(X[i])
-
-    ax[i,0].set_title("Input")
-    ax[i,0].imshow(X[i,0], cmap="gray")
-
-    ax[i,1].set_title("Flow-x")
-    im1 = ax[i,1].imshow(u_mag, cmap="viridis")
-    fig.colorbar(im1, ax=ax[i,1])
-
-    ax[i,2].set_title("Flow-y")
-    im2 = ax[i,2].imshow(u_mag_2, cmap="viridis")
-    fig.colorbar(im2, ax=ax[i,2])
-
-
-
-plt.tight_layout()
-plt.savefig('update_plots/real_media_rough.pdf')
 
 
 # model = load_convnext_model('v1','atto',pretrained_path='results/convnext_atto/ConvNeXt-Atto_lr-0.0008_wd-0.1_bs-128_epochs-100_cosine_warmup-1250_clipgrad-True_pe-encoder-None_pe-None_mse.pth')
