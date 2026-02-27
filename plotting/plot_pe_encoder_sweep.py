@@ -10,7 +10,7 @@ models = {
     'vit': ['ViT-T16', 'ViT-S16'],
     'convnext': ['ConvNeXt-Atto','ConvNeXt-Small'],
 }
-length = [200, 100, 50]
+length = [1000,200, 100, 50]
 pe_encoders = ['straight', 'log']
 
 # Color per length
@@ -18,6 +18,7 @@ length_colors = {
     50: 'C2',
     100: 'C3',
     200: 'C9',
+    1000: 'C0',
 }
 # Color per PE encoder
 pe_encoder_colors = {
@@ -54,7 +55,16 @@ for model_family, model_list in models.items():
     for row, m in enumerate(model_list):            # rows = models
         for col, pe_encoder in enumerate(pe_encoders):  # cols = pe_encoders
             ax = axes[row, col]
-
+            if m == 'ConvNeXt-Atto' and pe_encoder == 'log':
+                path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-V2-Atto_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-6250.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
+                try:
+                    root = zarr.open(path, mode='r')
+                    train_r2 = root['R2_train'][:]
+                    val_r2 = root['R2_val'][:]
+                    ax.plot(1 - train_r2, color=pe_encoder_colors['log'], linestyle=split_styles['train'], alpha=0.3)
+                    ax.plot(1 - val_r2,   color=pe_encoder_colors['log'], linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
+                except Exception as e:
+                    print(f"Skipping {path}: {e}")
             for l in length:
                 path = (
                     folder
@@ -71,7 +81,7 @@ for model_family, model_list in models.items():
                     continue
 
                 ax.plot(1 - train_r2, color=length_colors[l], linestyle=split_styles['train'], alpha=0.3)
-                ax.plot(1 - val_r2,   color=length_colors[l], linestyle=split_styles['val'],   alpha=1., linewidth=1.)
+                ax.plot(1 - val_r2,   color=length_colors[l], linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
 
             # Column titles only on top row
             if row == 0:
@@ -84,8 +94,9 @@ for model_family, model_list in models.items():
             # x-axis label only on bottom row
             if row == len(model_list) - 1:
                 ax.set_xlabel('Epoch')
-
+            
             ax.set_yscale('log')
+            # ax.set_xscale('log')
             ax.grid(alpha=0.3)
             ax.grid(which='minor', alpha=0.15)
             ax.minorticks_on()

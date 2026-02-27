@@ -375,8 +375,8 @@ def main(config,pretrained_path=None):
     print(f"Data loaders set up for task: {task} | Batch size: {batch_size}")
     loss_function = loss_functions[config.get('loss_function','rmse')]
 
-    # run_test(model,test_loader,device,loss_function,config=config)
-    run_real_media_test(model, config=config, dataset_tags=args.datasets if hasattr(args, 'datasets') else None)
+    run_test(model,test_loader,device,loss_function,config=config)
+    # run_real_media_test(model, config=config, dataset_tags=args.datasets if hasattr(args, 'datasets') else None)
    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run model test with specified config")

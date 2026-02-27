@@ -9,11 +9,11 @@ models = {
     'swin': ['Swin-T', 'Swin-S', 'Swin-B', 'Swin-L'],
     'vit': ['ViT-T16', 'ViT-S16', 'ViT-B16', 'ViT-L16'],
     'convnext': ['ConvNeXt-Atto', 'ConvNeXt-Femto', 'ConvNeXt-Pico', 'ConvNeXt-Nano', 
-                 'ConvNeXt-Tiny', 'ConvNeXt-Small', 'ConvNeXt-Base'],
+                 'ConvNeXt-Tiny', 'ConvNeXt-Small', 'ConvNeXt-Base', 'ConvNeXt-Large'],
     'convnext-v2': ['ConvNeXt-V2-Atto', 'ConvNeXt-V2-Femto', 'ConvNeXt-V2-Pico', 'ConvNeXt-V2-Nano', 
-                 'ConvNeXt-V2-Tiny', 'ConvNeXt-V2-Small', 'ConvNeXt-V2-Base'],
+                 'ConvNeXt-V2-Tiny', 'ConvNeXt-V2-Small', 'ConvNeXt-V2-Base', 'ConvNeXt-V2-Large'],
     'convnext-rms': ['ConvNeXt-RMS-Atto', 'ConvNeXt-RMS-Femto', 'ConvNeXt-RMS-Pico', 'ConvNeXt-RMS-Nano', 
-                 'ConvNeXt-RMS-Tiny', 'ConvNeXt-RMS-Small', 'ConvNeXt-RMS-Base'],
+                 'ConvNeXt-RMS-Tiny', 'ConvNeXt-RMS-Small', 'ConvNeXt-RMS-Base', 'ConvNeXt-RMS-Large'],
 }
 length = [1000, 700, 500, 300, 100]
 
@@ -110,3 +110,115 @@ for model_family, model_list in models.items():
     plt.tight_layout(rect=[0, 0.10, 1.0, 1.0])
     plt.savefig(f'thesis_plots/{model_family}_epoch_sweep_permeability.pdf')
     plt.close()
+
+
+# Best 1-R2 for each model combined plot
+# Family markers
+family_markers = {
+    'resnet': 'o',
+    'swin': 's',
+    'vit': 'D',
+    'convnext': '^',
+    'convnext-v2': 'v',
+    'convnext-rms': 'P',
+}
+
+# Family colors: assign each family a distinct colormap for its models
+import matplotlib.cm as cm
+family_cmaps = {
+    'resnet':       cm.Blues,
+    'swin':         cm.Oranges,
+    'vit':          cm.Greens,
+    'convnext':     cm.Purples,
+    'convnext-v2':  cm.Reds,
+    'convnext-rms': cm.YlOrBr,
+}
+
+plt.rcParams.update({
+    "font.size": 9,
+    "axes.labelsize": 9,
+    "axes.titlesize": 9,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "legend.fontsize": 7.5,
+})
+
+
+legend_family_handles = []
+legend_model_handles = []
+pt_to_inch = 1.0 / 72.27
+
+# LaTeX width in points (example value, replace with your actual value)
+latex_width_pt = 246.0 
+
+# Calculate figure width in inches
+fig_width_inches = latex_width_pt * pt_to_inch
+
+# Optional: Set height, e.g., using golden ratio (height = width / 1.618)
+golden_ratio = 1.618
+fig_height_inches = fig_width_inches / golden_ratio
+for model_family, model_list in models.items():
+    fig, ax = plt.subplots(figsize=(fig_width_inches, fig_height_inches))
+    cmap = family_cmaps[model_family]
+    marker = family_markers[model_family]
+    n = len(model_list)
+    colors = [cmap(0.35 + 0.6 * i / max(n - 1, 1)) for i in range(n)]
+    
+    legend_model_handles = []  # Reset per family
+
+    for i, m in enumerate(model_list):
+        color = colors[i]
+        xs, ys = [], []
+
+        for l in length:
+            path = (
+                folder
+                + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-0_'
+                + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
+            )
+            try:
+                root = zarr.open(path, mode='r')
+                val_r2 = root['R2_val'][:]
+                best = 1 - np.max(val_r2)
+                xs.append(l)
+                ys.append(best)
+            except Exception as e:
+                print(f"Skipping {path}: {e}")
+                continue
+
+        if not xs:
+            continue
+
+        ax.plot(xs, ys, color=color, linestyle='-', linewidth=0.9, alpha=0.5, zorder=2)
+        ax.scatter(xs, ys, color=color, marker=marker, s=45, zorder=3,
+                   edgecolors='white', linewidths=0.4)
+        legend_model_handles.append(
+            Line2D([0], [0], color=color, marker=marker, linestyle='-',
+                   linewidth=1.2, markersize=5, label=m)
+        )
+
+    ax.set_yscale('log')
+    ax.set_ylabel(r'Best $1 - R^2$')
+    ax.set_xlabel('Training epochs')
+    ax.set_xticks(length)
+    ax.set_xticklabels(length)
+    ax.grid(alpha=0.25, which='both')
+    ax.set_title(f'{model_family} — best validation $1-R^2$ across training lengths')
+
+    leg_models = fig.legend(
+        handles=legend_model_handles,
+        title='Model',
+        loc='center left',
+        bbox_to_anchor=(1.0, 0.5),
+        frameon=True,
+        framealpha=0.9,
+        edgecolor='#cccccc',
+        ncol=1,
+        fontsize=7,
+    )
+
+    plt.tight_layout(rect=[0, 0, 0.92, 1.0])
+    plt.savefig(f'thesis_plots/best_r2_epoch_sweep_permeability_{model_family}.pdf', bbox_inches='tight')
+    plt.close()
+
+print("Saved.")
