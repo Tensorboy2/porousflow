@@ -31,7 +31,7 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-V2-Atto",
+        "ConvNeXt-Atto",
         # "ConvNeXt-V2-Small",
         # "ConvNeXt-V2-Base",
         # "SHViT-T",
@@ -56,15 +56,15 @@ MODEL_PRESETS = {
     "small_sweep": [
         #smallest
         # "ConvNeXt-Atto",
-        # "ViT-T16",
-        # "Swin-T",
-        "ResNet-18",
+        "ViT-T16",
+        "Swin-T",
+        # "ResNet-18",
 
         #medium
-        "ConvNeXt-Small",
+        # "ConvNeXt-Small",
         # "ViT-S16",
         # "Swin-S",
-        "ResNet-50",
+        # "ResNet-50",
 
         #base
         # "Swin-B",
@@ -322,12 +322,12 @@ DEFAULT_SWEEP_PRESET = "none"
 # Base training configurations by task (used as defaults)
 TASK_CONFIGS = {
     "permeability": {
-        "learning_rate": 8e-4,
+        "learning_rate": 5e-4,
         "weight_decay": 1e-1,
         "batch_size": 128,
-        "num_epochs": 400,
+        "num_epochs": 1000,
         "decay": "cosine",
-        "warmup_steps": 0*125*10, # steps per epoch * warmup epochs
+        "warmup_steps": (16000/128)*30, # steps per epoch * warmup epochs
         "num_training_samples": None,  # None = use all data
         "num_validation_samples": None,
         "prefetch_factor": 4,
@@ -335,17 +335,17 @@ TASK_CONFIGS = {
         'loss_function': 'mse'
     },
     "dispersion": {
-        "learning_rate": 8e-4,
-        "weight_decay": 5e-2,
+        "learning_rate": 5e-4,
+        "weight_decay": 1e-1,
         "batch_size": 128,
-        "num_epochs": 1000,
+        "num_epochs": 1500,
         "decay": "cosine",
-        "warmup_steps": 0*5*16000/128, # steps per epoch * warmup epochs
+        "warmup_steps": 30*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
-        "loss_function": 'rmse',
+        "loss_function": 'mse',
         "pe": {
             "pe_encoder": 'log',
             "pe": 4,

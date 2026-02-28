@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import zarr
 from matplotlib.lines import Line2D
+from ploting import figsize
 
 folder = 'results/epoch_sweep_all_models/'
 models = {
@@ -43,12 +44,21 @@ plt.rcParams.update({
 
 # Create a separate plot for each model family
 for model_family, model_list in models.items():
-    fig, axes = plt.subplots(
-        1, len(model_list),
-        figsize=(3.2 * len(model_list) / 2, 3.2),
-        sharex=True,
-        sharey=True
-    )
+    if model_family != 'convnext' and model_family != 'convnext-v2' and model_family != 'convnext-rms':  # Only plot for convnext family
+        fig, axes = plt.subplots(
+            1, len(model_list),
+            figsize=figsize,
+            sharex=True,
+            sharey=True
+        )
+    else:
+        fig, axes = plt.subplots(
+            2, 4,
+            figsize=(figsize[0], figsize[1]*2),
+            sharex=True,
+            sharey=True
+        )
+        axes = axes.flatten()
     
     # Handle case where there's only one model
     if len(model_list) == 1:
@@ -126,12 +136,12 @@ family_markers = {
 # Family colors: assign each family a distinct colormap for its models
 import matplotlib.cm as cm
 family_cmaps = {
-    'resnet':       cm.Blues,
-    'swin':         cm.Oranges,
-    'vit':          cm.Greens,
-    'convnext':     cm.Purples,
-    'convnext-v2':  cm.Reds,
-    'convnext-rms': cm.YlOrBr,
+    'resnet':       cm.cool,
+    'swin':         cm.cool,
+    'vit':          cm.cool,
+    'convnext':     cm.cool,
+    'convnext-v2':  cm.cool,
+    'convnext-rms': cm.cool,
 }
 
 plt.rcParams.update({
@@ -146,19 +156,23 @@ plt.rcParams.update({
 
 legend_family_handles = []
 legend_model_handles = []
-pt_to_inch = 1.0 / 72.27
+# pt_to_inch = 1.0 / 72.27
 
-# LaTeX width in points (example value, replace with your actual value)
-latex_width_pt = 246.0 
+# # LaTeX width in points (example value, replace with your actual value)
+# latex_width_pt = 418.25368 
 
-# Calculate figure width in inches
-fig_width_inches = latex_width_pt * pt_to_inch
+# # Calculate figure width in inches
+# fig_width_inches = latex_width_pt * 0.01389
 
-# Optional: Set height, e.g., using golden ratio (height = width / 1.618)
-golden_ratio = 1.618
-fig_height_inches = fig_width_inches / golden_ratio
+# # Optional: Set height, e.g., using golden ratio (height = width / 1.618)
+# golden_ratio = 1.618
+# fig_height_inches = fig_width_inches / golden_ratio
+
+
+
+
 for model_family, model_list in models.items():
-    fig, ax = plt.subplots(figsize=(fig_width_inches, fig_height_inches))
+    fig, ax = plt.subplots(figsize=figsize)
     cmap = family_cmaps[model_family]
     marker = family_markers[model_family]
     n = len(model_list)
@@ -202,14 +216,16 @@ for model_family, model_list in models.items():
     ax.set_xlabel('Training epochs')
     ax.set_xticks(length)
     ax.set_xticklabels(length)
-    ax.grid(alpha=0.25, which='both')
+    ax.grid(alpha=0.3)
+    ax.grid(which='minor', alpha=0.15)
+    ax.minorticks_on()
     ax.set_title(f'{model_family} — best validation $1-R^2$ across training lengths')
 
     leg_models = fig.legend(
         handles=legend_model_handles,
         title='Model',
         loc='center left',
-        bbox_to_anchor=(1.0, 0.5),
+        bbox_to_anchor=(0.9, 0.5),
         frameon=True,
         framealpha=0.9,
         edgecolor='#cccccc',
@@ -217,7 +233,7 @@ for model_family, model_list in models.items():
         fontsize=7,
     )
 
-    plt.tight_layout(rect=[0, 0, 0.92, 1.0])
+    plt.tight_layout(rect=[0, 0, 0.9, 1.0])
     plt.savefig(f'thesis_plots/best_r2_epoch_sweep_permeability_{model_family}.pdf', bbox_inches='tight')
     plt.close()
 
