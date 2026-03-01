@@ -65,6 +65,15 @@ for model_family, model_list in models.items():
                     ax.plot(1 - val_r2,   color=pe_encoder_colors['log'], linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
                 except Exception as e:
                     print(f"Skipping {path}: {e}")
+                path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Atto_lr-0.0005_wd-0.1_bs-128_epochs-1500_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr'
+                try:
+                    root = zarr.open(path, mode='r')
+                    train_r2 = root['R2_train'][:]
+                    val_r2 = root['R2_val'][:]
+                    ax.plot(1 - train_r2, color=pe_encoder_colors['log'], linestyle=split_styles['train'], alpha=0.3)
+                    ax.plot(1 - val_r2,   color=pe_encoder_colors['log'], linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
+                except Exception as e:
+                    print(f"Skipping {path}: {e}")
             for l in length:
                 path = (
                     folder

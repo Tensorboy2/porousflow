@@ -60,16 +60,15 @@ class Trainer:
         decay = config.get('decay', '')  # 'linear' or 'cosine'
         def lr_lambda(step):
             if step < warmup_steps:
-                return (step + 1)/ warmup_steps
+                return (step + 1) / warmup_steps
             else:
-                # decay_epochs = total_steps - warmup_steps
-                decay_progress = (step - warmup_steps) / total_steps
-                if decay=="linear":
+                decay_progress = (step - warmup_steps) / (total_steps - warmup_steps) 
+                if decay == "linear":
                     return max(0.0, 1.0 - decay_progress)
-                elif decay=="cosine":
+                elif decay == "cosine":
                     return 0.5 * (1 + math.cos(math.pi * decay_progress))
                 else:
-                    return 1
+                    return 1.0
                 
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
