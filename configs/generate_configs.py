@@ -335,8 +335,8 @@ TASK_CONFIGS = {
         'loss_function': 'mse'
     },
     "dispersion": {
-        "learning_rate": 5e-4,
-        "weight_decay": 1e-1,
+        "learning_rate": 2.5e-4,
+        "weight_decay": 5e-2,
         "batch_size": 128,
         "num_epochs": 300,
         "decay": "cosine",
