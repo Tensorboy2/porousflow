@@ -345,7 +345,7 @@ TASK_CONFIGS = {
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
-        "loss_function": 'mse',
+        "loss_function": 'rmse',
         "pe": {
             "pe_encoder": 'log',
             "pe": 4,

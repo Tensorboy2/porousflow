@@ -101,18 +101,19 @@ def compute_porosity(imgs):
 # ---------------------------------------------------------------------------
 # Plotting (rank 0 only)
 # ---------------------------------------------------------------------------
+from plotting.ploting import figsize
 def plot_K_with_errorbars(K_all, sizes, phi_all=None):
     K_mean = K_all.mean(axis=0)
     K_std  = K_all.std(axis=0)
 
     n_rows = 4 
-    fig, ax = plt.subplots(n_rows, 1, sharex=True, figsize=(7, 3 * n_rows))
+    fig, ax = plt.subplots(n_rows, 1, sharex=True, figsize=(figsize[0], figsize[1]*1.5))
 
     components = [
         (0, 0, 'C0', r'$K_{xx}$'),
         (0, 1, 'C1', r'$K_{xy}$'),
-        (1, 0, 'C2', r'$K_{yx}$'),
-        (1, 1, 'C3', r'$K_{yy}$'),
+        (1, 1, 'C3', r'$K_{yx}$'),
+        (1, 0, 'C2', r'$K_{yy}$'),
     ]
     for idx, (i, j, color, label) in enumerate(components):
         ax[idx].plot(sizes, K_mean[:, i, j], c=color, label=label)
@@ -155,7 +156,7 @@ if __name__ == '__main__':
     # ------------------------------------------------------------------
     # Rank 0 checks cache, broadcasts whether computation is needed
     # ------------------------------------------------------------------
-    skip_compute = False
+    skip_compute = True
     K_all = phi_all = None
 
     if rank == 0:
