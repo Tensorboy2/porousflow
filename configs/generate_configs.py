@@ -335,12 +335,12 @@ TASK_CONFIGS = {
         'loss_function': 'mse'
     },
     "dispersion": {
-        "learning_rate": 2.5e-4,
-        "weight_decay": 5e-2,
+        "learning_rate": 1.25e-4,
+        "weight_decay": 1e-1,
         "batch_size": 128,
-        "num_epochs": 300,
+        "num_epochs": 400,
         "decay": "cosine",
-        "warmup_steps": 10*5*16000/128, # steps per epoch * warmup epochs
+        "warmup_steps": 5*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
