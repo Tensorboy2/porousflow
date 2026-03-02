@@ -31,7 +31,8 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-Atto",
+        # "ConvNeXt-Atto",
+        "ConvNeXt-Small",
         # "ConvNeXt-V2-Small",
         # "ConvNeXt-V2-Base",
         # "SHViT-T",
@@ -338,9 +339,9 @@ TASK_CONFIGS = {
         "learning_rate": 1.25e-4,
         "weight_decay": 1e-1,
         "batch_size": 128,
-        "num_epochs": 400,
+        "num_epochs": 500,
         "decay": "cosine",
-        "warmup_steps": 5*5*16000/128, # steps per epoch * warmup epochs
+        "warmup_steps": 30*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,

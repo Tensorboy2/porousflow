@@ -5,18 +5,12 @@ Script for showing the distribution of the dispersion dataset.
 import os 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import zarr
+from ploting import figsize
+from plottools import shared_cbar, NormedCmap
 
-data_path = 'data/train.zarr'
-data = zarr.open(data_path, mode='r')
-Dx = data['dispersion_results']['Dx']
-Dy = data['dispersion_results']['Dy']
-porosities = data['metrics']['metrics']['porosity']
-
-
-Pe_values = [0.1, 10, 50, 100, 500]
-pe_indices = [0, 1, 2, 3, 4]   # K
-N = porosities.shape[0]
+Pe_values = np.array([0.1, 10, 50, 100, 500])
 
 plt.rcParams.update({
     "font.size": 9,
@@ -27,122 +21,182 @@ plt.rcParams.update({
     "legend.fontsize": 8,
 })
 
-fig, axes = plt.subplots(len(pe_indices), 4, figsize=(7.2, 7.2))
-# fig.suptitle('Dx components vs Porosity', fontsize=16, fontweight='bold')
+fig, ax = shared_cbar(2,figsize=figsize,cbar_width=1)
 
-y_labels = {0:r'$D_{xx}$', 1:r'$D_{xy}$', 2:r'$D_{yx}$', 3:r'$D_{yy}$'}
-labels = {0:(0,0), 1:(0,1), 2:(1,0), 3:(1,1)}
+cmap = NormedCmap('hsv', [0.1, 500], norm='log', cutoff=(0.07,1))
+paths = ['train', 'validation', 'test']
+num_samples = -1
 
-for i in range(len(pe_indices)):
-    for j in range(4):
-        ax = axes[i, j]
+for path in paths:
 
-        # Merge all k into one vector
-        # Dx_merged = Dx[:, 1, i, j]
-        # por_merged = np.repeat(porosities, K)
+    data_path = f'data/{path}.zarr'
+    data = zarr.open(data_path, mode='r')
 
-        ax.hist2d(
-            porosities,
-            Dx[:, i, labels[j][0], labels[j][1]],
-            bins=100,
-            cmap='viridis',
-            cmin=1
-        )
+    Dx = data['dispersion_results']['Dx'][:num_samples]
+    Dy = data['dispersion_results']['Dy'][:num_samples]
+    porosities = data['metrics']['metrics']['porosity'][:num_samples]
+    N = porosities.shape[0]
 
-        ax.set_title(f'Pe: {Pe_values[i]}')
-        ax.set_xlabel('Porosity')
-        # ax.set_yscale('log')
-        ax.set_ylabel(y_labels[j])
+    for i in range(2):
+        for j, Pe in enumerate(Pe_values[::-1]):  # reverse cleanly
 
-plt.tight_layout()
-plt.savefig('thesis_plots/Dx_vs_porosity.png', bbox_inches='tight')
+            color = cmap(Pe)
 
-fig, axes = plt.subplots(len(pe_indices), 4, figsize=(7.2, 7.2))
-# fig.suptitle('Dx components vs Porosity', fontsize=16, fontweight='bold')
+            ax[i].plot(
+                porosities,
+                np.arcsinh(Dx[:, -(j+1), i, i]),
+                linestyle='',
+                marker='o',
+                markerfacecolor='none',
+                markeredgecolor=color,
+                markersize=2.5,
+                markeredgewidth=0.5,
+                alpha=0.3,
+            )
 
-y_labels = {0:r'$D_{xx}$', 1:r'$D_{xy}$', 2:r'$D_{yx}$', 3:r'$D_{yy}$'}
-labels = {0:(0,0), 1:(0,1), 2:(1,0), 3:(1,1)}
+            ax[i].plot(
+                porosities,
+                np.arcsinh(Dy[:, -(j+1), (i+1)%2, (i+1)%2]),
+                linestyle='',
+                marker='o',
+                markerfacecolor='none',
+                markeredgecolor=color,
+                markersize=2.5,
+                markeredgewidth=0.5,
+                alpha=0.3,
+            )
 
-for i in range(len(pe_indices)):
-    for j in range(4):
-        ax = axes[i, j]
+for i in range(2):
+    ax[i].set_xlabel('Porosity')
 
-        # Merge all k into one vector
-        # Dx_merged = Dx[:, 1, i, j]
-        # por_merged = np.repeat(porosities, K)
+ax[0].set_ylabel(r'$sinh^{-1}(D)$')
+ax[0].annotate(r'$D_\parallel$',(0.85,0.9),xycoords='axes fraction')
+ax[1].annotate(r'$D_\bot$',(0.85,0.9),xycoords='axes fraction')
+cbar = cmap.lined_colorbar(Pe_values, cax=ax[-1], label='Péclet number (Pe)')
+cbar.set_ticks(Pe_values)
+cbar.set_ticklabels([str(p) for p in Pe_values])
+plt.savefig('thesis_plots/dispersion_dist_2.png',dpi=300, bbox_inches='tight')
+plt.close()
 
-        ax.hist2d(
-            porosities,
-            Dy[:, i, labels[j][0], labels[j][1]],
-            bins=100,
-            cmap='viridis',
-            cmin=1
-        )
 
-        ax.set_title(f'Pe: {Pe_values[i]}')
-        ax.set_xlabel('Porosity')
-        # ax.set_yscale('log')
-        ax.set_ylabel(y_labels[j])
+# fig, axes = plt.subplots(len(pe_indices), 4, figsize=(7.2, 7.2))
+# # fig.suptitle('Dx components vs Porosity', fontsize=16, fontweight='bold')
 
-plt.tight_layout()
-plt.savefig('thesis_plots/Dy_vs_porosity.png', bbox_inches='tight')
+# y_labels = {0:r'$D_{xx}$', 1:r'$D_{xy}$', 2:r'$D_{yx}$', 3:r'$D_{yy}$'}
+# labels = {0:(0,0), 1:(0,1), 2:(1,0), 3:(1,1)}
 
-fig, axes = plt.subplots(len(pe_indices), 4, figsize=(7.2, 7.2))
-# fig.suptitle('Dx components vs Porosity', fontsize=16, fontweight='bold')
+# for i in range(len(pe_indices)):
+#     for j in range(4):
+#         ax = axes[i, j]
 
-y_labels = {0:r'$D_{xx}$', 1:r'$D_{xy}$', 2:r'$D_{yx}$', 3:r'$D_{yy}$'}
-labels = {0:(0,0), 1:(0,1), 2:(1,0), 3:(1,1)}
+#         # Merge all k into one vector
+#         # Dx_merged = Dx[:, 1, i, j]
+#         # por_merged = np.repeat(porosities, K)
 
-for i in range(len(pe_indices)):
-    for j in range(4):
-        ax = axes[i, j]
+#         ax.hist2d(
+#             porosities,
+#             Dx[:, i, labels[j][0], labels[j][1]],
+#             bins=100,
+#             cmap='viridis',
+#             cmin=1
+#         )
 
-        # Merge all k into one vector
-        # Dx_merged = Dx[:, 1, i, j]
-        # por_merged = np.repeat(porosities, K)
+#         ax.set_title(f'Pe: {Pe_values[i]}')
+#         ax.set_xlabel('Porosity')
+#         # ax.set_yscale('log')
+#         ax.set_ylabel(y_labels[j])
 
-        ax.hist2d(
-            porosities,
-            np.asinh(np.asinh(Dx[:, i, labels[j][0], labels[j][1]])),
-            bins=100,
-            cmap='viridis',
-            cmin=1
-        )
+# plt.tight_layout()
+# plt.savefig('thesis_plots/Dx_vs_porosity.png', bbox_inches='tight')
 
-        ax.set_title(f'Pe: {Pe_values[i]}')
-        ax.set_xlabel('Porosity')
-        # ax.set_yscale('log')
-        ax.set_ylabel(y_labels[j])
+# fig, axes = plt.subplots(len(pe_indices), 4, figsize=(7.2, 7.2))
+# # fig.suptitle('Dx components vs Porosity', fontsize=16, fontweight='bold')
 
-plt.tight_layout()
-plt.savefig('thesis_plots/Dx_vs_porosity_asinh.png', bbox_inches='tight')
+# y_labels = {0:r'$D_{xx}$', 1:r'$D_{xy}$', 2:r'$D_{yx}$', 3:r'$D_{yy}$'}
+# labels = {0:(0,0), 1:(0,1), 2:(1,0), 3:(1,1)}
 
-fig, axes = plt.subplots(len(pe_indices), 4, figsize=(7.2, 7.2))
-# fig.suptitle('Dx components vs Porosity', fontsize=16, fontweight='bold')
+# for i in range(len(pe_indices)):
+#     for j in range(4):
+#         ax = axes[i, j]
 
-y_labels = {0:r'$D_{xx}$', 1:r'$D_{xy}$', 2:r'$D_{yx}$', 3:r'$D_{yy}$'}
-labels = {0:(0,0), 1:(0,1), 2:(1,0), 3:(1,1)}
+#         # Merge all k into one vector
+#         # Dx_merged = Dx[:, 1, i, j]
+#         # por_merged = np.repeat(porosities, K)
 
-for i in range(len(pe_indices)):
-    for j in range(4):
-        ax = axes[i, j]
+#         ax.hist2d(
+#             porosities,
+#             Dy[:, i, labels[j][0], labels[j][1]],
+#             bins=100,
+#             cmap='viridis',
+#             cmin=1
+#         )
 
-        # Merge all k into one vector
-        # Dx_merged = Dx[:, 1, i, j]
-        # por_merged = np.repeat(porosities, K)
+#         ax.set_title(f'Pe: {Pe_values[i]}')
+#         ax.set_xlabel('Porosity')
+#         # ax.set_yscale('log')
+#         ax.set_ylabel(y_labels[j])
 
-        ax.hist2d(
-            porosities,
-            np.asinh(Dy[:, i, labels[j][0], labels[j][1]]),
-            bins=100,
-            cmap='viridis',
-            cmin=1
-        )
+# plt.tight_layout()
+# plt.savefig('thesis_plots/Dy_vs_porosity.png', bbox_inches='tight')
 
-        ax.set_title(f'Pe: {Pe_values[i]}')
-        ax.set_xlabel('Porosity')
-        # ax.set_yscale('log')
-        ax.set_ylabel(y_labels[j])
+# fig, axes = plt.subplots(len(pe_indices), 4, figsize=(7.2, 7.2))
+# # fig.suptitle('Dx components vs Porosity', fontsize=16, fontweight='bold')
 
-plt.tight_layout()
-plt.savefig('thesis_plots/Dy_vs_porosity_asinh.png', bbox_inches='tight')
+# y_labels = {0:r'$D_{xx}$', 1:r'$D_{xy}$', 2:r'$D_{yx}$', 3:r'$D_{yy}$'}
+# labels = {0:(0,0), 1:(0,1), 2:(1,0), 3:(1,1)}
+
+# for i in range(len(pe_indices)):
+#     for j in range(4):
+#         ax = axes[i, j]
+
+#         # Merge all k into one vector
+#         # Dx_merged = Dx[:, 1, i, j]
+#         # por_merged = np.repeat(porosities, K)
+
+#         ax.hist2d(
+#             porosities,
+#             np.asinh(np.asinh(Dx[:, i, labels[j][0], labels[j][1]])),
+#             bins=100,
+#             cmap='viridis',
+#             cmin=1
+#         )
+
+#         ax.set_title(f'Pe: {Pe_values[i]}')
+#         ax.set_xlabel('Porosity')
+#         # ax.set_yscale('log')
+#         ax.set_ylabel(y_labels[j])
+
+# plt.tight_layout()
+# plt.savefig('thesis_plots/Dx_vs_porosity_asinh.png', bbox_inches='tight')
+
+# fig, axes = plt.subplots(len(pe_indices), 4, figsize=(7.2, 7.2))
+# # fig.suptitle('Dx components vs Porosity', fontsize=16, fontweight='bold')
+
+# y_labels = {0:r'$D_{xx}$', 1:r'$D_{xy}$', 2:r'$D_{yx}$', 3:r'$D_{yy}$'}
+# labels = {0:(0,0), 1:(0,1), 2:(1,0), 3:(1,1)}
+
+# for i in range(len(pe_indices)):
+#     for j in range(4):
+#         ax = axes[i, j]
+
+#         # Merge all k into one vector
+#         # Dx_merged = Dx[:, 1, i, j]
+#         # por_merged = np.repeat(porosities, K)
+
+#         ax.hist2d(
+#             porosities,
+#             np.asinh(Dy[:, i, labels[j][0], labels[j][1]]),
+#             bins=100,
+#             cmap='viridis',
+#             cmin=1
+#         )
+
+#         ax.set_title(f'Pe: {Pe_values[i]}')
+#         ax.set_xlabel('Porosity')
+#         # ax.set_yscale('log')
+#         ax.set_ylabel(y_labels[j])
+
+# plt.tight_layout()
+# plt.savefig('thesis_plots/Dy_vs_porosity_asinh.png', bbox_inches='tight')
+
+

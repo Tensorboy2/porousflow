@@ -16,10 +16,11 @@ models = {
     'convnext-rms': ['ConvNeXt-RMS-Atto', 'ConvNeXt-RMS-Femto', 'ConvNeXt-RMS-Pico', 'ConvNeXt-RMS-Nano', 
                  'ConvNeXt-RMS-Tiny', 'ConvNeXt-RMS-Small', 'ConvNeXt-RMS-Base', 'ConvNeXt-RMS-Large'],
 }
-length = [1000, 700, 500, 300, 100]
+length = [1500, 1000, 700, 500, 300, 100]
 
 # Color per length
 length_colors = {
+    1500: 'C5',
     1000: 'C4',
     700: 'C3',
     500: 'C2',
@@ -68,7 +69,18 @@ for model_family, model_list in models.items():
         ax_r2 = axes[col]
         #results/permeability_epoch_sweep/ConvNeXt-Atto_lr-0.0008_wd-0.1_bs-128_epochs-100_cosine_warmup-1250_clipgrad-True_pe-encoder-None_pe-None_rmse_metrics.zarr
         for l in length:
-            path = folder + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-0_clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
+            if l ==1500:
+                path = (
+                    folder
+                    + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-3750.0_'
+                    + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
+                )
+            else: 
+                path = (
+                    folder
+                    + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-0_'
+                    + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
+                )
             try:
                 root = zarr.open(path, mode='r')
                 train_loss = root['train_loss'][:]
@@ -185,11 +197,18 @@ for model_family, model_list in models.items():
         xs, ys = [], []
 
         for l in length:
-            path = (
-                folder
-                + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-0_'
-                + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
-            )
+            if l ==1500:
+                path = (
+                    folder
+                    + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-3750.0_'
+                    + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
+                )
+            else: 
+                path = (
+                    folder
+                    + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-0_'
+                    + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
+                )
             try:
                 root = zarr.open(path, mode='r')
                 val_r2 = root['R2_val'][:]
