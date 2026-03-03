@@ -337,9 +337,9 @@ TASK_CONFIGS = {
     },
     "dispersion": {
         "learning_rate": 1.25e-4,
-        "weight_decay": 1e-1,
+        "weight_decay": 5e-2,
         "batch_size": 128,
-        "num_epochs": 500,
+        "num_epochs": 400,
         "decay": "cosine",
         "warmup_steps": 30*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,

@@ -11,7 +11,7 @@ models = {
     'convnext': ['ConvNeXt-Atto','ConvNeXt-Small'],
 }
 length = [1000,200, 100, 50]
-pe_encoders = ['straight', 'log']
+pe_encoders = ['straight','log']
 
 # Color per length
 length_colors = {
@@ -55,23 +55,42 @@ for model_family, model_list in models.items():
     for row, m in enumerate(model_list):            # rows = models
         for col, pe_encoder in enumerate(pe_encoders):  # cols = pe_encoders
             ax = axes[row, col]
-            if m == 'ConvNeXt-Atto' and pe_encoder == 'log':
-                path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-V2-Atto_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-6250.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
+            if m == 'ConvNeXt-Small' and pe_encoder == 'log':
+                path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Small_lr-0.000125_wd-0.1_bs-128_epochs-500_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
                 try:
                     root = zarr.open(path, mode='r')
                     train_r2 = root['R2_train'][:]
                     val_r2 = root['R2_val'][:]
-                    ax.plot(1 - train_r2, color=pe_encoder_colors['log'], linestyle=split_styles['train'], alpha=0.3)
-                    ax.plot(1 - val_r2,   color=pe_encoder_colors['log'], linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
+                    ax.plot(1 - train_r2, color='C6', linestyle=split_styles['train'], alpha=0.3)
+                    ax.plot(1 - val_r2,   color='C6', linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
                 except Exception as e:
                     print(f"Skipping {path}: {e}")
-                path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Atto_lr-0.0005_wd-0.1_bs-128_epochs-1500_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr'
+            if m == 'ConvNeXt-Atto' and pe_encoder == 'log':
+                # path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-V2-Atto_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-6250.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
+                # try:
+                #     root = zarr.open(path, mode='r')
+                #     train_r2 = root['R2_train'][:]
+                #     val_r2 = root['R2_val'][:]
+                #     ax.plot(1 - train_r2, color=pe_encoder_colors['log'], linestyle=split_styles['train'], alpha=0.3)
+                #     ax.plot(1 - val_r2,   color=pe_encoder_colors['log'], linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
+                # except Exception as e:
+                #     print(f"Skipping {path}: {e}")
+                # path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Atto_lr-0.0005_wd-0.1_bs-128_epochs-1500_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr'
+                # try:
+                #     root = zarr.open(path, mode='r')
+                #     train_r2 = root['R2_train'][:]
+                #     val_r2 = root['R2_val'][:]
+                #     ax.plot(1 - train_r2, color=pe_encoder_colors['log'], linestyle=split_styles['train'], alpha=0.3)
+                #     ax.plot(1 - val_r2,   color=pe_encoder_colors['log'], linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
+                # except Exception as e:
+                #     print(f"Skipping {path}: {e}")
+                path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Atto_lr-0.000125_wd-0.1_bs-128_epochs-400_cosine_warmup-3125.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
                 try:
                     root = zarr.open(path, mode='r')
                     train_r2 = root['R2_train'][:]
                     val_r2 = root['R2_val'][:]
-                    ax.plot(1 - train_r2, color=pe_encoder_colors['log'], linestyle=split_styles['train'], alpha=0.3)
-                    ax.plot(1 - val_r2,   color=pe_encoder_colors['log'], linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
+                    ax.plot(1 - train_r2, color='C6', linestyle=split_styles['train'], alpha=0.3)
+                    ax.plot(1 - val_r2,   color='C6', linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
                 except Exception as e:
                     print(f"Skipping {path}: {e}")
                 path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Atto_lr-0.00025_wd-0.05_bs-128_epochs-300_cosine_warmup-6250.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
