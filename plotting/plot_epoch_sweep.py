@@ -181,79 +181,88 @@ legend_model_handles = []
 # fig_height_inches = fig_width_inches / golden_ratio
 
 
-
-
 for model_family, model_list in models.items():
+
     fig, ax = plt.subplots(figsize=figsize)
+
     cmap = family_cmaps[model_family]
     marker = family_markers[model_family]
     n = len(model_list)
     colors = [cmap(0.35 + 0.6 * i / max(n - 1, 1)) for i in range(n)]
-    
-    legend_model_handles = []  # Reset per family
+
+    legend_model_handles = []
 
     for i, m in enumerate(model_list):
         color = colors[i]
         xs, ys = [], []
 
         for l in length:
-            if l ==1500:
+            if l == 1500:
                 path = (
                     folder
                     + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-3750.0_'
                     + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
                 )
-            else: 
+            else:
                 path = (
                     folder
                     + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-0_'
                     + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
                 )
+
             try:
                 root = zarr.open(path, mode='r')
                 val_r2 = root['R2_val'][:]
                 best = 1 - np.max(val_r2)
                 xs.append(l)
                 ys.append(best)
-            except Exception as e:
-                print(f"Skipping {path}: {e}")
+            except Exception:
                 continue
 
         if not xs:
             continue
 
-        ax.plot(xs, ys, color=color, linestyle='-', linewidth=0.9, alpha=0.5, zorder=2)
-        ax.scatter(xs, ys, color=color, marker=marker, s=45, zorder=3,
+        ax.plot(xs, ys, color=color, linewidth=0.9, alpha=0.5)
+        ax.scatter(xs, ys, color=color, marker=marker, s=45,
                    edgecolors='white', linewidths=0.4)
+
         legend_model_handles.append(
-            Line2D([0], [0], color=color, marker=marker, linestyle='-',
-                   linewidth=1.2, markersize=5, label=m)
+            Line2D([0], [0],
+                   color=color,
+                   marker=marker,
+                   linestyle='-',
+                   linewidth=1.2,
+                   markersize=5,
+                   label=m)
         )
 
+    # ----- Axis formatting -----
     ax.set_yscale('log')
     ax.set_ylabel(r'Best $1 - R^2$')
     ax.set_xlabel('Training epochs')
     ax.set_xticks(length)
-    ax.set_xticklabels(length)
     ax.grid(alpha=0.3)
     ax.grid(which='minor', alpha=0.15)
     ax.minorticks_on()
-    ax.set_title(f'{model_family} — best validation $1-R^2$ across training lengths')
 
-    leg_models = fig.legend(
+    # ----- Legend inside plot -----
+    ax.legend(
         handles=legend_model_handles,
         title='Model',
-        loc='center left',
-        bbox_to_anchor=(0.9, 0.5),
+        loc='upper right',   # fixed position = consistent layout
         frameon=True,
         framealpha=0.9,
         edgecolor='#cccccc',
-        ncol=1,
         fontsize=7,
+        labelspacing=0.3,
+        handlelength=1.5,
+        handletextpad=0.4,
     )
 
-    plt.tight_layout(rect=[0, 0, 0.9, 1.0])
-    plt.savefig(f'thesis_plots/best_r2_epoch_sweep_permeability_{model_family}.pdf', bbox_inches='tight')
+    plt.tight_layout()
+    plt.savefig(
+        f'thesis_plots/best_r2_epoch_sweep_permeability_{model_family}.pdf'
+    )
     plt.close()
 
 print("Saved.")

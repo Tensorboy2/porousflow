@@ -10,7 +10,7 @@ models = {
     'vit': ['ViT-T16', 'ViT-S16'],
     'convnext': ['ConvNeXt-Atto','ConvNeXt-Small'],
 }
-length = [1000,200, 100, 50]
+length = [200, 100, 50]
 pe_encoders = ['straight','log']
 
 # Color per length
@@ -18,7 +18,7 @@ length_colors = {
     50: 'C2',
     100: 'C3',
     200: 'C9',
-    1000: 'C0',
+    # 1000: 'C0',
 }
 # Color per PE encoder
 pe_encoder_colors = {
@@ -41,11 +41,12 @@ plt.rcParams.update({
     "ytick.labelsize": 8,
     "legend.fontsize": 8,
 })
-
+from ploting import figsize
 for model_family, model_list in models.items():
     fig, axes = plt.subplots(
         len(model_list), len(pe_encoders),          # rows=models, cols=pe_encoders
-        figsize=(3.2 * len(pe_encoders) / 2, 3.2 * len(model_list) / 2),
+        # figsize=(3.2 * len(pe_encoders) / 2, 3.2 * len(model_list) / 2),
+        figsize=figsize,
         sharex=True,
         sharey=True
     )
@@ -63,6 +64,15 @@ for model_family, model_list in models.items():
                     val_r2 = root['R2_val'][:]
                     ax.plot(1 - train_r2, color='C6', linestyle=split_styles['train'], alpha=0.3)
                     ax.plot(1 - val_r2,   color='C6', linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
+                except Exception as e:
+                    print(f"Skipping {path}: {e}")
+                path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Small_lr-0.000125_wd-0.05_bs-128_epochs-400_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
+                try:
+                    root = zarr.open(path, mode='r')
+                    train_r2 = root['R2_train'][:]
+                    val_r2 = root['R2_val'][:]
+                    ax.plot(1 - train_r2, color='C7', linestyle=split_styles['train'], alpha=0.3)
+                    ax.plot(1 - val_r2,   color='C7', linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
                 except Exception as e:
                     print(f"Skipping {path}: {e}")
             if m == 'ConvNeXt-Atto' and pe_encoder == 'log':

@@ -43,7 +43,7 @@ MODEL_PRESETS = {
     "smallest": [
         "ConvNeXt-Atto",
         "ViT-T16",
-        "ResNet-50",
+        "ResNet-18",
     ],
     "biggest": [
         "ConvNeXt-Large",
@@ -149,7 +149,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
         "single": [5e-4],  # Default single value
-        "sweep": [1e-5, 5e-5, 1e-4, 5e-4],
+        "sweep": [1e-4, 5e-4, 1e-3],
     },
     "batch_size": {
         "single": [128],
@@ -164,7 +164,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [20, 50, 100, 100, 10000, None],
     },
     "num_epochs": {
-        "single": [100],
+        "single": [500],
         "sweep": [50,100,200],    
     },
     "decay": {
@@ -289,10 +289,10 @@ SWEEP_PRESETS = {
         "num_epochs": "single",
         "decay": "single",
     },
-    "lr_bs_wd_sweep": {
+    "lr_wd_sweep": {
         # Sweep learning rate, batch size and weight decay together
         "learning_rate": "sweep",
-        "batch_size": "sweep",
+        "batch_size": "single",
         "weight_decay": "sweep",
         "num_training_samples": "single",
         "num_epochs": "single",
