@@ -173,7 +173,7 @@ HYPERPARAM_SWEEPS = {
         "common": ["cosine", "linear"],
     },
     'pe_encoder': {
-        'single': [None],
+        'single': ['log'],
         'sweep': ['straight', 'log'],#, 'vector'],
     },
     'Pe': {
