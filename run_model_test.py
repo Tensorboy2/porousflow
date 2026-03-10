@@ -60,29 +60,79 @@ def zarr_writer(path,data):
     for key, values in data.items():
         root.create_dataset(name=key, data=np.array(values), dtype='f4')
 
-def similarity_plot(targets,preds,path):
+from plotting.ploting import figsize
+def similarity_plot(targets,preds,path,R2):
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(2,2,figsize=(6.4,6.4))
+    plt.rcParams.update({
+        "font.size": 9,
+        "axes.labelsize": 9,
+        "axes.titlesize": 9,
+        "xtick.labelsize": 8,
+        "ytick.labelsize": 8,
+        "legend.fontsize": 8,
+    })
+    fig, ax = plt.subplots(2,2,figsize=figsize)
     ax = ax.flatten()
     titles = [r'$K_{xx}$', r'$K_{xy}$', r'$K_{yx}$', r'$K_{yy}$']
     for i in range(targets.shape[1]):
         ax[i].scatter(targets[:, i], preds[:, i], alpha=0.5, s=1.5, label=f'Component {i}')
         ax[i].plot([targets[:, i].min(), targets[:, i].max()], [targets[:, i].min(), targets[:, i].max()], 'k--', alpha=0.3)
         # ax[i].legend()
-        ax[i].set_xlabel('True Values')
-        ax[i].set_ylabel('Predicted Values')
-        # if i == 0 or i == 3:
+        if i == 2 or i == 3:
+            ax[i].set_xlabel('True Values')
+        if i == 0 or i == 2:
+            ax[i].set_ylabel('Predicted Values')
         #     ax[i].set_yscale('log')
         #     ax[i].set_xscale('log')
 
 
         ax[i].set_title(titles[i])
-        ax[i].set_aspect('equal', adjustable='box')
+        # ax[i].set_aspect('equal', adjustable='box')
         ax[i].grid(alpha=0.3)
     # plt.title('Similarity Plot: True vs Predicted')
     plt.tight_layout()
     plt.savefig(f'thesis_plots/{path}_similarity_plot.png', dpi=300)
     plt.close(fig)
+
+    fig, ax = plt.subplots(1,2,figsize=(figsize[0],figsize[1]*0.8))
+    index = [[0,3],[1,2]]
+    targets=targets*8e-10
+    preds = preds*8e-10
+    for i in range(2):
+        ax[i].plot([targets[:, index[i][1]].min(), targets[:, index[i][1]].max()], [targets[:, index[i][1]].min(), targets[:, index[i][1]].max()], 'k--', alpha=0.2)
+        ax[i].plot(targets[:, index[i][0]], preds[:, index[i][0]],
+                        linestyle='',
+                        marker='o',
+                        markerfacecolor='C9',
+                        markeredgecolor='C9',
+                        markersize=1.,
+                        markeredgewidth=0.8,
+                        alpha=0.7,
+                    #   c='C0', 
+                    #   alpha=0.5, 
+                    #   s=1.5, 
+                        # label=titles[index[i][0]])
+                        label=rf"{titles[index[i][0]]}, $R^2=${R2[index[i][0]]:.5f}")
+        ax[i].plot(targets[:, index[i][1]], preds[:, index[i][1]],
+                        marker='o',
+                        linestyle='',
+                        markerfacecolor='C6',
+                        markeredgecolor='C6',
+                        markersize=1.,
+                        markeredgewidth=0.8,
+                        alpha=0.5,
+                #    c='C1', alpha=0.5, s=1.5, 
+                        label=rf"{titles[index[i][1]]}, $R^2=${R2[index[i][1]]:.5f}")
+        
+
+        ax[i].grid(alpha=0.3)
+        ax[i].set_xlabel(r'Ground truth ($m^2$)')
+        ax[i].legend(markerscale=4)
+    ax[0].set_ylabel(r'Predicted ($m^2$)')
+    plt.tight_layout()
+    plt.savefig(f'thesis_plots/{path}_similarity_plot_v2.png', dpi=300)
+    plt.close(fig)
+
 
 def run_test(model, test_loader, device, criterion,config=None):
     model.eval()
@@ -122,10 +172,12 @@ def run_test(model, test_loader, device, criterion,config=None):
     print(f"Test Loss: {average_loss:.5f} | Test R2: {average_r2:.5f}")
 
     # individual R2 per component of the (4) targets:
+    R2 = []
     print(all_targets.shape, all_preds.shape)
     for i in range(all_targets.shape[1]):
         r2_i = r2_score(all_targets[:, i], all_preds[:, i])
         print(f"  Component {i} R2: {r2_i:.5f}")
+        R2.append(r2_i)
 
     data = {
         'test_loss': average_loss,
@@ -134,7 +186,7 @@ def run_test(model, test_loader, device, criterion,config=None):
     }
     path = f'{config["model"]["name"]}_test'
     zarr_writer(f'test_results/{path}_results.zarr', data)
-    similarity_plot(all_targets, all_preds,path)
+    similarity_plot(all_targets, all_preds,path, R2)
 
 def get_cache_filename(dataset_tag):
     """Generate cache filename for LBM results"""

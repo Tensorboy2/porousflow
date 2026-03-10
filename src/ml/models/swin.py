@@ -686,13 +686,13 @@ def count_parameters(model):
 
 if __name__ == "__main__":
     # Example usage
-    # print("Testing Swin Transformer models...")
-    # sizes = []
-    # for size in ['T', 'S', 'B', 'L']:
-    #     model = load_swin_model(size, in_channels=1, task='permeability')
-    #     params = count_parameters(model)
-    #     sizes.append(params)
-    #     print(f"Swin-{size}: {params:,} parameters")
+    print("Testing Swin Transformer models...")
+    sizes = []
+    for size in ['T', 'S', 'B', 'L']:
+        model = load_swin_model(size, in_channels=1, task='permeability')
+        params = count_parameters(model)
+        sizes.append(params)
+        print(f"Swin-{size}: {params:,} parameters")
 
     # # Test Swin-Tiny
     # x = torch.randn(2, 1, 128, 128)
