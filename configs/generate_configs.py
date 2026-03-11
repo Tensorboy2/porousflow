@@ -31,8 +31,8 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        # "ConvNeXt-Atto",
-        "ConvNeXt-Small",
+        "ConvNeXt-Atto",
+        # "ConvNeXt-Small",
         # "ConvNeXt-V2-Small",
         # "ConvNeXt-V2-Base",
         # "SHViT-T",
@@ -336,17 +336,17 @@ TASK_CONFIGS = {
         'loss_function': 'mse'
     },
     "dispersion": {
-        "learning_rate": 1.25e-4,
-        "weight_decay": 5e-2,
+        "learning_rate": 1e-3,
+        "weight_decay": 1e-2,
         "batch_size": 128,
-        "num_epochs": 400,
+        "num_epochs": 1000,
         "decay": "cosine",
         "warmup_steps": 30*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "prefetch_factor": 4,
         "pin_memory": True,
-        "loss_function": 'rmse',
+        "loss_function": 'mse',
         "pe": {
             "pe_encoder": 'log',
             "pe": 4,

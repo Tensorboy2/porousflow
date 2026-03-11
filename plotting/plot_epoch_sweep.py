@@ -170,7 +170,7 @@ legend_family_handles = []
 legend_model_handles = []
 # pt_to_inch = 1.0 / 72.27
 
-# # LaTeX width in points (example value, replace with your actual value)
+# LaTeX width in points (example value, replace with your actual value)
 # latex_width_pt = 418.25368 
 
 # # Calculate figure width in inches
@@ -181,91 +181,91 @@ legend_model_handles = []
 # fig_height_inches = fig_width_inches / golden_ratio
 
 
-# for model_family, model_list in models.items():
+for model_family, model_list in models.items():
 
-#     fig, ax = plt.subplots(figsize=(figsize[0],figsize[1]*0.7))
+    fig, ax = plt.subplots(figsize=(figsize[0],figsize[1]*0.7))
 
-#     cmap = family_cmaps[model_family]
-#     marker = family_markers[model_family]
-#     n = len(model_list)
-#     colors = [cmap(0.35 + 0.6 * i / max(n - 1, 1)) for i in range(n)]
+    cmap = family_cmaps[model_family]
+    marker = family_markers[model_family]
+    n = len(model_list)
+    colors = [cmap(0.35 + 0.6 * i / max(n - 1, 1)) for i in range(n)]
 
-#     legend_model_handles = []
+    legend_model_handles = []
 
-#     for i, m in enumerate(model_list):
-#         color = colors[i]
-#         xs, ys = [], []
+    for i, m in enumerate(model_list):
+        color = colors[i]
+        xs, ys = [], []
 
-#         for l in length:
-#             if l == 1500:
-#                 path = (
-#                     folder
-#                     + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-3750.0_'
-#                     + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
-#                 )
-#             else:
-#                 path = (
-#                     folder
-#                     + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-0_'
-#                     + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
-#                 )
+        for l in length:
+            if l == 1500:
+                path = (
+                    folder
+                    + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-3750.0_'
+                    + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
+                )
+            else:
+                path = (
+                    folder
+                    + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-0_'
+                    + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
+                )
 
-#             try:
-#                 root = zarr.open(path, mode='r')
-#                 val_r2 = root['R2_val'][:]
-#                 best = 1 - np.max(val_r2)
-#                 xs.append(l)
-#                 ys.append(best)
-#             except Exception:
-#                 continue
+            try:
+                root = zarr.open(path, mode='r')
+                val_r2 = root['R2_val'][:]
+                best = 1 - np.max(val_r2)
+                xs.append(l)
+                ys.append(best)
+            except Exception:
+                continue
 
-#         if not xs:
-#             continue
+        if not xs:
+            continue
 
-#         ax.plot(xs, ys, color=color, linewidth=0.9, alpha=0.5)
-#         ax.scatter(xs, ys, color=color, marker=marker, s=45,
-#                    edgecolors='white', linewidths=0.4)
+        ax.plot(xs, ys, color=color, linewidth=0.9, alpha=0.5)
+        ax.scatter(xs, ys, color=color, marker=marker, s=45,
+                   edgecolors='white', linewidths=0.4)
 
-#         legend_model_handles.append(
-#             Line2D([0], [0],
-#                    color=color,
-#                    marker=marker,
-#                    linestyle='-',
-#                    linewidth=1.2,
-#                    markersize=5,
-#                    label=m)
-#         )
+        legend_model_handles.append(
+            Line2D([0], [0],
+                   color=color,
+                   marker=marker,
+                   linestyle='-',
+                   linewidth=1.2,
+                   markersize=5,
+                   label=m)
+        )
 
-#     # ----- Axis formatting -----
-#     ax.set_yscale('log')
-#     ax.set_ylabel(r'Lowest $1 - R^2$')
-#     ax.set_xlabel('Training epochs')
-#     ax.set_xticks(length)
-#     ax.grid(alpha=0.3)
-#     ax.grid(which='minor', alpha=0.15)
-#     ax.minorticks_on()
+    # ----- Axis formatting -----
+    ax.set_yscale('log')
+    ax.set_ylabel(r'Lowest $1 - R^2$')
+    ax.set_xlabel('Training epochs')
+    ax.set_xticks(length)
+    ax.grid(alpha=0.3)
+    ax.grid(which='minor', alpha=0.15)
+    ax.minorticks_on()
 
-#     # ----- Legend inside plot -----
-#     ax.legend(
-#         handles=legend_model_handles,
-#         title='Model',
-#         # loc='upper right',   # fixed position = consistent layout
-#         frameon=True,
-#         framealpha=0.3,
-#         edgecolor='#cccccc',
-#         fontsize=7,
-#         labelspacing=0.3,
-#         handlelength=1.5,
-#         handletextpad=0.4,
-#     )
+    # ----- Legend inside plot -----
+    ax.legend(
+        handles=legend_model_handles,
+        title='Model',
+        # loc='upper right',   # fixed position = consistent layout
+        frameon=True,
+        framealpha=0.3,
+        edgecolor='#cccccc',
+        fontsize=7,
+        labelspacing=0.3,
+        handlelength=1.5,
+        handletextpad=0.4,
+    )
 
-#     plt.tight_layout()
-#     plt.savefig(
-#         f'thesis_plots/best_r2_epoch_sweep_permeability_{model_family}.pdf'
-#     )
-#     plt.close()
+    plt.tight_layout()
+    plt.savefig(
+        f'thesis_plots/best_r2_epoch_sweep_permeability_{model_family}.pdf'
+    )
+    plt.close()
 
-# print("Saved.")
+print("Saved.")
 
 
 families = {
@@ -351,24 +351,24 @@ for model_family, model_list in models.items():
             except: continue
 
         # Print the winner for this specific model configuration
-        if current_best_path:
-            current_best_path = current_best_path.strip('metrics.zarr')[:-1] + '.pth'
-            local = f"res{current_best_path}"
+        # if current_best_path:
+        #     current_best_path = current_best_path.strip('metrics.zarr')[:-1] + '.pth'
+        #     local = f"res{current_best_path}"
 
-            servers = [
-                ("bigfacet", "bigfacet:/home/users/sigursv/porousflow"),
-                ("herbie",   "herbie-jump:/home/sigursv/porousflow"),
-            ]
+        #     servers = [
+        #         ("bigfacet", "bigfacet:/home/users/sigursv/porousflow"),
+        #         ("herbie",   "herbie-jump:/home/sigursv/porousflow"),
+        #     ]
 
-            for name, base in servers:
-                try:
-                    subprocess.run(["rsync", "-avn", f"{base}/res{current_best_path}", local], check=True)
-                    break  # success, stop trying
-                except subprocess.CalledProcessError:
-                    print(f"Not found on {name}, trying next...")
-            else:
-                # runs only if the loop never hit `break`
-                print("File does not exist on any familiar cluster.")
+        #     for name, base in servers:
+        #         try:
+        #             subprocess.run(["rsync", "-avn", f"{base}/res{current_best_path}", local], check=True)
+        #             break  # success, stop trying
+        #         except subprocess.CalledProcessError:
+        #             print(f"Not found on {name}, trying next...")
+        #     else:
+        #         # runs only if the loop never hit `break`
+        #         print("File does not exist on any familiar cluster.")
 
         if best_r2_for_model != -np.inf:
             error_val = 1-best_r2_for_model
