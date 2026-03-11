@@ -44,94 +44,97 @@ plt.rcParams.update({
 })
 
 # Create a separate plot for each model family
-# for model_family, model_list in models.items():
-#     if model_family != 'convnext' and model_family != 'convnext-v2' and model_family != 'convnext-rms':  # Only plot for convnext family
-#         fig, axes = plt.subplots(
-#             1, len(model_list),
-#             figsize=figsize,
-#             sharex=True,
-#             sharey=True
-#         )
-#     else:
-#         fig, axes = plt.subplots(
-#             2, 4,
-#             figsize=(figsize[0], figsize[1]*2),
-#             sharex=True,
-#             sharey=True
-#         )
-#         axes = axes.flatten()
+for model_family, model_list in models.items():
+    if model_family != 'convnext' and model_family != 'convnext-v2' and model_family != 'convnext-rms':  # Only plot for convnext family
+        fig, axes = plt.subplots(
+            1, len(model_list),
+            figsize=(figsize[0],figsize[1]*0.7),
+            sharex=True,
+            sharey=True
+        )
+    else:
+        fig, axes = plt.subplots(
+            2, 4,
+            figsize=(figsize[0], figsize[1]*0.7*2),
+            sharex=True,
+            sharey=True
+        )
+        axes = axes.flatten()
     
-#     # Handle case where there's only one model
-#     if len(model_list) == 1:
-#         axes = [axes]
+    # Handle case where there's only one model
+    if len(model_list) == 1:
+        axes = [axes]
     
-#     for col, m in enumerate(model_list):
-#         ax_r2 = axes[col]
-#         #results/permeability_epoch_sweep/ConvNeXt-Atto_lr-0.0008_wd-0.1_bs-128_epochs-100_cosine_warmup-1250_clipgrad-True_pe-encoder-None_pe-None_rmse_metrics.zarr
-#         for l in length:
-#             if l ==1500:
-#                 path = (
-#                     folder
-#                     + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-3750.0_'
-#                     + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
-#                 )
-#             else: 
-#                 path = (
-#                     folder
-#                     + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-0_'
-#                     + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
-#                 )
-#             try:
-#                 root = zarr.open(path, mode='r')
-#                 train_loss = root['train_loss'][:]
-#                 val_loss = root['val_loss'][:]
-#                 train_r2 = root['R2_train'][:]
-#                 val_r2 = root['R2_val'][:]
-#             except Exception as e:
-#                 print(f"Skipping {path}: {e}")
-#                 continue
+    for col, m in enumerate(model_list):
+        ax_r2 = axes[col]
+        #results/permeability_epoch_sweep/ConvNeXt-Atto_lr-0.0008_wd-0.1_bs-128_epochs-100_cosine_warmup-1250_clipgrad-True_pe-encoder-None_pe-None_rmse_metrics.zarr
+        for l in length:
+            if l ==1500:
+                path = (
+                    folder
+                    + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-3750.0_'
+                    + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
+                )
+            else: 
+                path = (
+                    folder
+                    + f'{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_cosine_warmup-0_'
+                    + f'clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
+                )
+            try:
+                root = zarr.open(path, mode='r')
+                train_loss = root['train_loss'][:]
+                val_loss = root['val_loss'][:]
+                train_r2 = root['R2_train'][:]
+                val_r2 = root['R2_val'][:]
+            except Exception as e:
+                print(f"Skipping {path}: {e}")
+                continue
             
-#             # Plot R2
-#             ax_r2.plot(1 - train_r2, color=length_colors[l], linestyle=split_styles['train'], alpha=0.3)
-#             ax_r2.plot(1 - val_r2, color=length_colors[l], linestyle=split_styles['val'], alpha=1.,linewidth=1.)
+            # Plot R2
+            ax_r2.plot(1 - train_r2, color=length_colors[l], linestyle=split_styles['train'], alpha=0.3)
+            ax_r2.plot(1 - val_r2, color=length_colors[l], linestyle=split_styles['val'], alpha=1.,linewidth=1.)
+
         
-#         ax_r2.set_title(m)
-#         ax_r2.set_xlabel('Epoch')
-#         ax_r2.set_yscale('log')
-#         # ax_r2.set_xscale('log')
-#         # ax_r2.set_xlim(10, 1100)
-#         ax_r2.grid(alpha=0.3)
+        ax_r2.set_title(m)
+        ax_r2.set_xlabel('Epoch')
+        ax_r2.set_yscale('log')
+        # ax_r2.set_xscale('log')
+        # ax_r2.set_xlim(10, 1100)
+        ax_r2.grid(alpha=0.3)
     
-#     axes[0].set_ylabel(r'$1-R^2$')
+    axes[0].set_ylabel(r'$1-R^2$')
+    if model_family == 'convnext' or model_family == 'convnext-v2' or model_family == 'convnext-rms':
+        axes[4].set_ylabel(r'$1-R^2$')
     
-#     # Legends
-#     loss_legend = [
-#         Line2D([0], [0], color=length_colors[l], lw=2, label=l)
-#         for l in length
-#     ]
-#     split_legend = [
-#         Line2D([0], [0], color='black', linestyle=split_styles[s], lw=2, label=s)
-#         for s in split_styles
-#     ]
+    # Legends
+    loss_legend = [
+        Line2D([0], [0], color=length_colors[l], lw=2, label=l)
+        for l in length
+    ]
+    split_legend = [
+        Line2D([0], [0], color='black', linestyle=split_styles[s], lw=2, label=s)
+        for s in split_styles
+    ]
     
-#     leg1 = fig.legend(
-#         handles=loss_legend,
-#         title="Training length",
-#         loc="lower left",
-#         ncol=len(length),
-#         frameon=False
-#     )
-#     fig.legend(
-#         handles=split_legend,
-#         title="Split",
-#         loc="lower right",
-#         ncol=len(split_styles),
-#         frameon=False
-#     )
+    leg1 = fig.legend(
+        handles=loss_legend,
+        title="Training length:",
+        loc="lower center",
+        ncol=len(length),
+        frameon=False
+    )
+    fig.legend(
+        handles=split_legend,
+        title="Split:",
+        loc="upper center",
+        ncol=len(split_styles),
+        frameon=False
+    )
     
-#     plt.tight_layout(rect=[0, 0.10, 1.0, 1.0])
-#     plt.savefig(f'thesis_plots/{model_family}_epoch_sweep_permeability.pdf')
-#     plt.close()
+    plt.tight_layout(rect=[0, 0.10, 1.0, 0.9])
+    plt.savefig(f'thesis_plots/{model_family}_epoch_sweep_permeability.pdf')
+    plt.close()
 
 
 # Best 1-R2 for each model combined plot

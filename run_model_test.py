@@ -71,29 +71,8 @@ def similarity_plot(targets,preds,path,R2):
         "ytick.labelsize": 8,
         "legend.fontsize": 8,
     })
-    fig, ax = plt.subplots(2,2,figsize=figsize)
-    ax = ax.flatten()
+
     titles = [r'$K_{xx}$', r'$K_{xy}$', r'$K_{yx}$', r'$K_{yy}$']
-    for i in range(targets.shape[1]):
-        ax[i].scatter(targets[:, i], preds[:, i], alpha=0.5, s=1.5, label=f'Component {i}')
-        ax[i].plot([targets[:, i].min(), targets[:, i].max()], [targets[:, i].min(), targets[:, i].max()], 'k--', alpha=0.3)
-        # ax[i].legend()
-        if i == 2 or i == 3:
-            ax[i].set_xlabel('True Values')
-        if i == 0 or i == 2:
-            ax[i].set_ylabel('Predicted Values')
-        #     ax[i].set_yscale('log')
-        #     ax[i].set_xscale('log')
-
-
-        ax[i].set_title(titles[i])
-        # ax[i].set_aspect('equal', adjustable='box')
-        ax[i].grid(alpha=0.3)
-    # plt.title('Similarity Plot: True vs Predicted')
-    plt.tight_layout()
-    plt.savefig(f'thesis_plots/{path}_similarity_plot.png', dpi=300)
-    plt.close(fig)
-
     fig, ax = plt.subplots(1,2,figsize=(figsize[0],figsize[1]*0.8))
     index = [[0,3],[1,2]]
     targets=targets*8e-10
@@ -130,55 +109,162 @@ def similarity_plot(targets,preds,path,R2):
         ax[i].legend(markerscale=4)
     ax[0].set_ylabel(r'Predicted ($m^2$)')
     plt.tight_layout()
-    plt.savefig(f'thesis_plots/{path}_similarity_plot_v2.png', dpi=300)
+    plt.savefig(f'thesis_plots/{path}_similarity_plot_v2.png', dpi=300, bbox_inches='tight')
+    plt.close(fig)
+
+def similarity_plot_dispersion(targets, preds, path, R2, pe):
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
+    import matplotlib
+    import matplotlib.colors as mcolors
+    from matplotlib.gridspec import GridSpec
+
+    plt.rcParams.update({
+        "font.size": 9,
+        "axes.labelsize": 9,
+        "axes.titlesize": 9,
+        "xtick.labelsize": 8,
+        "ytick.labelsize": 8,
+        "legend.fontsize": 8,
+    })
+
+    titles = [r'$D_{\parallel}$', r'$D_{\bot}$']
+    fig = plt.figure(figsize=(figsize[0], figsize[1] * 0.8))
+    outer = GridSpec(1, 2, width_ratios=[20, 0.4], wspace=0.05)
+    inner = outer[0].subgridspec(1, 2, wspace=0.225)
+    axs = [fig.add_subplot(inner[i]) for i in range(2)]
+    cax = fig.add_subplot(outer[1])
+
+    # PE coloring — map to integer indices for clean discrete bands
+    pe_vals = pe[:, 0]
+    unique_pe = np.array([0.1, 10, 50, 100, 500])
+    n = len(unique_pe)
+    # pe_idx = np.searchsorted(unique_pe, pe_vals)
+    pe_idx = np.argmin(np.abs(pe_vals[:, None] - unique_pe[None, :]), axis=1)
+    # print(pe_idx)
+
+    cmap = matplotlib.colormaps.get_cmap('viridis')
+    norm = mcolors.BoundaryNorm(np.arange(-0.5, n), cmap.N)
+    sm = cm.ScalarMappable(norm=norm, cmap=cmap)
+
+    for i in range(2):
+        lo = min(targets[:, i].min(), preds[:, i].min())
+        hi = max(targets[:, i].max(), preds[:, i].max())
+        axs[i].plot([lo, hi], [lo, hi], 'k--', alpha=0.2)
+
+        for j in range(5):
+            mask = pe_idx == j
+            color = sm.to_rgba(j)  # sample cmap correctly as float in [0,1]
+            axs[i].plot(
+                targets[mask, i],
+                preds[mask, i],
+                marker='o',
+                linestyle='',
+                markerfacecolor=color,
+                markeredgecolor=color,
+                markersize=0.5,
+                markeredgewidth=0.5,
+                alpha=0.7#/(j+1),
+            )
+        axs[i].grid(alpha=0.2)
+        axs[i].set_xlabel(r'Ground truth')
+        axs[i].set_yscale('log')
+        axs[i].set_xscale('log')
+        # axs[i].set_aspect('equal')
+        # axs[i].set_title(rf"{titles[i]}, $R^2={R2[i]:.5f}$")
+
+    axs[0].set_ylabel(r'Predicted')
+    axs[0].annotate(fr'$D_\parallel$, $R^2={R2[0]:.5f}$',(0.05,0.9),xycoords='axes fraction',bbox=dict(boxstyle="round,pad=0.3", fc="white",alpha=0.5, ec="gray", lw=0.5))
+    axs[1].annotate(fr'$D_\bot$, $R^2={R2[1]:.5f}$',(0.05,0.9),xycoords='axes fraction',bbox=dict(boxstyle="round,pad=0.3", fc="white",alpha=0.5, ec="gray", lw=0.5))
+
+    # Colorbar
+    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, cax=cax)
+    cbar.set_label('Péclet number (Pe)')
+    cbar.set_ticks(np.arange(n))
+    cbar.set_ticklabels([str(v) for v in unique_pe])
+
+    plt.savefig(f'thesis_plots/{path}_similarity_dispersion_plot_v2.png', dpi=300, bbox_inches='tight')
     plt.close(fig)
 
 
 def run_test(model, test_loader, device, criterion,config=None):
     model.eval()
 
-    total_loss = 0.0
-    all_preds = []
-    all_targets = []
+    # Use a cache for the full test predictions to avoid rerunning the model.
+    # model_name = get_model_name(model)
+    model_name = config['model']['name']#get_model_name(model)
+    task = config['task']
+    cache_path = preds_cache_path(model_name, task, 'test')
 
-    with torch.no_grad():
-        for batch in tqdm(test_loader):
-            # print(batch)
-            if len(batch) == 2:
-                inputs, targets = batch
-                inputs, targets = inputs.to(device), targets.to(device)
-                outputs = model(inputs)
-            else:
-                inputs, targets, pe = batch
-                inputs = inputs.to(device)
-                targets = targets.to(device)
-                pe = pe.to(device)
-                outputs = model(inputs, pe)
+    # If cache exists, load and skip model evaluation
+    if os.path.exists(cache_path):
+        print(f"Loading test predictions from cache: {cache_path}")
+        with np.load(cache_path, allow_pickle=True) as d:
+            all_preds = d['preds']
+            all_targets = d['targets']
+            all_pe = d['pe'] if 'pe' in d.files and d['pe'].size else None
+            average_loss = float(d['test_loss']) if 'test_loss' in d.files else None
+            average_r2 = float(d['R2']) if 'R2' in d.files else None
+            R2 = d['R2_components'].tolist() if 'R2_components' in d.files else []
 
-            loss = criterion(outputs, targets)
-            total_loss += loss.item() * inputs.size(0)
+        print(f"Loaded cached test results. Test Loss: {average_loss} | Test R2: {average_r2}")
+    else:
+        total_loss = 0.0
+        all_preds = []
+        all_targets = []
+        all_pe = []
+        has_pe=False
 
-            all_preds.append(outputs.cpu().numpy())
-            all_targets.append(targets.cpu().numpy())
+        with torch.no_grad():
+            for batch in tqdm(test_loader):
+                if len(batch) == 2:
+                    inputs, targets = batch
+                    inputs, targets = inputs.to(device), targets.to(device)
+                    outputs = model(inputs)
+                else:
+                    inputs, targets, pe = batch
+                    inputs = inputs.to(device)
+                    targets = targets.to(device)
+                    pe = pe.to(device)
+                    outputs = model(inputs, pe)
+                    outputs = torch.sinh(outputs)
+                    all_pe.append(pe.cpu().numpy())   # <- collect pe
+                    has_pe = True
+
+                loss = criterion(outputs, targets)
+                total_loss += loss.item() * inputs.size(0)
+
+                all_preds.append(outputs.cpu().numpy())
+                all_targets.append(targets.cpu().numpy())
 
 
+        all_preds = np.concatenate(all_preds, axis=0)
+        all_targets = np.concatenate(all_targets, axis=0)
+        all_pe = np.concatenate(all_pe, axis=0) if has_pe else None
 
-    all_preds = np.concatenate(all_preds, axis=0)
-    all_targets = np.concatenate(all_targets, axis=0)
+        average_loss = total_loss / len(test_loader.dataset)
+        average_r2 = r2_score(all_targets, all_preds)
 
-    average_loss = total_loss / len(test_loader.dataset)
-    average_r2 = r2_score(all_targets, all_preds)
+        print(f"Test Loss: {average_loss:.5f} | Test R2: {average_r2:.5f}")
 
-    print(f"Test Loss: {average_loss:.5f} | Test R2: {average_r2:.5f}")
+        # individual R2 per component of the (4) targets:
+        R2 = []
+        print(all_targets.shape, all_preds.shape)
+        for i in range(all_targets.shape[1]):
+            r2_i = r2_score(all_targets[:, i], all_preds[:, i])
+            print(f"  Component {i} R2: {r2_i:.5f}")
+            R2.append(r2_i)
 
-    # individual R2 per component of the (4) targets:
-    R2 = []
-    print(all_targets.shape, all_preds.shape)
-    for i in range(all_targets.shape[1]):
-        r2_i = r2_score(all_targets[:, i], all_preds[:, i])
-        print(f"  Component {i} R2: {r2_i:.5f}")
-        R2.append(r2_i)
+        # Save cache
+        try:
+            np.savez_compressed(cache_path, preds=all_preds, targets=all_targets, pe=all_pe if all_pe is not None else np.array([]), test_loss=average_loss, R2=average_r2, R2_components=np.array(R2))
+            print(f"Saved test predictions cache: {cache_path}")
+        except Exception as e:
+            print(f"Warning: failed to save test cache {cache_path}: {e}")
 
+    # Save results and plotting as before
     data = {
         'test_loss': average_loss,
         'R2_test': average_r2,
@@ -186,7 +272,11 @@ def run_test(model, test_loader, device, criterion,config=None):
     }
     path = f'{config["model"]["name"]}_test'
     zarr_writer(f'test_results/{path}_results.zarr', data)
-    similarity_plot(all_targets, all_preds,path, R2)
+    if config['task']=='permeability':
+        similarity_plot(all_targets, all_preds,path, R2)
+    elif config['task']=='dispersion':
+        similarity_plot_dispersion(all_targets, all_preds,path, R2, pe = all_pe)
+
 
 def get_cache_filename(dataset_tag):
     """Generate cache filename for LBM results"""
@@ -233,18 +323,66 @@ def run_models(model, X):
 
     return preds
 
-def compute_all_predictions(all_results, models):
-    """Compute model predictions for all datasets"""
+
+def get_model_name(model):
+    """Derive a readable model name for cache filenames."""
+    name = getattr(model, 'name', None)
+    if not name and hasattr(model, 'config') and isinstance(getattr(model, 'config'), dict):
+        name = model.config.get('name')
+    if not name:
+        name = model.__class__.__name__
+    return str(name)
+
+
+def preds_cache_path(model_name, task, dataset_tag):
+    cache_dir = os.path.join('test_results', 'preds_cache')
+    os.makedirs(cache_dir, exist_ok=True)
+    safe_name = f"{model_name}_{task}_{dataset_tag}_preds.npz"
+    return os.path.join(cache_dir, safe_name)
+
+
+def save_preds_cache(path, preds):
+    np.savez_compressed(path, preds=preds)
+
+
+def load_preds_cache(path):
+    if not os.path.exists(path):
+        return None
+    with np.load(path) as data:
+        return data['preds']
+
+def compute_all_predictions(all_results, model, config, use_cache=True):
+    """Compute model predictions for all datasets with optional caching.
+
+    If `use_cache` is True (default) predictions are loaded from
+    `test_results/preds_cache/{model_name}_{dataset_tag}_preds.npz` when present.
+    """
     print(f"\n{'='*60}")
     print("Computing model predictions")
     print(f"{'='*60}")
-    
+
+    model_name = config['model']['name']#get_model_name(model)
+    task = config['task']
+
     for tag, result in all_results.items():
-        print(f"\nRunning models on {tag}...")
-        X_torch = result['X_torch']
-        preds = run_models(models, X_torch)
+        cache_path = preds_cache_path(model_name, task, tag) if use_cache else None
+
+        if use_cache and os.path.exists(cache_path):
+            preds = load_preds_cache(cache_path)
+            print(f"Loaded predictions from cache {cache_path} for {tag}")
+        else:
+            print(f"\nRunning model on {tag}...")
+            X_torch = result['X_torch']
+            preds = run_models(model, X_torch)
+            if use_cache:
+                try:
+                    save_preds_cache(cache_path, preds)
+                    print(f"Saved predictions to cache {cache_path}")
+                except Exception as e:
+                    print(f"Warning: failed to save cache {cache_path}: {e}")
+
         all_results[tag]['preds'] = preds
-    
+
     return all_results
 
 def run_real_media_test(model, path_to_h5=None, config=None, dataset_tags=None):

@@ -46,7 +46,7 @@ for model_family, model_list in models.items():
     fig, axes = plt.subplots(
         len(model_list), len(pe_encoders),          # rows=models, cols=pe_encoders
         # figsize=(3.2 * len(pe_encoders) / 2, 3.2 * len(model_list) / 2),
-        figsize=figsize,
+        figsize=(figsize[0],figsize[1]*0.8),
         sharex=True,
         sharey=True
     )
@@ -56,26 +56,26 @@ for model_family, model_list in models.items():
     for row, m in enumerate(model_list):            # rows = models
         for col, pe_encoder in enumerate(pe_encoders):  # cols = pe_encoders
             ax = axes[row, col]
-            if m == 'ConvNeXt-Small' and pe_encoder == 'log':
-                path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Small_lr-0.000125_wd-0.1_bs-128_epochs-500_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
-                try:
-                    root = zarr.open(path, mode='r')
-                    train_r2 = root['R2_train'][:]
-                    val_r2 = root['R2_val'][:]
-                    ax.plot(1 - train_r2, color='C6', linestyle=split_styles['train'], alpha=0.3)
-                    ax.plot(1 - val_r2,   color='C6', linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
-                except Exception as e:
-                    print(f"Skipping {path}: {e}")
-                path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Small_lr-0.000125_wd-0.05_bs-128_epochs-400_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
-                try:
-                    root = zarr.open(path, mode='r')
-                    train_r2 = root['R2_train'][:]
-                    val_r2 = root['R2_val'][:]
-                    ax.plot(1 - train_r2, color='C7', linestyle=split_styles['train'], alpha=0.3)
-                    ax.plot(1 - val_r2,   color='C7', linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
-                except Exception as e:
-                    print(f"Skipping {path}: {e}")
-            if m == 'ConvNeXt-Atto' and pe_encoder == 'log':
+            # if m == 'ConvNeXt-Small' and pe_encoder == 'log':
+            #     path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Small_lr-0.000125_wd-0.1_bs-128_epochs-500_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
+            #     try:
+            #         root = zarr.open(path, mode='r')
+            #         train_r2 = root['R2_train'][:]
+            #         val_r2 = root['R2_val'][:]
+            #         ax.plot(1 - train_r2, color='C6', linestyle=split_styles['train'], alpha=0.3)
+            #         ax.plot(1 - val_r2,   color='C6', linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
+            #     except Exception as e:
+            #         print(f"Skipping {path}: {e}")
+            #     path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Small_lr-0.000125_wd-0.05_bs-128_epochs-400_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
+            #     try:
+            #         root = zarr.open(path, mode='r')
+            #         train_r2 = root['R2_train'][:]
+            #         val_r2 = root['R2_val'][:]
+            #         ax.plot(1 - train_r2, color='C7', linestyle=split_styles['train'], alpha=0.3)
+            #         ax.plot(1 - val_r2,   color='C7', linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
+            #     except Exception as e:
+            #         print(f"Skipping {path}: {e}")
+            # if m == 'ConvNeXt-Atto' and pe_encoder == 'log':
                 # path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-V2-Atto_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-6250.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
                 # try:
                 #     root = zarr.open(path, mode='r')
@@ -94,24 +94,24 @@ for model_family, model_list in models.items():
                 #     ax.plot(1 - val_r2,   color=pe_encoder_colors['log'], linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
                 # except Exception as e:
                 #     print(f"Skipping {path}: {e}")
-                path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Atto_lr-0.000125_wd-0.1_bs-128_epochs-400_cosine_warmup-3125.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
-                try:
-                    root = zarr.open(path, mode='r')
-                    train_r2 = root['R2_train'][:]
-                    val_r2 = root['R2_val'][:]
-                    ax.plot(1 - train_r2, color='C6', linestyle=split_styles['train'], alpha=0.3)
-                    ax.plot(1 - val_r2,   color='C6', linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
-                except Exception as e:
-                    print(f"Skipping {path}: {e}")
-                path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Atto_lr-0.00025_wd-0.05_bs-128_epochs-300_cosine_warmup-6250.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
-                try:
-                    root = zarr.open(path, mode='r')
-                    train_r2 = root['R2_train'][:]
-                    val_r2 = root['R2_val'][:]
-                    ax.plot(1 - train_r2, color='C5', linestyle=split_styles['train'], alpha=0.3)
-                    ax.plot(1 - val_r2,   color='C5', linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
-                except Exception as e:
-                    print(f"Skipping {path}: {e}")
+                # path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Atto_lr-0.000125_wd-0.1_bs-128_epochs-400_cosine_warmup-3125.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
+                # try:
+                #     root = zarr.open(path, mode='r')
+                #     train_r2 = root['R2_train'][:]
+                #     val_r2 = root['R2_val'][:]
+                #     ax.plot(1 - train_r2, color='C6', linestyle=split_styles['train'], alpha=0.3)
+                #     ax.plot(1 - val_r2,   color='C6', linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
+                # except Exception as e:
+                #     print(f"Skipping {path}: {e}")
+                # path = 'results/small_sweep_dispersion_epoch_pe_encoder_sweep/ConvNeXt-Atto_lr-0.00025_wd-0.05_bs-128_epochs-300_cosine_warmup-6250.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
+                # try:
+                #     root = zarr.open(path, mode='r')
+                #     train_r2 = root['R2_train'][:]
+                #     val_r2 = root['R2_val'][:]
+                #     ax.plot(1 - train_r2, color='C5', linestyle=split_styles['train'], alpha=0.3)
+                #     ax.plot(1 - val_r2,   color='C5', linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
+                # except Exception as e:
+                #     print(f"Skipping {path}: {e}")
             for l in length:
                 path = (
                     folder
@@ -128,11 +128,11 @@ for model_family, model_list in models.items():
                     continue
 
                 ax.plot(1 - train_r2, color=length_colors[l], linestyle=split_styles['train'], alpha=0.3)
-                ax.plot(1 - val_r2,   color=length_colors[l], linestyle=split_styles['val'],   alpha=1., linewidth=0.7)
+                ax.plot(1 - val_r2,   color=length_colors[l], linestyle=split_styles['val'],   alpha=1., linewidth=1.5)
 
             # Column titles only on top row
             if row == 0:
-                ax.set_title(pe_encoder)
+                ax.set_title(pe_encoder[0].capitalize()+pe_encoder[1:])
             
             # Row labels only on left column
             if col == 0:
@@ -158,11 +158,63 @@ for model_family, model_list in models.items():
         for s in split_styles
     ]
 
-    fig.legend(handles=length_legend, title="Training length", loc="lower left",
+    fig.legend(handles=length_legend, title="Training length:", loc="lower left",
                ncol=len(length), frameon=False)
-    fig.legend(handles=split_legend, title="Split", loc="lower right",
+    fig.legend(handles=split_legend, title="Split:", loc="lower right",
                ncol=len(split_styles), frameon=False)
 
     plt.tight_layout(rect=[0, 0.08, 1.0, 1.0])
     plt.savefig(f'thesis_plots/{model_family}_epoch_pe_encoder_sweep.pdf', bbox_inches='tight')
-    plt.close()
+    plt.close(fig)
+
+pe_encoders = ['straight','log','vector']
+fig, axs = plt.subplots(1,3,figsize=(figsize[0],figsize[1]*0.7),sharey=True)
+m = 'ConvNeXt-Atto'
+
+for col, pe_encoder in enumerate(pe_encoders):    
+                  
+    for l in length:
+        path = (
+            folder
+            + f'{m}_lr-0.0005_wd-0.05_bs-128_epochs-{l}_'
+            + f'cosine_warmup-1250.0_clipgrad-True_'
+            + f'pe-encoder-{pe_encoder}_pe-4_rmse_metrics.zarr'
+        )
+        try:
+            root = zarr.open(path, mode='r')
+            train_r2 = root['R2_train'][:]
+            val_r2 = root['R2_val'][:]
+        except Exception as e:
+            print(f"Skipping {path}: {e}")
+            continue
+
+        axs[col].plot(1 - train_r2, color=length_colors[l], linestyle=split_styles['train'], alpha=0.3)
+        axs[col].plot(1 - val_r2,   color=length_colors[l], linestyle=split_styles['val'],   alpha=1., linewidth=1.5)
+
+        # axs[col].set_title(pe_encoder)
+        axs[col].annotate(pe_encoder[0].capitalize()+pe_encoder[1:],(0.1,0.1),xycoords='axes fraction',bbox=dict(boxstyle="round,pad=0.3", fc="white",alpha=0.3, ec="gray", lw=0.3))
+
+        axs[col].set_xlabel('Epoch')
+        axs[col].set_yscale('log')
+        axs[col].grid(alpha=0.3)
+        axs[col].grid(which='minor', alpha=0.15)
+        axs[col].minorticks_on()
+
+axs[0].set_ylabel(r'$1-R^2$')
+# Legends (unchanged)
+length_legend = [
+    Line2D([0], [0], color=length_colors[l], lw=2, label=l)
+    for l in length
+]
+split_legend = [
+    Line2D([0], [0], color='black', linestyle=split_styles[s], lw=2, label=s)
+    for s in split_styles
+]
+
+fig.legend(handles=length_legend, title="Training length", loc="lower left",
+            ncol=len(length), frameon=False)
+fig.legend(handles=split_legend, title="Split", loc="lower right",
+            ncol=len(split_styles), frameon=False)
+
+plt.tight_layout(rect=[0, 0.1, 1.0, 1.0])
+plt.savefig('thesis_plots/convnext_atto_pe_encoder.pdf', bbox_inches='tight')
