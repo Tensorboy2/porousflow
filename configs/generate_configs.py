@@ -372,7 +372,7 @@ DEVICE_CONFIGS = {
         },
         "training_overrides": {
             "num_workers": 2,  
-            "prefetch_factor": 2,  
+            # "prefetch_factor": 2,  
         },
     },
     "cpu": {

@@ -141,18 +141,18 @@ def get_dispersion_dataloader(file_path,config):
                             batch_size=batch_size, 
                             shuffle=False, 
                             num_workers=0,
-                            persistent_workers=None,
+                            persistent_workers=False,
                             pin_memory=pin_memory,
-                            prefetch_factor=0,
+                            prefetch_factor=None,
                             # pin_memory_device=pin_memory_device
                             )
     test_loader = DataLoader(test_dataset, 
                              batch_size=batch_size, 
                              shuffle=False, 
                              num_workers=0,
-                             persistent_workers=None,
+                             persistent_workers=False,
                             pin_memory=pin_memory,
-                            prefetch_factor=0,
+                            prefetch_factor=None,
                             # pin_memory_device=pin_memory_device
                             )
     
