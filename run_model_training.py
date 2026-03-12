@@ -104,8 +104,9 @@ def main(config):
     # Move to device
     try:
         # model = torch.compile(model.to(device))
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 7:
             model = torch.compile(model.to(device))
+            print('Model compiled.')
         else:
             model = model.to(device)
     except Exception:
