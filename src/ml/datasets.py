@@ -39,7 +39,38 @@ if __name__ == '__main__':
     # root = zarr.open('data/train.zarr', mode='r')
     # targets_ds = np.amax(root['lbm_results']['K'][:])
     # print(f"Max value {targets_ds/9.187899330242999e-10}")
+class PermeabilityDatasetMmap(Dataset):
+    def __init__(self, npy_path, targets_path, transform=None, num_samples=None):
+        # Immediate "loading" via memory mapping
+        self.images = np.load(npy_path, mmap_mode='r')
+        self.targets = np.load(targets_path, mmap_mode='r')
 
+        self.transform = transform
+        self.length = self.images.shape[0]
+        if num_samples is not None:
+            self.length = min(self.length, num_samples)
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, idx):
+        # 1. Pull raw data from disk/RAM cache (Zero decompression)
+        image_np = self.images[idx]
+        k_val = self.targets[idx]
+
+        # 2. Convert to tensors efficiently
+        # Using as_tensor or from_numpy(.copy()) is safest for mmap
+        image = torch.from_numpy(image_np.copy()).float().unsqueeze(0)
+        
+        # 3. Handle the regression target normalization
+        # Note: Doing scalar math on a tensor is fast, but we do it here
+        K = torch.tensor(k_val, dtype=torch.float32).flatten() / 8e-10
+        
+        # 4. Transform
+        if self.transform:
+            image, K = self.transform(image, K)
+
+        return image, K
 
 class DispersionDataset(Dataset):
     def __init__(self, file_path, transform=None, num_samples=None, Pe=0):
