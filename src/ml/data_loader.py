@@ -49,9 +49,9 @@ def get_permeability_dataloader(file_path,config):
     # train_dataset = PermeabilityDataset(train_path, transform=PermeabilityTransform(),num_samples=config.get('num_training_samples'))
     # val_dataset = PermeabilityDataset(val_path,num_samples=config.get('num_validation_samples'))
     # test_dataset = PermeabilityDataset(test_path)
-    train_dataset = PermeabilityDataset('data/train_images_raw.npy', 'data/train_targets_k.npy', transform=PermeabilityTransform(),num_samples=config.get('num_training_samples'))
-    val_dataset = PermeabilityDataset('data/validation_images_raw.npy', 'data/validation_targets_k.npy',num_samples=config.get('num_validation_samples'))
-    test_dataset = PermeabilityDataset('data/test_images_raw.npy', 'data/test_targets_k.npy',)
+    train_dataset = PermeabilityDatasetMmap('data/train_images_raw.npy', 'data/train_targets_k.npy', transform=PermeabilityTransform(),num_samples=config.get('num_training_samples'))
+    val_dataset = PermeabilityDatasetMmap('data/validation_images_raw.npy', 'data/validation_targets_k.npy',num_samples=config.get('num_validation_samples'))
+    test_dataset = PermeabilityDatasetMmap('data/test_images_raw.npy', 'data/test_targets_k.npy',)
 
     train_loader = DataLoader(
         train_dataset, 
