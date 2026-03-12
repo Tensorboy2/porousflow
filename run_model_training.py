@@ -17,6 +17,8 @@ from src.ml.trainer import Trainer
 from torch import optim
 import torch
 torch.manual_seed(0)
+torch.backends.cudnn.benchmark = True
+torch.set_float32_matmul_precision('high')
 import torch.nn as nn
 import yaml
 import os
@@ -101,7 +103,11 @@ def main(config):
 
     # Move to device
     try:
-        model = model.to(device)
+        # model = torch.compile(model.to(device))
+        if torch.cuda.is_available():
+            model = torch.compile(model.to(device))
+        else:
+            model = model.to(device)
     except Exception:
         print("Warning: couldn't move model to device; continuing on CPU")
 
