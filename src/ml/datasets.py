@@ -185,7 +185,8 @@ class DispersionDatasetMmap(Dataset):
         if self.transform:
             # Note: Ensure your transform handles these tensor shapes
             image, D = self.transform(image, Dx,Dy)
-            
+        else:
+            D = torch.tensor([Dx[0],Dx[3]]).float()
         return image, D, Pe
 
 class DispersionDatasetFull(Dataset):
