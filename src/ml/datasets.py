@@ -150,7 +150,7 @@ class DispersionDatasetCached(Dataset):
 class DispersionDatasetFull(Dataset):
     """
     Ultra-optimized version: cache images in RAM since they're reused 10x.
-    Each base image produces 10 samples: 5 Pe values × 2 directions (x/y).
+    Each base image produces 10 samples: 5 Pe values x 2 directions (x/y).
     """
     def __init__(self, file_path, transform=None, num_samples=None):
         self.root = zarr.open(file_path, mode='r')
