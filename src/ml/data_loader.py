@@ -139,18 +139,18 @@ def get_dispersion_dataloader(file_path,config):
     val_loader = DataLoader(val_dataset, 
                             batch_size=batch_size, 
                             shuffle=False, 
-                            num_workers=0,
-                            persistent_workers=False,
-                            pin_memory=False,
-                            prefetch_factor=None,
+                            num_workers=num_workers,
+                            persistent_workers=persistent_workers,
+                            pin_memory=pin_memory,
+                            prefetch_factor=prefetch_factor,
                             pin_memory_device=pin_memory_device)
     test_loader = DataLoader(test_dataset, 
                              batch_size=batch_size, 
                              shuffle=False, 
-                             num_workers=0,
-                             persistent_workers=False,
-                            pin_memory=False,
-                            prefetch_factor=None,
+                             num_workers=num_workers,
+                             persistent_workers=persistent_workers,
+                            pin_memory=pin_memory,
+                            prefetch_factor=prefetch_factor,
                             pin_memory_device=pin_memory_device)
     
     return train_loader, val_loader, test_loader
