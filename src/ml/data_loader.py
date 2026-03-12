@@ -37,8 +37,8 @@ def get_permeability_dataloader(file_path,config):
     num_workers = config.get('num_workers',2)
 
     # Cuda specific options
-    persistent_workers = config.get('persistent_workers',False)
-    pin_memory = config.get('pin_memory',False)
+    persistent_workers = config.get('persistent_workers',True)
+    pin_memory = config.get('pin_memory',True)
     pin_memory_device = config.get('pin_memory_device','')
     prefetch_factor = config.get('prefetch_factor',None)
 
@@ -98,7 +98,7 @@ def get_dispersion_dataloader(file_path,config):
     print('Num workers: ', num_workers)
 
     # Cuda specific options
-    persistent_workers = config.get('persistent_workers',False)
+    persistent_workers = config.get('persistent_workers',True)
     pin_memory = config.get('pin_memory',True)
     pin_memory_device = config.get('pin_memory_device','')
     prefetch_factor = config.get('prefetch_factor',None)
