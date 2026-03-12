@@ -496,6 +496,7 @@ class Trainer:
             print(f"Epoch {epoch+1}/{num_epochs} started")
 
             # ---- TRAIN ----
+            start = time.time()
             train_loss, train_r2, grad_norm = self.train_epoch()
             clip_pct = self.metrics['grad_norm_clipped'][-1]  # Get the last recorded clip percentage
             print(
@@ -516,7 +517,7 @@ class Trainer:
 
             # ---- LR ----
             current_lr = self.scheduler.get_last_lr()[0]
-            print(f"  LR: {current_lr:.6e}")
+            print(f"  LR: {current_lr:.6e} | Epoch time: {time.time()-start:.1f}s")
 
             # ---- CHECKPOINT ----
             if val_r2 > best_val_r2:
