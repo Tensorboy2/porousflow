@@ -93,7 +93,7 @@ def get_dispersion_dataloader(file_path,config):
     :return: train_loader, val_loader, test_loader
     '''
     # General options
-    batch_size = config.get('batch_size',32)
+    batch_size = config.get('batch_size',128)
     num_workers = config.get('num_workers',2)
     print('Num workers: ', num_workers)
 
@@ -135,25 +135,25 @@ def get_dispersion_dataloader(file_path,config):
                               persistent_workers=persistent_workers,
                               pin_memory=pin_memory,
                               prefetch_factor=prefetch_factor,
-                            # pin_memory_device=pin_memory_device
+                            pin_memory_device=pin_memory_device
                             )
     val_loader = DataLoader(val_dataset, 
                             batch_size=batch_size, 
                             shuffle=False, 
                             num_workers=0,
                             persistent_workers=False,
-                            pin_memory=pin_memory,
+                            pin_memory=False,
                             prefetch_factor=None,
-                            # pin_memory_device=pin_memory_device
+                            pin_memory_device=pin_memory_device
                             )
     test_loader = DataLoader(test_dataset, 
                              batch_size=batch_size, 
                              shuffle=False, 
                              num_workers=0,
                              persistent_workers=False,
-                            pin_memory=pin_memory,
+                            pin_memory=False,
                             prefetch_factor=None,
-                            # pin_memory_device=pin_memory_device
+                            pin_memory_device=pin_memory_device
                             )
     
     return train_loader, val_loader, test_loader
