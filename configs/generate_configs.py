@@ -363,7 +363,7 @@ DEVICE_CONFIGS = {
     "gpu": {
         "slurm": {
             "partition": "normal",
-            "cpus_per_task": 4,
+            "cpus_per_task": 3,
             "gres": "gpu:1",
             "time": None,
             "mem": None,
