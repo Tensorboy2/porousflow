@@ -31,8 +31,8 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
-        "ConvNeXt-Femto",
-        # "ConvNeXt-Atto",
+        # "ConvNeXt-Femto",
+        "ConvNeXt-Atto",
         # "ConvNeXt-Small",
         # "ConvNeXt-V2-Small",
         # "ConvNeXt-V2-Base",
@@ -363,7 +363,7 @@ DEVICE_CONFIGS = {
     "gpu": {
         "slurm": {
             "partition": "normal",
-            "cpus_per_task": 2,
+            "cpus_per_task": 4,
             "gres": "gpu:1",
             "time": None,
             "mem": None,
@@ -378,14 +378,14 @@ DEVICE_CONFIGS = {
             "mem": "16G",
         },
         "training_overrides": {
-            "batch_size": 8,
+            "batch_size": 128,
             "num_epochs": 500,
             "warmup_steps": 10,#int(0.1*32*10/8),
-            "weight_decay": 5e-2,
+            "weight_decay": 1e-3,
             "decay": "cosine",
             "learning_rate": 1e-3,
             "num_training_samples": 128,
-            "num_validation_samples": 32,
+            "num_validation_samples": 128,
             "num_test_samples": 4,
             "pe_encoder": 'log',
             "prefetch_factor": None,
