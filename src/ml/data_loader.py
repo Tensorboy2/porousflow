@@ -143,7 +143,7 @@ def get_dispersion_dataloader(file_path,config):
                             num_workers=0,
                             persistent_workers=False,
                             pin_memory=pin_memory,
-                            prefetch_factor=prefetch_factor,
+                            prefetch_factor=0,
                             # pin_memory_device=pin_memory_device
                             )
     test_loader = DataLoader(test_dataset, 
@@ -152,7 +152,7 @@ def get_dispersion_dataloader(file_path,config):
                              num_workers=0,
                              persistent_workers=False,
                             pin_memory=pin_memory,
-                            prefetch_factor=prefetch_factor,
+                            prefetch_factor=0,
                             # pin_memory_device=pin_memory_device
                             )
     
