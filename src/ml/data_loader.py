@@ -91,7 +91,8 @@ def get_dispersion_dataloader(file_path,config):
     '''
     # General options
     batch_size = config.get('batch_size',32)
-    num_workers = config.get('num_workers',3)
+    num_workers = config.get('num_workers',2)
+    print('Num workers: ', num_workers)
 
     # Cuda specific options
     persistent_workers = config.get('persistent_workers',False)

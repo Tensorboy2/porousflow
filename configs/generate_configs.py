@@ -332,6 +332,7 @@ TASK_CONFIGS = {
         "warmup_steps": (16000/128)*30, # steps per epoch * warmup epochs
         "num_training_samples": None,  # None = use all data
         "num_validation_samples": None,
+        "num_workers": 4,
         "prefetch_factor": 4,
         "pin_memory": True,
         'loss_function': 'mse'
@@ -345,6 +346,7 @@ TASK_CONFIGS = {
         "warmup_steps": 30*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
+        "num_workers": 4,
         "prefetch_factor": 4,
         "pin_memory": True,
         "loss_function": 'mse',
@@ -363,10 +365,13 @@ DEVICE_CONFIGS = {
     "gpu": {
         "slurm": {
             "partition": "normal",
-            "cpus_per_task": 3,
+            "cpus_per_task": 2,
             "gres": "gpu:1",
             "time": None,
             "mem": None,
+        },
+        "training_overrides": {
+            "num_workers": 2,  # add this
         },
     },
     "cpu": {
@@ -920,6 +925,8 @@ class ConfigGenerator:
         if self.is_cpu:
             exp["device"] = "cpu"
         
+        if not self.is_cpu and "training_overrides" in DEVICE_CONFIGS["gpu"]:
+            exp.update(DEVICE_CONFIGS["gpu"]["training_overrides"]) 
         return exp, suffix
     
     def generate_herbie_mode(self, model_names: List[str], main_script: str = MAIN_SCRIPT, conda_env: Optional[str] = None) -> Path:
