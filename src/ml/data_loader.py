@@ -141,7 +141,7 @@ def get_dispersion_dataloader(file_path,config):
                             batch_size=batch_size, 
                             shuffle=False, 
                             num_workers=0,
-                            persistent_workers=False,
+                            persistent_workers=None,
                             pin_memory=pin_memory,
                             prefetch_factor=0,
                             # pin_memory_device=pin_memory_device
@@ -150,7 +150,7 @@ def get_dispersion_dataloader(file_path,config):
                              batch_size=batch_size, 
                              shuffle=False, 
                              num_workers=0,
-                             persistent_workers=False,
+                             persistent_workers=None,
                             pin_memory=pin_memory,
                             prefetch_factor=0,
                             # pin_memory_device=pin_memory_device
