@@ -147,6 +147,47 @@ class DispersionDatasetCached(Dataset):
             D = torch.tensor([Dx[0],Dx[3]]).float()
         return image, D, Pe
     
+
+import numpy as np  
+class DispersionDatasetMmap(Dataset):
+    def __init__(self, npy_path, targets_path_x, targets_path_y, transform=None):
+        # Memory mapping: 0ms load time, 0 CPU decompression overhead
+        self.images = np.load(npy_path, mmap_mode='r') 
+        self.targets_x = np.load(targets_path_x, mmap_mode='r')
+        self.targets_y = np.load(targets_path_y, mmap_mode='r')
+        
+        self.transform = transform
+        self.pe_values = torch.tensor([0.1, 10, 50, 100, 500], dtype=torch.float32)
+        self.samples_per_image = 5
+        self.total_len = len(self.images) * self.samples_per_image
+
+    def __len__(self):
+        return self.total_len
+
+    def __getitem__(self, idx):
+        base_idx = idx // self.samples_per_image
+        pe_idx = idx % self.samples_per_image
+        
+        # 1. Fetch data (OS handles the I/O, almost no CPU used)
+        image_np = self.images[base_idx]
+        Dx_val = self.targets_x[base_idx, pe_idx]
+        Dy_val = self.targets_y[base_idx, pe_idx]
+        
+        # 2. Convert to tensors efficiently
+        # .copy() ensures the tensor owns its memory if the mmap pointer is volatile
+        image = torch.from_numpy(image_np.copy()).float().unsqueeze(0) 
+        # D = torch.tensor([Dx_val, Dy_val], dtype=torch.float32)
+        Dx = torch.tensor(Dx_val).float().flatten()
+        Dy = torch.tensor(Dy_val).float().flatten()
+        Pe = self.pe_values[pe_idx : pe_idx + 1]
+        
+        # 3. Apply the transform
+        if self.transform:
+            # Note: Ensure your transform handles these tensor shapes
+            image, D = self.transform(image, Dx,Dy)
+            
+        return image, D, Pe
+
 class DispersionDatasetFull(Dataset):
     """
     Ultra-optimized version: cache images in RAM since they're reused 10x.

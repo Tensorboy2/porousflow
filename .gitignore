@@ -12,6 +12,7 @@
 *.ipynb
 *.h5
 *.h5:Zone.Identifier
+*.npy
 bin/
 lib64
 pyvenv.cfg

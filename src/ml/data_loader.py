@@ -11,10 +11,10 @@ torch.manual_seed(0)
 
 if __name__ == "__main__":
     from dataaugmentations import PermeabilityTransform, DispersionTransform
-    from datasets import PermeabilityDataset, DispersionDataset, DispersionDatasetCached, DispersionDatasetFull
+    from datasets import PermeabilityDataset, DispersionDataset, DispersionDatasetCached, DispersionDatasetFull, DispersionDatasetMmap
 else:
     from src.ml.dataaugmentations import PermeabilityTransform, DispersionTransform
-    from src.ml.datasets import PermeabilityDataset, DispersionDataset, DispersionDatasetCached, DispersionDatasetFull
+    from src.ml.datasets import PermeabilityDataset, DispersionDataset, DispersionDatasetCached, DispersionDatasetFull, DispersionDatasetMmap
 
 
     
@@ -113,9 +113,12 @@ def get_dispersion_dataloader(file_path,config):
             val_dataset = DispersionDatasetFull(val_path,num_samples=config.get('num_validation_samples',None))
             test_dataset = DispersionDatasetFull(test_path)
         else:
-            train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=True,transform=aug)
-            val_dataset = DispersionDatasetCached(val_path,num_samples=config.get('num_validation_samples',True),cache_images=False)
-            test_dataset = DispersionDatasetCached(test_path,cache_images=False)
+            # train_dataset = DispersionDatasetCached(train_path,num_samples=config.get('num_training_samples',None),cache_images=True,transform=aug)
+            # val_dataset = DispersionDatasetCached(val_path,num_samples=config.get('num_validation_samples',True),cache_images=False)
+            # test_dataset = DispersionDatasetCached(test_path,cache_images=False)
+            train_dataset = DispersionDatasetMmap('data/train_images_raw.npy', 'data/train_targets_x.npy', 'data/train_targets_y.npy',transform=aug)
+            val_dataset = DispersionDatasetMmap('data/validation_images_raw.npy', 'data/validation_targets_x.npy', 'data/validation_targets_y.npy')
+            test_dataset = DispersionDatasetMmap('data/test_images_raw.npy', 'data/test_targets_x.npy', 'data/test_targets_y.npy')
     else:
         Pe = config.get('Pe',0)
         train_dataset = DispersionDataset(train_path,num_samples=config.get('num_training_samples',None),Pe=Pe, transform=aug)
