@@ -354,6 +354,8 @@ class Trainer:
             epoch_loss (float): mean validation loss
             r2 (float): R^2 score over validation set
         """
+        print("--- Training Epoch Finished ---")
+        print("Switching to Validation...")
         self.model.eval()
 
         running_loss = 0.0
