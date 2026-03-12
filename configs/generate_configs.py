@@ -371,7 +371,8 @@ DEVICE_CONFIGS = {
             "mem": None,
         },
         "training_overrides": {
-            "num_workers": 2,  # add this
+            "num_workers": 2,  
+            "prefetch_factor": 2,  
         },
     },
     "cpu": {
