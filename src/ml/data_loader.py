@@ -53,27 +53,33 @@ def get_permeability_dataloader(file_path,config):
     val_dataset = PermeabilityDataset('data/validation_images_raw.npy', 'data/validation_targets_k.npy',num_samples=config.get('num_validation_samples'))
     test_dataset = PermeabilityDataset('data/test_images_raw.npy', 'data/test_targets_k.npy',)
 
-    train_loader = DataLoader(train_dataset, 
-                              batch_size=batch_size, 
-                              shuffle=True, 
-                              num_workers=num_workers,
-                              persistent_workers=persistent_workers,
-                              pin_memory=pin_memory,
-                              prefetch_factor=prefetch_factor,
-                              pin_memory_device=pin_memory_device)
-    val_loader = DataLoader(val_dataset, 
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True, 
+        num_workers=num_workers,
+        persistent_workers=persistent_workers,
+        pin_memory=pin_memory,
+        prefetch_factor=prefetch_factor,
+        pin_memory_device=pin_memory_device
+    )
+
+    val_loader = DataLoader(
+        val_dataset, 
         batch_size=batch_size, 
         shuffle=False, 
-        num_workers=0,             # Set to 0 on P100 if it sticks
-        persistent_workers=False,   # Turn off to free up CPU for the main thread
+        num_workers=0,
+        persistent_workers=False,    
         pin_memory=pin_memory,
         pin_memory_device=pin_memory_device
     )
-    test_loader = DataLoader(val_dataset, 
+
+    test_loader = DataLoader(
+        test_dataset, 
         batch_size=batch_size, 
         shuffle=False, 
-        num_workers=0,             # Set to 0 on P100 if it sticks
-        persistent_workers=False,   # Turn off to free up CPU for the main thread
+        num_workers=0,
+        persistent_workers=False,    
         pin_memory=pin_memory,
         pin_memory_device=pin_memory_device
     )
@@ -128,33 +134,36 @@ def get_dispersion_dataloader(file_path,config):
         val_dataset = DispersionDataset(val_path,num_samples=config.get('num_validation_samples',None),Pe=Pe)
         test_dataset = DispersionDataset(test_path,Pe=Pe)
 
-    train_loader = DataLoader(train_dataset, 
-                              batch_size=batch_size, 
-                              shuffle=True, 
-                              num_workers=num_workers,
-                              persistent_workers=persistent_workers,
-                              pin_memory=pin_memory,
-                              prefetch_factor=prefetch_factor,
-                            pin_memory_device=pin_memory_device
-                            )
-    val_loader = DataLoader(val_dataset, 
-                            batch_size=batch_size, 
-                            shuffle=False, 
-                            num_workers=num_workers,
-                            persistent_workers=persistent_workers,
-                            pin_memory=pin_memory,
-                            prefetch_factor=prefetch_factor,
-                            pin_memory_device=pin_memory_device
-                            )
-    test_loader = DataLoader(test_dataset, 
-                             batch_size=batch_size, 
-                             shuffle=False, 
-                             num_workers=num_workers,
-                             persistent_workers=persistent_workers,
-                            pin_memory=pin_memory,
-                            prefetch_factor=prefetch_factor,
-                            pin_memory_device=pin_memory_device
-                            )
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True, 
+        num_workers=num_workers,
+        persistent_workers=persistent_workers,
+        pin_memory=pin_memory,
+        prefetch_factor=prefetch_factor,
+        pin_memory_device=pin_memory_device
+    )
+
+    val_loader = DataLoader(
+        val_dataset, 
+        batch_size=batch_size, 
+        shuffle=False, 
+        num_workers=0,              
+        persistent_workers=False,    
+        pin_memory=pin_memory,
+        pin_memory_device=pin_memory_device
+    )
+
+    test_loader = DataLoader(
+        test_dataset, 
+        batch_size=batch_size, 
+        shuffle=False, 
+        num_workers=0,              
+        persistent_workers=False,    
+        pin_memory=pin_memory,
+        pin_memory_device=pin_memory_device
+    )
     
     return train_loader, val_loader, test_loader
 

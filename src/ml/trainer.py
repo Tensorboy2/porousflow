@@ -364,9 +364,12 @@ class Trainer:
         sum_targets_squared = 0.0
         count = 0
         total_samples = 0
-
+        i=0
         with torch.no_grad():
             for Batch in self.val_loader:
+                i+=1
+                if i % 10 == 0:
+                    print(f"Validation Batch {i}...")
                 # Support datasets that yield either (inputs, D) or (inputs, D, Pe)
                 if self.config['pe']['include_direction']:
                     inputs, D, Pe, Direction = Batch
