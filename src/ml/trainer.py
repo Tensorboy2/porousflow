@@ -356,6 +356,7 @@ class Trainer:
         """
         print("--- Training Epoch Finished ---")
         print("Switching to Validation...")
+        torch.cuda.empty_cache()
         self.model.eval()
 
         running_loss = 0.0
