@@ -150,7 +150,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 # Each list defines the values to sweep over for that hyperparameter
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
-        "single": [5e-4],  # Default single value
+        "single": [5e-3],  # Default single value
         "sweep": [5e-5,1e-4, 5e-4, 1e-3],
     },
     "batch_size": {
@@ -158,8 +158,8 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [5e-2],
-        "sweep": [1e-2, 5e-2, 1e-1, 0.5],
+        "single": [1e-3],
+        "sweep": [1e-3, 1e-2, 5e-2, 1e-1, 0.5],
     },
     "num_training_samples": {
         "single": [None],  # None means use all available data
@@ -183,7 +183,7 @@ HYPERPARAM_SWEEPS = {
         'sweep': [4,3,2,1,0],
     },
     "loss_function": {
-        'single': ['huber'],
+        'single': ['rmse'],
         'sweep': ['mse','L1','rmse','huber','log-cosh','rse']
     }
 }
@@ -294,6 +294,24 @@ SWEEP_PRESETS = {
     "lr_wd_sweep": {
         # Sweep learning rate, batch size and weight decay together
         "learning_rate": "sweep",
+        "batch_size": "single",
+        "weight_decay": "sweep",
+        "num_training_samples": "single",
+        "num_epochs": "single",
+        "decay": "single",
+    },
+    "lr_sweep": {
+        # Sweep learning rate, batch size and weight decay together
+        "learning_rate": "sweep",
+        "batch_size": "single",
+        "weight_decay": "single",
+        "num_training_samples": "single",
+        "num_epochs": "single",
+        "decay": "single",
+    },
+    "wd_sweep": {
+        # Sweep learning rate, batch size and weight decay together
+        "learning_rate": "single",
         "batch_size": "single",
         "weight_decay": "sweep",
         "num_training_samples": "single",
