@@ -32,20 +32,20 @@ Run plans:
 MODEL_PRESETS = {
     "quick_test": [
         # "ConvNeXt-Femto",
-        "ConvNeXt-Atto",
+        # "ConvNeXt-Atto",
         # "ConvNeXt-Small",
         # "ConvNeXt-V2-Small",
         # "ConvNeXt-V2-Base",
         # "SHViT-T",
         # "ViT-B16",
         # "ResNet-101",
-        # "Swin-T",
+        "Swin-T",
     ],
     "smallest": [
         "ConvNeXt-Atto",
         "ViT-T16",
         "ResNet-18",
-        "Swin-T",
+        # "Swin-T",
     ],
     "biggest": [
         "ConvNeXt-Large",
@@ -151,7 +151,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
         "single": [5e-4],  # Default single value
-        "sweep": [1e-4, 5e-4, 1e-3],
+        "sweep": [5e-5,1e-4, 5e-4, 1e-3],
     },
     "batch_size": {
         "single": [128],
@@ -159,7 +159,7 @@ HYPERPARAM_SWEEPS = {
     },
     "weight_decay": {
         "single": [5e-2],
-        "sweep": [5e-2, 1e-1, 0.3],
+        "sweep": [1e-2, 5e-2, 1e-1, 0.5],
     },
     "num_training_samples": {
         "single": [None],  # None means use all available data
