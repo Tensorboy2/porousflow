@@ -37,9 +37,9 @@ MODEL_PRESETS = {
         # "ConvNeXt-V2-Small",
         # "ConvNeXt-V2-Base",
         # "SHViT-T",
-        # "ViT-B16",
+        "ViT-T16",
         # "ResNet-101",
-        "Swin-T",
+        # "Swin-T",
     ],
     "smallest": [
         "ConvNeXt-Atto",
@@ -183,7 +183,7 @@ HYPERPARAM_SWEEPS = {
         'sweep': [4,3,2,1,0],
     },
     "loss_function": {
-        'single': ['huber'],
+        'single': ['log-cosh'],
         'sweep': ['mse','L1','rmse','huber','log-cosh','rse']
     }
 }
