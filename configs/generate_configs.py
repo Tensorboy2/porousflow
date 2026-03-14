@@ -43,7 +43,7 @@ MODEL_PRESETS = {
     ],
     "smallest": [
         "ConvNeXt-Atto",
-        "ViT-T16",
+        # "ViT-T16",
         "ResNet-18",
         # "Swin-T",
     ],

@@ -30,7 +30,7 @@ split_styles = {
     'validation': '-',
     'train': '--'
 }
-
+print('Permeability:')
 # Permeability:
 fig,axs = plt.subplots(1,4,figsize=(figsize[0],figsize[1]*0.8), sharey=True)
 
@@ -44,7 +44,7 @@ for i,m in enumerate(models):
             train_r2 = root['R2_train'][:]
             val_r2 = root['R2_val'][:]
         except Exception as e:
-            # print(f"Skipping {path}: {e}")
+            print(f"Skipping {path}: {e}")
             continue
         current_max_r2 = max(val_r2)
         if current_max_r2>higest_r2:
@@ -74,7 +74,7 @@ for i,m in enumerate(models):
     axs[i].set_title(m)
     axs[i].grid(alpha=0.3)
 
-    print(f'Model: {m}, best lf: {best_lf}')
+    print(f'    Model: {m}, R2: {higest_r2:.5f}, best lf: {best_lf}')
 
 axs[0].set_ylabel(r'$1-R^2$')
 
@@ -94,11 +94,14 @@ fig.legend(
 
 plt.tight_layout(rect=[0, 0.1, 1.0, 1.0])
 plt.savefig('thesis_plots/lf_sweep_permeability.pdf')
-
+print()
+print('Dispersion:')
 # Dispersion:
 fig,axs = plt.subplots(1,4,figsize=(figsize[0],figsize[1]*0.8), sharey=True)
 # results/lf_sweep_dispersion/ConvNeXt-Atto_lr-0.0005_wd-0.05_bs-128_epochs-200_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_huber_metrics.zarr
 for i,m in enumerate(models):
+    higest_r2 = -float('inf')
+    best_lf = None
     for j, lf in enumerate(loss_functions):
         path = f'results/lf_sweep_dispersion/{m}_lr-0.0005_wd-0.05_bs-128_epochs-200_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_{lf}_metrics.zarr'
         try:
@@ -108,6 +111,12 @@ for i,m in enumerate(models):
         except Exception as e:
             print(f"Skipping {path}: {e}")
             continue
+
+        current_max_r2 = max(val_r2)
+        if current_max_r2>higest_r2:
+            higest_r2=current_max_r2
+            best_lf = lf
+
         # Train
         axs[i].plot(
             1 - train_r2,
@@ -129,6 +138,9 @@ for i,m in enumerate(models):
     axs[i].set_xlabel('Epochs')
     axs[i].set_title(m)
     axs[i].grid(alpha=0.3)
+
+    print(f'    Model: {m}, R2: {higest_r2:.5f}, best lf: {best_lf}')
+
 
 axs[0].set_ylabel(r'$1-R^2$')
 
