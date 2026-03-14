@@ -151,7 +151,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
         "single": [5e-3],  # Default single value
-        "sweep": [5e-5,1e-4, 5e-4, 1e-3],
+        "sweep": [5e-5,1e-4, 5e-4, 1e-3, 5e-3],
     },
     "batch_size": {
         "single": [128],
