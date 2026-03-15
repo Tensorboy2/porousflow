@@ -37,13 +37,13 @@ MODEL_PRESETS = {
         # "ConvNeXt-V2-Small",
         # "ConvNeXt-V2-Base",
         # "SHViT-T",
-        "ViT-T16",
+        # "ViT-T16",
         # "ResNet-101",
-        # "Swin-T",
+        "Swin-T",
     ],
     "smallest": [
         "ConvNeXt-Atto",
-        # "ViT-T16",
+        "ViT-T16",
         "ResNet-18",
         # "Swin-T",
     ],
@@ -183,7 +183,7 @@ HYPERPARAM_SWEEPS = {
         'sweep': [4,3,2,1,0],
     },
     "loss_function": {
-        'single': ['log-cosh'],
+        'single': ['rmse'],
         'sweep': ['mse','L1','rmse','huber','log-cosh','rse']
     }
 }
@@ -272,6 +272,7 @@ SWEEP_PRESETS = {
         "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "single",
+        "loss_function": 'single'
     },
     "data_scaling": {
         # Sweep number of data samples (data scaling experiment)
@@ -299,6 +300,7 @@ SWEEP_PRESETS = {
         "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "single",
+        "loss_function": 'single',
     },
     "lr_sweep": {
         # Sweep learning rate, batch size and weight decay together
@@ -308,6 +310,7 @@ SWEEP_PRESETS = {
         "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "single",
+        "loss_function": 'single',
     },
     "wd_sweep": {
         # Sweep learning rate, batch size and weight decay together
@@ -317,6 +320,7 @@ SWEEP_PRESETS = {
         "num_training_samples": "single",
         "num_epochs": "single",
         "decay": "single",
+        "loss_function": 'single',
     },
     "optimizer_sweep": {
         # Sweep LR, weight decay, and decay schedule
