@@ -56,7 +56,7 @@ for k in range(4):
     for j, lr in enumerate(lrs):
         for i, wd in enumerate(wds):
             path = (
-                f'results/permeability_lr_wd_sweep/{model}_lr-{lr}_wd-{wd}_bs-128_epochs-200_cosine_warmup-3750.0_clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
+                f'results/permeability_lr_wd_sweep_2/{model}_lr-{lr}_wd-{wd}_bs-128_epochs-200_cosine_warmup-3750.0_clipgrad-True_pe-encoder-None_pe-None_rmse_metrics.zarr'
             )
             try:
                 root = zarr.open(path, mode='r')
@@ -97,7 +97,7 @@ for k in range(4):
     ax.set_title(model)
 
 fig.colorbar(im, cax=cax, label=r'Lowest $1-R^2$')
-plt.savefig('thesis_plots/permeability_lr_wd_sweep.pdf', bbox_inches='tight')
+plt.savefig('thesis_plots/permeability_lr_wd_sweep_2.pdf', bbox_inches='tight')
 plt.close(fig)
 
 # Dispersion
