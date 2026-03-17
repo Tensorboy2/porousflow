@@ -32,19 +32,19 @@ Run plans:
 MODEL_PRESETS = {
     "quick_test": [
         # "ConvNeXt-Femto",
-        # "ConvNeXt-Atto",
+        "ConvNeXt-Atto",
         # "ConvNeXt-Small",
         # "ConvNeXt-V2-Small",
         # "ConvNeXt-V2-Base",
         # "SHViT-T",
         # "ViT-T16",
         # "ResNet-101",
-        "Swin-T",
+        # "Swin-T",
     ],
     "smallest": [
         "ConvNeXt-Atto",
-        "ViT-T16",
         "ResNet-18",
+        "ViT-T16",
         # "Swin-T",
     ],
     "biggest": [
@@ -158,7 +158,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [1e-3],
+        "single": [1e-2],
         "sweep": [1e-3, 1e-2, 5e-2, 1e-1, 0.5],
     },
     "num_training_samples": {
@@ -167,11 +167,11 @@ HYPERPARAM_SWEEPS = {
     },
     "num_epochs": {
         "single": [200],
-        "sweep": [50,100,200],    
+        "sweep": [600,1000],    
     },
     "decay": {
         "single": ["cosine"],
-        "sweep": ["cosine", "linear", "exponential", "step"],
+        # "sweep": ["cosine", "linear", "exponential", "step"],
         "common": ["cosine", "linear"],
     },
     'pe_encoder': {
@@ -183,7 +183,7 @@ HYPERPARAM_SWEEPS = {
         'sweep': [4,3,2,1,0],
     },
     "loss_function": {
-        'single': ['rmse'],
+        'single': ['mse'],
         'sweep': ['mse','L1','rmse','huber','log-cosh','rse']
     }
 }

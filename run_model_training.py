@@ -134,7 +134,12 @@ def main(config):
     print(f"Dataset sizes - Train: {len(train_loader.dataset)}, Val: {len(val_loader.dataset)}, Test: {len(test_loader.dataset)}")
     print(f"Warmup Steps: {config.get('warmup_steps', 0)} | Decay: {config.get('decay', 'None')}")
     # Initialize Trainer
-    loss_function = loss_functions[config.get('loss_function','log-cosh')]
+    if task == 'dispersion' and model_type=='vit':
+        loss_function = loss_functions['log-cosh']
+    elif task == 'dispersion' and model_type=='swin':
+        loss_function = loss_functions['rmse']
+    else:
+        loss_function = loss_functions[config.get('loss_function','log-cosh')]
     print(f"Loss function: {config.get('loss_function','log-cosh')}")
     trainer = Trainer(
         model=model,

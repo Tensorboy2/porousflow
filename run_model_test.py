@@ -209,7 +209,7 @@ def run_test(model, test_loader, device, criterion,config=None):
             average_r2 = float(d['R2']) if 'R2' in d.files else None
             R2 = d['R2_components'].tolist() if 'R2_components' in d.files else []
 
-        print(f"Loaded cached test results. Test Loss: {average_loss} | Test R2: {average_r2}")
+        print(f"Loaded cached test results. Test Loss: {average_loss:.5f} | Test R2: {average_r2:.5f}")
     else:
         total_loss = 0.0
         all_preds = []
@@ -218,7 +218,7 @@ def run_test(model, test_loader, device, criterion,config=None):
         has_pe=False
 
         with torch.no_grad():
-            for batch in tqdm(test_loader):
+            for batch in tqdm(test_loader,leave=True):
                 if len(batch) == 2:
                     inputs, targets = batch
                     inputs, targets = inputs.to(device), targets.to(device)

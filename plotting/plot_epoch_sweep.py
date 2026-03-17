@@ -301,109 +301,194 @@ sizes = {
     "Swin": [27504334, 48804958, 86700156, 194930872]
 }
 
+# Mapping from models dict key -> run_model_test.py --model arg
+FAMILY_TO_MODEL_ARG = {
+    'resnet':       'resnet',
+    'vit':          'vit',
+    'swin':         'swin',
+    'convnext':     'convnext',
+    'convnext-v2':  'convnext',
+    'convnext-rms': 'convnext',
+}
+
+# --version arg per family
+FAMILY_TO_VERSION = {
+    'resnet':       'None',
+    'vit':          'None',
+    'swin':         'None',
+    'convnext':     'v1',
+    'convnext-v2':  'v2',
+    'convnext-rms': 'rms',
+}
+
+def build_test_cmd(local_path: str, model_name: str, model_family: str, task: str = 'permeability') -> list[str]:
+    """Build the run_model_test.py command from loop variables."""
+    # Extract size: last hyphen-separated token, e.g. "Large", "18", "B16"
+    size = model_name.split('-')[-1].lower()
+
+    return [
+        "python3", "run_model_test.py",
+        "--pretrained_path", local_path,
+        "--model",           FAMILY_TO_MODEL_ARG[model_family],
+        "--model_name",      model_name,
+        "--size",            size,
+        "--version",         FAMILY_TO_VERSION[model_family],
+        "--task",            task,
+        "--loss_function",   "mse",
+    ]
+
 # Mapping to handle the lowercase keys in 'models'
 family_map = {
     'resnet': 'ResNet', 'swin': 'Swin', 'vit': 'ViT',
     'convnext': 'ConvNeXt', 'convnext-v2': 'ConvNeXt-V2', 'convnext-rms': 'ConvNeXt-RMS'
 }
 family_cmaps = {
-    'resnet': plt.cm.Blues,
-    'swin': plt.cm.Greens,
-    'vit': plt.cm.Purples,
-    'convnext': plt.cm.Reds,
-    'convnext-v2': plt.cm.Oranges,
-    'convnext-rms': plt.cm.Greys
+    'resnet': 'C0',
+    'swin': 'C1',
+    'vit': 'C2',
+    'convnext': 'C3',
+    'convnext-v2': 'C4',
+    'convnext-rms': 'C9'
 }
-
+import json
+CACHE_FILE = "thesis_plots/all_family_data_cache.json"
 family_markers = {
     'resnet': 'o', 'swin': 's', 'vit': '^', 
     'convnext': 'D', 'convnext-v2': 'v', 'convnext-rms': 'p'
 }
 import subprocess
-fig, ax = plt.subplots(figsize=(figsize[0],figsize[1]*0.8))
-length = [1500, 1000, 700, 500, 300, 100]
-# 2. Main Loop
-for model_family, model_list in models.items():
-    size_key = family_map.get(model_family)
-    parameter_counts = sizes.get(size_key, [])
-    
-    cmap = family_cmaps.get(model_family, plt.cm.viridis)
-    marker = family_markers.get(model_family, 'o')
-    
-    n_models = len(model_list)
-    family_data = [] # To store (size, r2) for sorting later
+import os
+import re
+if os.path.exists(CACHE_FILE):
+    print("Loading cached family data...")
+    with open(CACHE_FILE, 'r') as f:
+        all_family_data = json.load(f)
+    # json doesn't preserve tuples, convert lists back
+    all_family_data = {
+        fam: ([(p, v, c, name, t) for p, v, c, name, t in entries], marker)
+        for fam, (entries, marker) in all_family_data.items()
+    }
+else:
+    length = [1500, 1000, 700, 500, 300, 100]
+    all_family_data = {}
 
-    for i, (m, p_size) in enumerate(zip(model_list, parameter_counts)):
-        # Calculate color: move from 0.4 to 0.9 in the cmap so it's not too light
-        color = cmap(0.4 + 0.5 * i / max(n_models - 1, 1))
-        current_best_path = None
-        best_r2_for_model = -np.inf
-        
-        for l in length:
-            warmup = "3750.0" if l == 1500 else "0"
-            path = (f"{folder}{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_"
-                    f"cosine_warmup-{warmup}_clipgrad-True_pe-encoder-None_"
-                    f"pe-None_mse_metrics.zarr")
-            try:
-                root = zarr.open(path, mode='r')
-                val_r2 = root['R2_val'][:]
-                max_in_file = np.max(val_r2)
-                if max_in_file > best_r2_for_model:
-                    best_r2_for_model = max_in_file
-                    current_best_path = path # Update best path
-            except: continue
+    for model_family, model_list in models.items():
+        size_key = family_map.get(model_family)
+        parameter_counts = sizes.get(size_key, [])
+        color  = family_cmaps.get(model_family, 'C0')
+        marker = family_markers.get(model_family, 'o')
+        n_models   = len(model_list)
+        family_data = []
 
-        # Print the winner for this specific model configuration
-        # if current_best_path:
-        #     current_best_path = current_best_path.strip('metrics.zarr')[:-1] + '.pth'
-        #     local = f"res{current_best_path}"
+        for i, (m, p_size) in enumerate(zip(model_list, parameter_counts)):
+            current_best_path = None
+            best_r2_for_model = -np.inf
+            test_r2_for_model = None
 
-        #     servers = [
-        #         ("bigfacet", "bigfacet:/home/users/sigursv/porousflow"),
-        #         ("herbie",   "herbie-jump:/home/sigursv/porousflow"),
-        #     ]
+            for l in length:
+                warmup = "3750.0" if l == 1500 else "0"
+                path = (f"{folder}{m}_lr-0.0005_wd-0.1_bs-128_epochs-{l}_"
+                        f"cosine_warmup-{warmup}_clipgrad-True_pe-encoder-None_"
+                        f"pe-None_mse_metrics.zarr")
+                try:
+                    root = zarr.open(path, mode='r')
+                    val_r2 = root['R2_val'][:]
+                    max_in_file = np.max(val_r2)
+                    if max_in_file > best_r2_for_model:
+                        best_r2_for_model = max_in_file
+                        current_best_path = path
+                except:
+                    continue
 
-        #     for name, base in servers:
-        #         try:
-        #             subprocess.run(["rsync", "-avn", f"{base}/res{current_best_path}", local], check=True)
-        #             break  # success, stop trying
-        #         except subprocess.CalledProcessError:
-        #             print(f"Not found on {name}, trying next...")
-        #     else:
-        #         # runs only if the loop never hit `break`
-        #         print("File does not exist on any familiar cluster.")
+            if current_best_path:
+                current_best_path = current_best_path.strip('metrics.zarr')[:-1] + '.pth'
+                local = f"res{current_best_path}"
+                servers = [
+                    ("bigfacet", "bigfacet:/home/users/sigursv/porousflow"),
+                    ("herbie",   "herbie-jump:/home/sigursv/porousflow"),
+                ]
 
-        if best_r2_for_model != -np.inf:
-            error_val = 1-best_r2_for_model
-            family_data.append((p_size, error_val, color, m))
+                if not os.path.exists(local):
+                    for name, base in servers:
+                        try:
+                            subprocess.run(["rsync", "-av", f"{base}/res{current_best_path}", local], check=True)
+                            print(f"Fetched from {name}")
+                            break
+                        except subprocess.CalledProcessError:
+                            print(f"Not found on {name}, trying next...")
+                    else:
+                        print("File does not exist on any familiar cluster.")
 
-    # 3. Plotting the Family Line
-    if family_data:
-        # Sort by parameter size so the line connects properly
-        family_data.sort(key=lambda x: x[0])
-        xs, ys, colors, names = zip(*family_data)
-        
-        # Plot the connecting line (using the middle color of the family)
-        ax.plot(xs, ys, color=colors[len(colors)//2], alpha=0.3, zorder=1)
-        
-        # Plot individual model points with their specific cmap shade
-        for x, y, c, name in family_data:
-            ax.scatter(x, y, color=colors[2], marker=marker, s=60, 
-                       edgecolors='white', linewidths=0.5, zorder=2, label=name)
+                if os.path.exists(local):
+                    cmd = build_test_cmd(local, m, model_family)
+                    print("Running:", " ".join(cmd))
+                    result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+                    match = re.search(r"Test R2:\s*([\d.]+)", result.stdout)
+                    if match:
+                        test_r2_for_model = float(match.group(1))
+                        print(f"Test R2:       {test_r2_for_model:.5f}")
+                    print(f"Validation R2: {best_r2_for_model:.5f}")
 
-# 4. Formatting
-ax.set_xscale('log')
-ax.set_yscale('log')
-ax.set_xlabel('Total Parameters')
-ax.set_ylabel(r'Best validation $1 - R^2$')
-ax.grid(True, which="both", ls="-", alpha=0.15)
+            if best_r2_for_model != -np.inf:
+                test_error_val = (float(1 - test_r2_for_model)) if test_r2_for_model is not None else None
+                family_data.append((
+                    int(p_size),
+                    float(1 - best_r2_for_model),
+                    color,
+                    m,
+                    test_error_val
+                ))
 
-# Optional: Custom legend to show families rather than every single model
-legend_elements = [Line2D([0], [0], marker=family_markers[f], color=family_cmaps[f](0.6), 
-                          label=family_map[f], markersize=8, linestyle='-') 
-                   for f in models.keys()]
-ax.legend(handles=legend_elements, title="Architectures", loc='upper center', fontsize=8)
+        all_family_data[model_family] = (family_data, marker)
 
-plt.tight_layout()
-plt.savefig('thesis_plots/scaling_laws_r2_vs_params.pdf')
-        
+    os.makedirs("thesis_plots", exist_ok=True)
+    with open(CACHE_FILE, 'w') as f:
+        json.dump(all_family_data, f, indent=2)
+    print(f"Saved family data to {CACHE_FILE}")
+
+
+def make_scaling_plot(all_family_data, path: str):
+    fig, axes = plt.subplots(2, 1, figsize=(figsize[0], figsize[1]*1.45),
+                             sharex=True, sharey=True)
+
+    for ax, use_test in zip(axes, [False, True]):
+        for model_family, (family_data, marker) in all_family_data.items():
+            color = family_cmaps.get(model_family, 'C0')
+
+            if use_test:
+                plot_data = [(x, te, name) for x, ve, c, name, te in family_data if te is not None]
+            else:
+                plot_data = [(x, ve, name) for x, ve, c, name, te in family_data]
+
+            if not plot_data:
+                continue
+
+            plot_data.sort(key=lambda x: x[0])
+            xs, ys, names = zip(*plot_data)
+
+            ax.plot(xs, ys, color=color, alpha=0.3, zorder=1)
+            for x, y, name in plot_data:
+                ax.plot(x, y, color=color, linestyle='', marker=marker,
+                        markersize=7, fillstyle='none', zorder=2)
+
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_ylabel(r'Test $1 - R^2$' if use_test else r'Validation $1 - R^2$')
+        ax.grid(True, which="both", ls="-", alpha=0.15)
+
+    axes[1].set_xlabel('Total Parameters')
+
+    legend_elements = [
+        Line2D([0], [0], marker=family_markers[f], color=family_cmaps[f],
+               label=family_map[f], markersize=8, fillstyle='none', linestyle='-')
+        for f in models.keys()
+    ]
+    axes[0].legend(handles=legend_elements, title="Architectures",
+                   loc='best', fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig(path)
+    plt.close()
+    print(f"Saved {path}")
+
+make_scaling_plot(all_family_data, 'thesis_plots/scaling_laws_r2_vs_params.pdf')
