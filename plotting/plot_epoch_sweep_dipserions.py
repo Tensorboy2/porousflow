@@ -75,7 +75,7 @@ for i, m in enumerate(models):
             path = (
                 f'results/dispersion_epoch_sweep/{m}_lr-0.005_wd-0.01_bs-128_epochs-{l}_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr'
             )
-        
+        print(path)
         try:
             root = zarr.open(path, mode='r')
             val_r2 = root['R2_val'][:]
@@ -86,8 +86,6 @@ for i, m in enumerate(models):
             print(f"Skipping {path}: {e}")
             continue
 
-        # axs.plot(1 - train_r2, color=length_colors[l], linestyle=split_styles['train'], alpha=0.3)
-        # axs.plot(1 - val_r2, color=length_colors[l], linestyle=split_styles['val'], alpha=1.,linewidth=1.)
     axs.plot(xs, ys, color=color, linewidth=0.9, alpha=0.5)
     axs.plot(xs, ys, color=color, linestyle='',#fillstyle='none', 
              marker=marker, markersize=8)

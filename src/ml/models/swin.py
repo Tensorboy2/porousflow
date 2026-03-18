@@ -657,7 +657,10 @@ def load_swin_model(config_or_size='T', in_channels=1, task='permeability',
         
         # If the checkpoint is a full training state, extract just the model weights
         state_dict = checkpoint.get('state_dict', checkpoint) 
-
+        # --- FIX: strip torch.compile prefix if present ---
+        if any(k.startswith('_orig_mod.') for k in state_dict.keys()):
+            print("Stripping '_orig_mod.' prefix from checkpoint (compiled model detected)")
+            state_dict = {k.replace('_orig_mod.', ''): v for k, v in state_dict.items()}
         # Check for dimension mismatch in the head and load accordingly
         if 'head.1.weight' in state_dict:
             ckpt_out_features = state_dict['head.1.weight'].shape[0]
