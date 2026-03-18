@@ -32,12 +32,12 @@ Run plans:
 MODEL_PRESETS = {
     "quick_test": [
         # "ConvNeXt-Femto",
-        "ConvNeXt-Atto",
+        # "ConvNeXt-Atto",
         # "ConvNeXt-Small",
         # "ConvNeXt-V2-Small",
         # "ConvNeXt-V2-Base",
         # "SHViT-T",
-        # "ViT-T16",
+        "ViT-T16",
         # "ResNet-101",
         # "Swin-T",
     ],
@@ -183,7 +183,7 @@ HYPERPARAM_SWEEPS = {
         'sweep': [4,3,2,1,0],
     },
     "loss_function": {
-        'single': ['mse'],
+        'single': ['log-cosh'],
         'sweep': ['mse','L1','rmse','huber','log-cosh','rse']
     }
 }

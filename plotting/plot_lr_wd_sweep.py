@@ -56,7 +56,7 @@ for k in range(4):
     for j, lr in enumerate(lrs):
         for i, wd in enumerate(wds):
             path = (
-                f'results/permeability_lr_wd_sweep_2/{model}_lr-{lr}_wd-{wd}_bs-128_epochs-200_cosine_warmup-3750.0_clipgrad-True_pe-encoder-None_pe-None_rmse_metrics.zarr'
+                f'results/permeability_lr_wd_sweep/{model}_lr-{lr}_wd-{wd}_bs-128_epochs-200_cosine_warmup-3750.0_clipgrad-True_pe-encoder-None_pe-None_mse_metrics.zarr'
             )
             try:
                 root = zarr.open(path, mode='r')
@@ -65,22 +65,23 @@ for k in range(4):
             except Exception as e:
                 print(f"Skipping {path}: {e}")
     grids.append(grid)
-
+import matplotlib.colors as mcolors
 vmin = np.nanmin([g.min() for g in grids])
 vmax = np.nanmax([g.max() for g in grids])
-
+norm = mcolors.LogNorm(vmin=vmin, vmax=vmax)
 # Second pass: plot
 for k in range(4):
     model = models[k]
     grid = grids[k]
     ax = axs[k]
     row, col = divmod(k, 2)
-    im = ax.imshow(grid, aspect='auto', cmap='viridis', vmin=vmin, vmax=vmax)
+    im = ax.imshow(grid, aspect='auto', cmap='viridis', norm=norm)
+    # im = ax.imshow(grid, aspect='auto', cmap='viridis', vmin=vmin, vmax=vmax)
     for j in range(len(lrs)):
         for i in range(len(wds)):
             if not np.isnan(grid[j, i]):
                 ax.text(i, j, f'{grid[j, i]:.4f}', ha='center', va='center',
-                        fontsize=7, color='white' if grid[j, i] < (vmin + vmax) / 2 else 'black')
+                        fontsize=7, color='white' if grid[j, i] < ((vmin + vmax) / 24) else 'black')
     ax.set_xticks(range(len(wds)))
     ax.set_yticks(range(len(lrs)))
     ax.set_yticklabels([f'{lr:.0e}' for lr in lrs], fontsize=7)
@@ -97,7 +98,7 @@ for k in range(4):
     ax.set_title(model)
 
 fig.colorbar(im, cax=cax, label=r'Lowest $1-R^2$')
-plt.savefig('thesis_plots/permeability_lr_wd_sweep_2.pdf', bbox_inches='tight')
+plt.savefig('thesis_plots/permeability_lr_wd_sweep.pdf', bbox_inches='tight')
 plt.close(fig)
 
 # Dispersion
@@ -138,22 +139,26 @@ for k in range(4):
             except Exception as e:
                 print(f"Skipping {path}: {e}")
     grids.append(grid)
-
+import matplotlib.colors as mcolors
 vmin = np.nanmin([g.min() for g in grids])
 vmax = np.nanmax([g.max() for g in grids])
-
+norm = mcolors.LogNorm(vmin=vmin, vmax=vmax)
 # Second pass: plot
 for k in range(4):
     model = models[k]
     grid = grids[k]
     ax = axs[k]
     row, col = divmod(k, 2)
-    im = ax.imshow(grid, aspect='auto', cmap='viridis', vmin=vmin, vmax=vmax)
+    # im = ax.imshow(grid, aspect='auto', cmap='viridis', vmin=vmin,vmax=vmax)
+    im = ax.imshow(grid, aspect='auto', cmap='viridis', norm=norm)
     for j in range(len(lrs)):
         for i in range(len(wds)):
             if not np.isnan(grid[j, i]):
                 ax.text(i, j, f'{grid[j, i]:.4f}', ha='center', va='center',
-                        fontsize=7, color='white' if grid[j, i] < (vmin + vmax) / 2 else 'black')
+                        fontsize=7, color='white' if grid[j, i] < (vmin + vmax) / 4 else 'black')
+            else:
+                ax.text(i, j, 'NaN', ha='center', va='center',
+                        fontsize=7, color= 'black')
     ax.set_xticks(range(len(wds)))
     ax.set_yticks(range(len(lrs)))
     ax.set_yticklabels([f'{lr:.0e}' for lr in lrs], fontsize=7)
@@ -169,6 +174,10 @@ for k in range(4):
         ax.set_xticklabels([])
     ax.set_title(model)
 
-fig.colorbar(im, cax=cax, label=r'Lowest $1-R^2$')
+cbar = fig.colorbar(im, cax=cax, label=r'Lowest $1-R^2$')
+cbar = fig.colorbar(im, cax=cax, label=r'Lowest $1-R^2$')
+cbar.set_ticks([0.2, 0.1,0.05])
+cbar.set_ticklabels(['0.2', '0.1', '0.05'])
+# cbar.set_ticks([0.3,0.2,0.1])
 plt.savefig('thesis_plots/dispersion_lr_wd_sweep.pdf', bbox_inches='tight')
 plt.close(fig)
