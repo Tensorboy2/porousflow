@@ -189,16 +189,12 @@ def similarity_plot_dispersion(targets, preds, path, R2, pe):
     plt.close(fig)
 
 
-def run_test(model, test_loader, device, criterion,config=None):
+def run_test(model, test_loader, device, criterion, config=None):
     model.eval()
-
-    # Use a cache for the full test predictions to avoid rerunning the model.
-    # model_name = get_model_name(model)
-    model_name = config['model']['name']#get_model_name(model)
+    model_name = config['model']['name']
     task = config['task']
     cache_path = preds_cache_path(model_name, task, 'test')
 
-    # If cache exists, load and skip model evaluation
     if os.path.exists(cache_path):
         print(f"Loading test predictions from cache: {cache_path}")
         with np.load(cache_path, allow_pickle=True) as d:
@@ -208,58 +204,70 @@ def run_test(model, test_loader, device, criterion,config=None):
             average_loss = float(d['test_loss']) if 'test_loss' in d.files else None
             average_r2 = float(d['R2']) if 'R2' in d.files else None
             R2 = d['R2_components'].tolist() if 'R2_components' in d.files else []
-
         print(f"Loaded cached test results. Test Loss: {average_loss:.5f} | Test R2: {average_r2:.5f}")
     else:
         total_loss = 0.0
-        all_preds = []
-        all_targets = []
-        all_pe = []
-        has_pe=False
+        all_preds, all_targets, all_pe = [], [], []
+        has_pe = False
 
         with torch.no_grad():
-            for batch in tqdm(test_loader,leave=True):
+            for batch in tqdm(test_loader, leave=True):
                 if len(batch) == 2:
                     inputs, targets = batch
                     inputs, targets = inputs.to(device), targets.to(device)
                     outputs = model(inputs)
                 else:
                     inputs, targets, pe = batch
-                    inputs = inputs.to(device)
-                    targets = targets.to(device)
-                    pe = pe.to(device)
+                    inputs, targets, pe = inputs.to(device), targets.to(device), pe.to(device)
                     outputs = model(inputs, pe)
                     outputs = torch.sinh(outputs)
-                    all_pe.append(pe.cpu().numpy())   # <- collect pe
+                    all_pe.append(pe.cpu().numpy())
                     has_pe = True
-
                 loss = criterion(outputs, targets)
                 total_loss += loss.item() * inputs.size(0)
-
                 all_preds.append(outputs.cpu().numpy())
                 all_targets.append(targets.cpu().numpy())
 
-
-        all_preds = np.concatenate(all_preds, axis=0)
+        all_preds   = np.concatenate(all_preds,   axis=0)
         all_targets = np.concatenate(all_targets, axis=0)
-        all_pe = np.concatenate(all_pe, axis=0) if has_pe else None
-
+        all_pe      = np.concatenate(all_pe, axis=0) if has_pe else None
         average_loss = total_loss / len(test_loader.dataset)
-        average_r2 = r2_score(all_targets, all_preds)
-
+        average_r2   = r2_score(all_targets, all_preds)
         print(f"Test Loss: {average_loss:.5f} | Test R2: {average_r2:.5f}")
 
-        # individual R2 per component of the (4) targets:
+        # --- Per-component R² ---
         R2 = []
+        n_components = all_targets.shape[1]
         print(all_targets.shape, all_preds.shape)
-        for i in range(all_targets.shape[1]):
+        for i in range(n_components):
             r2_i = r2_score(all_targets[:, i], all_preds[:, i])
-            print(f"  Component {i} R2: {r2_i:.5f}")
+            print(f"  Component {i} R²: {r2_i:.5f}")
             R2.append(r2_i)
+
+        # --- Per-Pe R² (overall and per component) ---
+        if all_pe is not None:
+            # all_pe may be shape (N,) or (N,1) — flatten to 1D
+            pe_vals = all_pe.squeeze() if all_pe.ndim > 1 else all_pe
+            unique_pes = np.unique(pe_vals)
+            print(f"\nPer-Pe R² ({len(unique_pes)} unique Pe values):")
+            for pe_val in unique_pes:
+                mask = pe_vals == pe_val
+                r2_pe = r2_score(all_targets[mask], all_preds[mask])
+                comp_strs = "  |  ".join(
+                    f"C{i}: {r2_score(all_targets[mask, i], all_preds[mask, i]):.4f}"
+                    for i in range(n_components)
+                )
+                print(f"  Pe={pe_val:>8.2f}  overall={r2_pe:.5f}  [{comp_strs}]")
 
         # Save cache
         try:
-            np.savez_compressed(cache_path, preds=all_preds, targets=all_targets, pe=all_pe if all_pe is not None else np.array([]), test_loss=average_loss, R2=average_r2, R2_components=np.array(R2))
+            np.savez_compressed(
+                cache_path,
+                preds=all_preds, targets=all_targets,
+                pe=all_pe if all_pe is not None else np.array([]),
+                test_loss=average_loss, R2=average_r2,
+                R2_components=np.array(R2),
+            )
             print(f"Saved test predictions cache: {cache_path}")
         except Exception as e:
             print(f"Warning: failed to save test cache {cache_path}: {e}")
