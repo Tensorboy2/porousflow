@@ -3,6 +3,8 @@ import numpy as np
 import zarr
 from matplotlib.lines import Line2D
 from ploting import figsize
+import matplotlib as mpl
+mpl.rcParams['axes.formatter.use_mathtext'] = True
 
 folder = 'results/epoch_sweep_all_models/'
 models = {
@@ -16,7 +18,14 @@ models = {
     'convnext-rms': ['ConvNeXt-RMS-Atto', 'ConvNeXt-RMS-Femto', 'ConvNeXt-RMS-Pico', 'ConvNeXt-RMS-Nano', 
                  'ConvNeXt-RMS-Tiny', 'ConvNeXt-RMS-Small', 'ConvNeXt-RMS-Base', 'ConvNeXt-RMS-Large'],
 }
-
+sizes = {
+    "ConvNeXt-V2": [3388604, 4849684, 8555204, 14985844, 27871588, 49561444, 87708804, 196443844],
+    "ConvNeXt-RMS": [3371724, 4829428, 8528196, 14946324, 27811204, 49438852, 87545348, 196198660],
+    "ConvNeXt": [3373884, 4832020, 8531652, 14951284, 27818596, 49453156, 87564420, 196227268],
+    "ResNet": [11172292, 21280452, 23509956, 42502084, 58145732],
+    "ViT": [5401156, 21419140, 85305604, 302644228],
+    "Swin": [27504334, 48804958, 86700156, 194930872]
+}
 
 split_styles = {
     'train': '--',
@@ -72,9 +81,14 @@ for i, m in enumerate(models):
                     f'results/dispersion_lr_wd_sweep/{m}_lr-0.005_wd-0.05_bs-128_epochs-200_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr'
                 )
         else: 
-            path = (
-                f'results/dispersion_epoch_sweep/{m}_lr-0.005_wd-0.01_bs-128_epochs-{l}_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr'
-            )
+            if m=='Swin-T':
+                path = (
+                    f'results/dispersion_epoch_sweep/{m}_lr-0.0001_wd-0.05_bs-128_epochs-{l}_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
+                )
+            else:
+                path = (
+                    f'results/dispersion_epoch_sweep/{m}_lr-0.005_wd-0.01_bs-128_epochs-{l}_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr'
+                )
         print(path)
         try:
             root = zarr.open(path, mode='r')
