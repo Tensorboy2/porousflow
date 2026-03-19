@@ -186,7 +186,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [20, 50, 100, 100, 10000, None],
     },
     "num_epochs": {
-        "single": [200],
+        "single": [600],
         "sweep": [600,1000],    
     },
     "decay": {
@@ -199,11 +199,11 @@ HYPERPARAM_SWEEPS = {
         'sweep': ['straight', 'log'],#, 'vector'],
     },
     'Pe': {
-        'single': [0],
+        'single': [4],
         'sweep': [4,3,2,1,0],
     },
     "loss_function": {
-        'single': ['log-cosh'],
+        'single': ['mse'],
         'sweep': ['mse','L1','rmse','huber','log-cosh','rse']
     }
 }
@@ -220,6 +220,7 @@ SWEEP_PRESETS = {
         "decay": "single",
         'pe_encoder': 'single',
         'Pe': 'single',
+        'loss_function': 'single'
     },
     "pe_encoder_sweep": {
         # Sweep only learning rate
