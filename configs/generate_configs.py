@@ -32,6 +32,7 @@ Run plans:
 MODEL_PRESETS = {
     "quick_test": [
         "ConvNeXt-Large",
+        "ConvNeXt-Base",
         # "ConvNeXt-Femto",
         # "ConvNeXt-Atto",
         # "ConvNeXt-Small",
@@ -187,7 +188,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [20, 50, 100, 100, 10000, None],
     },
     "num_epochs": {
-        "single": [3],
+        "single": [600],
         "sweep": [600,1000],    
     },
     "decay": {
