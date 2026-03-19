@@ -98,7 +98,7 @@ MODEL_PRESETS = {
         "ConvNeXt-Large",
     ],
     "convnext_first": [
-        "ConvNeXt-Atto",
+        # "ConvNeXt-Atto",
         # "ConvNeXt-Femto",
         "ConvNeXt-Pico",
         "ConvNeXt-Nano",
