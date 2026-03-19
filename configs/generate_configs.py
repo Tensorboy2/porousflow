@@ -31,13 +31,14 @@ Run plans:
 # Model presets for different experiment scales
 MODEL_PRESETS = {
     "quick_test": [
+        "ConvNeXt-Large",
         # "ConvNeXt-Femto",
         # "ConvNeXt-Atto",
         # "ConvNeXt-Small",
         # "ConvNeXt-V2-Small",
         # "ConvNeXt-V2-Base",
         # "SHViT-T",
-        "ViT-T16",
+        # "ViT-T16",
         # "ResNet-101",
         # "Swin-T",
     ],
@@ -186,7 +187,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [20, 50, 100, 100, 10000, None],
     },
     "num_epochs": {
-        "single": [600],
+        "single": [3],
         "sweep": [600,1000],    
     },
     "decay": {
