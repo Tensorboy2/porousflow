@@ -141,7 +141,7 @@ MODEL_PRESETS = {
         "ConvNeXt-RMS-Large",
     ],
     "full_resnet": [
-        "ResNet-18",
+        # "ResNet-18",
         "ResNet-34",
         "ResNet-50",
         "ResNet-101",
@@ -173,7 +173,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 # Each list defines the values to sweep over for that hyperparameter
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
-        "single": [5e-4],  # Default single value
+        "single": [5e-3],  # Default single value
         "sweep": [5e-5,1e-4, 5e-4, 1e-3, 5e-3],
     },
     "batch_size": {
@@ -181,7 +181,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [5e-2],
+        "single": [1e-2],
         "sweep": [1e-3, 1e-2, 5e-2, 1e-1, 0.5],
     },
     "num_training_samples": {
