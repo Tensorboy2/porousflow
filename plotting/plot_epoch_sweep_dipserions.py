@@ -85,11 +85,15 @@ for i, m in enumerate(models):
                 path = (
                     f'results/dispersion_epoch_sweep/{m}_lr-0.0001_wd-0.05_bs-128_epochs-{l}_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
                 )
+            # elif m=='ViT-T16':
+            #     path = (
+            #         f'results/dispersion_epoch_sweep/{m}_lr-0.005_wd-0.01_bs-128_epochs-{l}_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_log-cosh_metrics.zarr'
+            #     )
             else:
                 path = (
                     f'results/dispersion_epoch_sweep/{m}_lr-0.005_wd-0.01_bs-128_epochs-{l}_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr'
                 )
-        print(path)
+        # print(path)
         try:
             root = zarr.open(path, mode='r')
             val_r2 = root['R2_val'][:]
@@ -135,3 +139,78 @@ axs.legend(
     )
 plt.tight_layout()
 plt.savefig('thesis_plots/dispersion_epoch_sweep.pdf')
+
+lfs = ['mse','log-cosh']
+colors = ['C2', 'C3']
+
+fig,axs = plt.subplots(1,1,figsize=(figsize[0],figsize[1]*0.7))
+legend_model_handles = []
+m='ViT-T16'
+for i, lf in enumerate(lfs):
+    xs, ys = [], []
+    color = colors[i]
+    marker = markers[i]
+    for l in length:
+        if l ==200:
+            if lf=='log-cosh':
+                path = (
+                    f'results/dispersion_lr_wd_sweep_2/{m}_lr-0.005_wd-0.01_bs-128_epochs-200_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_log-cosh_metrics.zarr'
+                )
+            else:
+                path = (
+                    f'results/dispersion_lr_wd_sweep/{m}_lr-0.005_wd-0.01_bs-128_epochs-200_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr'
+                )
+        else:
+            if lf=='mse':
+                path = (
+                    f'results/dispersion_epoch_sweep/{m}_lr-0.005_wd-0.01_bs-128_epochs-{l}_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr'
+                )
+            else:
+                path = (
+                    f'results/dispersion_epoch_sweep/{m}_lr-0.005_wd-0.01_bs-128_epochs-{l}_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_log-cosh_metrics.zarr'
+                )
+        try:
+            root = zarr.open(path, mode='r')
+            val_r2 = root['R2_val'][:]
+            best = 1 - np.max(val_r2)
+            xs.append(l)
+            ys.append(best)
+        except Exception as e:
+            print(f"Skipping {path}: {e}")
+            continue
+    axs.plot(xs, ys, color=color, linewidth=0.9, alpha=0.5)
+    axs.plot(xs, ys, color=color, linestyle='',#fillstyle='none', 
+             marker=marker, markersize=8)
+    legend_model_handles.append(
+                Line2D([0], [0],
+                    color=color,
+                    marker=marker,
+                    linestyle='-',
+                    linewidth=1.2,
+                    markersize=5,
+                    label=lf)
+            )
+axs.set_yscale('log')
+# axs.set_xscale('log')
+axs.set_xlabel('Epoch')
+axs.set_ylabel(r'Lowest $1-R^2$')
+axs.set_xticks(length)
+axs.grid(alpha=0.3)
+axs.grid(which='minor', alpha=0.15)
+axs.minorticks_on()
+
+axs.legend(
+        handles=legend_model_handles,
+        title='ViT-T16 with:',
+        # loc='upper right',   # fixed position = consistent layout
+        frameon=True,
+        framealpha=0.3,
+        edgecolor='#cccccc',
+        fontsize=7,
+        labelspacing=0.3,
+        handlelength=1.5,
+        handletextpad=0.4,
+    )
+plt.tight_layout()
+plt.tight_layout()
+plt.savefig('thesis_plots/dispersion_epoch_sweep_vit.pdf')
