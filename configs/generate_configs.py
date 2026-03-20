@@ -35,12 +35,12 @@ MODEL_PRESETS = {
         # "ConvNeXt-Base",
         # "ConvNeXt-Femto",
         # "ConvNeXt-Atto",
-        "ConvNeXt-Tiny",
-        "ConvNeXt-Small",
+        # "ConvNeXt-Tiny",
+        # "ConvNeXt-Small",
         # "ConvNeXt-V2-Small",
         # "ConvNeXt-V2-Base",
         # "SHViT-T",
-        # "ViT-T16",
+        "ViT-T16",
         # "ResNet-101",
         # "Swin-T",
     ],
@@ -79,7 +79,7 @@ MODEL_PRESETS = {
         # "ViT-B16",
     ],
     "full_vit": [
-        "ViT-T16",
+        # "ViT-T16",
         "ViT-S16",
         "ViT-B16",
         "ViT-L16",
@@ -173,7 +173,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 # Each list defines the values to sweep over for that hyperparameter
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
-        "single": [1e-3],  # Default single value
+        "single": [5e-4],  # Default single value
         "sweep": [5e-5,1e-4, 5e-4, 1e-3, 5e-3],
     },
     "batch_size": {
@@ -181,7 +181,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [5e-3],
+        "single": [5e-2],
         "sweep": [1e-3, 1e-2, 5e-2, 1e-1, 0.5],
     },
     "num_training_samples": {
@@ -189,7 +189,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [20, 50, 100, 100, 10000, None],
     },
     "num_epochs": {
-        "single": [600],
+        "single": [1000],
         "sweep": [600,1000],    
     },
     "decay": {
