@@ -7,7 +7,7 @@ import matplotlib as mpl
 mpl.rcParams['axes.formatter.use_mathtext'] = True
 
 folder = 'results/epoch_sweep_all_models/'
-models = {
+model_families = {
     'resnet': ['ResNet-18', 'ResNet-34', 'ResNet-50', 'ResNet-101', 'ResNet-152'],
     'swin': ['Swin-T', 'Swin-S', 'Swin-B', 'Swin-L'],
     'vit': ['ViT-T16', 'ViT-S16', 'ViT-B16', 'ViT-L16'],
@@ -19,12 +19,12 @@ models = {
                  'ConvNeXt-RMS-Tiny', 'ConvNeXt-RMS-Small', 'ConvNeXt-RMS-Base', 'ConvNeXt-RMS-Large'],
 }
 sizes = {
-    "ConvNeXt-V2": [3388604, 4849684, 8555204, 14985844, 27871588, 49561444, 87708804, 196443844],
-    "ConvNeXt-RMS": [3371724, 4829428, 8528196, 14946324, 27811204, 49438852, 87545348, 196198660],
-    "ConvNeXt": [3373884, 4832020, 8531652, 14951284, 27818596, 49453156, 87564420, 196227268],
-    "ResNet": [11172292, 21280452, 23509956, 42502084, 58145732],
-    "ViT": [5401156, 21419140, 85305604, 302644228],
-    "Swin": [27504334, 48804958, 86700156, 194930872]
+    "convnext-v2": [3388604, 4849684, 8555204, 14985844, 27871588, 49561444, 87708804, 196443844],
+    "convnext-rms": [3371724, 4829428, 8528196, 14946324, 27811204, 49438852, 87545348, 196198660],
+    "convnext": [3373884, 4832020, 8531652, 14951284, 27818596, 49453156, 87564420, 196227268],
+    "resnet": [11172292, 21280452, 23509956, 42502084, 58145732],
+    "vit": [5401156, 21419140, 85305604, 302644228],
+    "swin": [27504334, 48804958, 86700156, 194930872]
 }
 
 split_styles = {
@@ -214,3 +214,125 @@ axs.legend(
 plt.tight_layout()
 plt.tight_layout()
 plt.savefig('thesis_plots/dispersion_epoch_sweep_vit.pdf')
+
+
+import re
+
+def parse_zarr_filename(path):
+    name = Path(path).name  # e.g. ConvNeXt-Atto_lr-0.005_wd-0.01_..._mse_metrics.zarr
+    # Strip suffix
+    stem = name.replace('_metrics.zarr', '')
+    
+    # Extract known hyperparams
+    patterns = {
+        'lr':     r'_lr-([\d.eE+-]+)',
+        'wd':     r'_wd-([\d.eE+-]+)',
+        'bs':     r'_bs-(\d+)',
+        'epochs': r'_epochs-(\d+)',
+        'loss':   r'_(mse|log-cosh|rmse|huber)$',
+    }
+    
+    result = {}
+    for key, pat in patterns.items():
+        m = re.search(pat, stem)
+        result[key] = m.group(1) if m else None
+    
+    # Model name is everything before the first _lr-
+    result['model'] = re.split(r'_lr-', stem)[0]
+    
+    return result
+
+from pathlib import Path
+folder = 'results/dispersion_all_models'
+family_cmaps = {
+    'resnet': 'C0',
+    'swin': 'C1',
+    'vit': 'C2',
+    'convnext': 'C3',
+    'convnext-v2': 'C4',
+    'convnext-rms': 'C9'
+}
+family_markers = {
+    'resnet': 'o',
+    'swin': 's',
+    'vit': 'D',
+    'convnext': '^',
+    'convnext-v2': 'v',
+    'convnext-rms': 'P',
+}
+family_map = {
+    'resnet': 'ResNet', 'swin': 'Swin', 'vit': 'ViT',
+    'convnext': 'ConvNeXt', 'convnext-v2': 'ConvNeXt-V2', 'convnext-rms': 'ConvNeXt-RMS'
+}
+# model_families = dict(models)
+legend_model_handles = []
+
+model_to_family = {m: fam for fam, mlist in model_families.items() for m in mlist}
+fig, ax = plt.subplots(2, 1, figsize=(figsize[0], figsize[1]*1.45))
+legend_model_handles = []
+
+for family, models_list in model_families.items():
+    color  = family_cmaps[family]
+    marker = family_markers[family]
+
+    for idx, model in enumerate(models_list):
+        param_count = sizes[family][idx]
+
+        # Try each loss function variant
+        for loss in ['mse', 'log-cosh', 'rmse', 'huber']:
+            # Construct glob or a known path pattern
+            candidates = list(Path(folder).glob(
+                f'{model}_*_{loss}_metrics.zarr'
+            ))
+            if not candidates:
+                continue
+            # Take the best (or just first) match
+            path = candidates[0]
+            try:
+                root = zarr.open(path, mode='r')
+                val_r2 = root['R2_val'][:]
+                best = 1 - np.max(val_r2)
+            except Exception as e:
+                print(f"Skipping {path}: {e}")
+                continue
+
+            ax[0].plot(param_count, best, linestyle='', marker=marker,
+                       markersize=6, color=color)
+            break  # use first loss that exists
+ax[0].set_yscale('log')
+ax[0].set_xscale('log')
+
+for key, item in model_families.items():
+    if key =='convnext-v2' or key=='convnext-rms':
+        continue
+    # print(key)
+    color = family_cmaps[key]
+    marker = family_markers[key]
+    name = family_map[key]
+    legend_model_handles.append(
+                Line2D([0], [0],
+                    color=color,
+                    marker=marker,
+                    linestyle='-',
+                    linewidth=1.2,
+                    markersize=5,
+                    label=name)
+            )
+# # Test:
+
+#     # ax[0].legend()
+ax[0].grid(True, which="both", ls="-", alpha=0.15)
+ax[0].legend(
+        handles=legend_model_handles,
+        title='Architecture:',
+        # loc='upper right',   # fixed position = consistent layout
+        frameon=True,
+        framealpha=0.3,
+        edgecolor='#cccccc',
+        fontsize=7,
+        labelspacing=0.3,
+        handlelength=1.5,
+        handletextpad=0.4,
+    )
+plt.tight_layout()
+plt.savefig('thesis_plots/scaling_laws_r2_vs_params_dispersion.pdf')

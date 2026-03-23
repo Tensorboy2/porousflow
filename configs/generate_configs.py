@@ -173,7 +173,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 # Each list defines the values to sweep over for that hyperparameter
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
-        "single": [1e-4],  # Default single value
+        "single": [5e-4],  # Default single value
         "sweep": [5e-5,1e-4, 5e-4, 1e-3, 5e-3],
     },
     "batch_size": {
