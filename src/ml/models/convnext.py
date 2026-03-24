@@ -214,10 +214,10 @@ class ConditionEncoder(nn.Module):
     
     def _mlp(self, inp, out):
         return nn.Sequential(
-            nn.Linear(inp, out // 2),
+            nn.Linear(inp, out),
             nn.GELU(),
-            nn.LayerNorm(out // 2),
-            nn.Linear(out // 2, out)
+            nn.LayerNorm(out),
+            nn.Linear(out, out)
         )
     
     def pe_to_vector(self, Pe):
@@ -327,7 +327,7 @@ class ConvNeXt(nn.Module):
         self.cond_encoder = ConditionEncoder(
             pe_mode=pe_encoder,
             include_direction=include_direction,
-            out_dim=feat_dim
+            out_dim=16
         )
         
         # Token mixer
@@ -339,9 +339,9 @@ class ConvNeXt(nn.Module):
         # Conditioning vector dimension (depends on enabled PE and direction)
         cond_dim = 0
         if pe_encoder is not None:
-            cond_dim += feat_dim
+            cond_dim += 16
         if include_direction:
-            cond_dim += feat_dim
+            cond_dim += 16
 
         # If using transformer (additive fusion) but condition vector doesn't
         # match the pooled feature size, create a small projection to align
@@ -354,9 +354,9 @@ class ConvNeXt(nn.Module):
         fusion_dim = feat_dim
         if not use_transformer:
             if pe_encoder is not None:
-                fusion_dim += feat_dim
+                fusion_dim += 16
             if include_direction:
-                fusion_dim += feat_dim
+                fusion_dim += 16
         
         # Head
         self.head = nn.Sequential(

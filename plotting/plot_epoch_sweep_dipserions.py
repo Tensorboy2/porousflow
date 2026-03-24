@@ -379,7 +379,7 @@ else:
                         if match:
                             test_r2_for_model = float(match.group(1))
                             print(f"Test R2:       {test_r2_for_model:.5f}")
-                        print(f"Validation R2: {best:.5f}")
+                        print(f"Validation R2: {1-best:.5f}")
                 if best != -np.inf:
                     test_error_val = (float(1 - test_r2_for_model)) if test_r2_for_model is not None else None
                     family_data.append((
