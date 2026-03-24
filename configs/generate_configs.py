@@ -80,7 +80,7 @@ MODEL_PRESETS = {
     ],
     "full_vit": [
         # "ViT-T16",
-        "ViT-S16",
+        # "ViT-S16",
         "ViT-B16",
         "ViT-L16",
     ],

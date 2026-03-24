@@ -297,6 +297,7 @@ def build_test_cmd(local_path: str, model_name: str, model_family: str, task: st
         "--size",            size,
         "--version",         FAMILY_TO_VERSION[model_family],
         "--task",            task,
+        "--pe_encoder",      "log",
         "--loss_function",   "mse",
     ]
 model_to_family = {m: fam for fam, mlist in model_families.items() for m in mlist}
@@ -305,100 +306,180 @@ legend_model_handles = []
 import os
 import subprocess
 import re
-for family, models_list in model_families.items():
-    color  = family_cmaps[family]
-    marker = family_markers[family]
+import json
+CACHE_FILE = "thesis_plots/all_family_data_dispersion_cache.json"
+if os.path.exists(CACHE_FILE):
+    print("Loading cached family data...")
+    with open(CACHE_FILE, 'r') as f:
+        all_family_data = json.load(f)
+    # json doesn't preserve tuples, convert lists back
+    all_family_data = {
+        fam: ([(p, v, c, name, t) for p, v, c, name, t in entries], marker)
+        for fam, (entries, marker) in all_family_data.items()
+    }
+else:
+    all_family_data = {}
 
-    for idx, model in enumerate(models_list):
-        param_count = sizes[family][idx]
-        best_path = None
-        # Try each loss function variant
-        for loss in ['mse', 'log-cosh', 'rmse', 'huber']:
-            # Construct glob or a known path pattern
-            candidates = list(Path(folder).glob(
-                f'{model}_*_{loss}_metrics.zarr'
-            ))
-            if not candidates:
-                continue
-            # Take the best (or just first) match
-            path = candidates[0]
-            try:
-                root = zarr.open(path, mode='r')
-                val_r2 = root['R2_val'][:]
-                best = 1 - np.max(val_r2)
-                best_path = path
-            except Exception as e:
-                print(f"Skipping {path}: {e}")
-                continue
+    for family, models_list in model_families.items():
+        color  = family_cmaps[family]
+        marker = family_markers[family]
+        family_data = []
+        for idx, model in enumerate(models_list):
+            param_count = sizes[family][idx]
+            best_path = None
+            best = -np.inf
+            # Try each loss function variant
+            for loss in ['mse', 'log-cosh', 'rmse', 'huber']:
+                # Construct glob or a known path pattern
+                candidates = list(Path(folder).glob(
+                    f'{model}_*_{loss}_metrics.zarr'
+                ))
+                if not candidates:
+                    continue
+                # Take the best (or just first) match
+                path = candidates[0]
+                try:
+                    root = zarr.open(path, mode='r')
+                    val_r2 = root['R2_val'][:]
+                    best = 1 - np.max(val_r2)
+                    best_path = path
+                except Exception as e:
+                    print(f"Skipping {path}: {e}")
+                    continue
 
-            if best_path:
-                
-                path='results/dispersion_all_models/'+Path(best_path).name.replace('_metrics.zarr','')+'.pth'
-                local=path
-                servers = [
-                    ("bigfacet", "bigfacet:/home/users/sigursv/porousflow/"),
-                    ("herbie",   "herbie-jump:/home/sigursv/porousflow/"),
-                ]
-                if not os.path.exists(local):
-                    for name, base in servers:
-                        try:
-                            subprocess.run(["rsync", "-av", f"{base}{path}", local], check=True)
-                            print(f"Fetched from {name}")
-                            break
-                        except subprocess.CalledProcessError:
-                            print(f"Not found on {name}, trying next...")
-                    else:
-                        print("File does not exist on any familiar cluster.")
-
-                if os.path.exists(local):
-                    cmd = build_test_cmd(local, m, family)
-                    print("Running:", " ".join(cmd))
+                if best_path:
                     
-                    result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-                    match = re.search(r"Test R2:\s*([\d.]+)", result.stdout)
-                    
-                    if match:
-                        test_r2_for_model = float(match.group(1))
-                        print(f"Test R2:       {test_r2_for_model:.5f}")
-                    print(f"Validation R2: {best:.5f}")
+                    path='results/dispersion_all_models/'+Path(best_path).name.replace('_metrics.zarr','')+'.pth'
+                    local=path
+                    servers = [
+                        ("bigfacet", "bigfacet:/home/users/sigursv/porousflow"),
+                        ("herbie",   "herbie-jump:/home/sigursv/porousflow"),
+                    ]
+                    if not os.path.exists(local):
+                        for name, base in servers:
+                            print(f'Trying {name}, with {path}')
+                            print(f'{base}/{path}')
+                            try:
+                                subprocess.run(["rsync", "-av", f"{base}/{path}", local], check=True)
+                                print(f"Fetched from {name}")
+                                break
+                            except subprocess.CalledProcessError:
+                                print(f"Not found on {name}, trying next...")
+                        else:
+                            print("File does not exist on any familiar cluster.")
 
-            ax[0].plot(param_count, best, linestyle='', marker=marker,
-                       markersize=6, color=color)
-            break  # use first loss that exists
-ax[0].set_yscale('log')
-ax[0].set_xscale('log')
+                    if os.path.exists(local):
+                        print(model,family)
+                        cmd = build_test_cmd(local, model, family)
+                        print("Running:", " ".join(cmd))
+                        
+                        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+                        match = re.search(r"Test R2:\s*([\d.]+)", result.stdout)
+                        
+                        if match:
+                            test_r2_for_model = float(match.group(1))
+                            print(f"Test R2:       {test_r2_for_model:.5f}")
+                        print(f"Validation R2: {best:.5f}")
+                if best != -np.inf:
+                    test_error_val = (float(1 - test_r2_for_model)) if test_r2_for_model is not None else None
+                    family_data.append((
+                        int(param_count),
+                        float(1 - best),
+                        color,
+                        m,
+                        test_error_val
+                    ))
 
-for key, item in model_families.items():
-    if key =='convnext-v2' or key=='convnext-rms':
-        continue
-    # print(key)
-    color = family_cmaps[key]
-    marker = family_markers[key]
-    name = family_map[key]
-    legend_model_handles.append(
-                Line2D([0], [0],
-                    color=color,
-                    marker=marker,
-                    linestyle='-',
-                    linewidth=1.2,
-                    markersize=5,
-                    label=name)
-            )
-# # Test:
+                ax[0].plot(param_count, best, linestyle='', marker=marker,
+                        markersize=6, color=color)
+            all_family_data[family] = (family_data, marker)
 
-#     # ax[0].legend()
-ax[0].grid(True, which="both", ls="-", alpha=0.15)
-ax[0].legend(
-        handles=legend_model_handles,
-        title='Architecture:',
-        # loc='upper right',   # fixed position = consistent layout
-        frameon=True,
-        framealpha=0.3,
-        edgecolor='#cccccc',
-        fontsize=7,
-        labelspacing=0.3,
-        handlelength=1.5,
-        handletextpad=0.4,
-    )
-plt.tight_layout()
-plt.savefig('thesis_plots/scaling_laws_r2_vs_params_dispersion.pdf')
+    os.makedirs("thesis_plots", exist_ok=True)
+    with open(CACHE_FILE, 'w') as f:
+        json.dump(all_family_data, f, indent=2)
+    print(f"Saved family data to {CACHE_FILE}")
+
+def make_scaling_plot(all_family_data, path: str):
+    fig, axes = plt.subplots(2, 1, figsize=(figsize[0], figsize[1]*1.45),
+                             sharex=True, sharey=True)
+
+    for ax, use_test in zip(axes, [False, True]):
+        for model_family, (family_data, marker) in all_family_data.items():
+            color = family_cmaps.get(model_family, 'C0')
+
+            if use_test:
+                plot_data = [(x, te, name) for x, ve, c, name, te in family_data if te is not None]
+            else:
+                plot_data = [(x, ve, name) for x, ve, c, name, te in family_data]
+
+            if not plot_data:
+                continue
+
+            plot_data.sort(key=lambda x: x[0])
+            xs, ys, names = zip(*plot_data)
+
+            ax.plot(xs, ys, color=color, alpha=0.3, zorder=1)
+            for x, y, name in plot_data:
+                ax.plot(x, y, color=color, linestyle='', marker=marker,
+                        markersize=7, fillstyle='none', zorder=2)
+
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_ylabel(r'Test $1 - R^2$' if use_test else r'Validation $1 - R^2$')
+        ax.grid(True, which="both", ls="-", alpha=0.15)
+
+    axes[1].set_xlabel('Total Parameters')
+
+    legend_elements = [
+        Line2D([0], [0], marker=family_markers[f], color=family_cmaps[f],
+               label=family_map[f], markersize=8, fillstyle='none', linestyle='-')
+        for f in models.keys()
+    ]
+    axes[0].legend(handles=legend_elements, title="Architectures",
+                   loc='best', fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig(path)
+    plt.close()
+    print(f"Saved {path}")
+
+make_scaling_plot(all_family_data, 'thesis_plots/scaling_laws_r2_vs_params_dispersion.pdf')
+
+            # break  # use first loss that exists
+# ax[0].set_yscale('log')
+# ax[0].set_xscale('log')
+
+# for key, item in model_families.items():
+#     if key =='convnext-v2' or key=='convnext-rms':
+#         continue
+#     # print(key)
+#     color = family_cmaps[key]
+#     marker = family_markers[key]
+#     name = family_map[key]
+#     legend_model_handles.append(
+#                 Line2D([0], [0],
+#                     color=color,
+#                     marker=marker,
+#                     linestyle='-',
+#                     linewidth=1.2,
+#                     markersize=5,
+#                     label=name)
+#             )
+# # # Test:
+
+# #     # ax[0].legend()
+# ax[0].grid(True, which="both", ls="-", alpha=0.15)
+# ax[0].legend(
+#         handles=legend_model_handles,
+#         title='Architecture:',
+#         # loc='upper right',   # fixed position = consistent layout
+#         frameon=True,
+#         framealpha=0.3,
+#         edgecolor='#cccccc',
+#         fontsize=7,
+#         labelspacing=0.3,
+#         handlelength=1.5,
+#         handletextpad=0.4,
+#     )
+# plt.tight_layout()
+# plt.savefig('thesis_plots/scaling_laws_r2_vs_params_dispersion.pdf')
