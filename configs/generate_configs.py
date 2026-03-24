@@ -189,7 +189,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [20, 50, 100, 100, 10000, None],
     },
     "num_epochs": {
-        "single": [600],
+        "single": [200],
         "sweep": [600,1000],    
     },
     "decay": {
