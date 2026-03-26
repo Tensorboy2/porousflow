@@ -133,10 +133,11 @@ for k in range(4):
                 path = (
                     f'results/dispersion_lr_wd_sweep/{model}_lr-{lr}_wd-{wd}_bs-128_epochs-200_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr'
                 )
-            # elif model=='ViT-T16':
-            #     path = (
-            #         f'results/dispersion_lr_wd_sweep_2/{model}_lr-{lr}_wd-{wd}_bs-128_epochs-200_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_log-cosh_metrics.zarr'
-            #     )
+            elif model=='ConvNeXt-Atto':
+                path = (
+                    f'results/dispersion_lr_wd_sweep_2/{model}_lr-{lr}_wd-{wd}_bs-128_epochs-200_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr'
+                )
+
             else:
                 path = (
                     f'results/dispersion_lr_wd_sweep/{model}_lr-{lr}_wd-{wd}_bs-128_epochs-200_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr'

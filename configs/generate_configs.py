@@ -181,7 +181,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [1e-3],
+        "single": [1e-2],
         "sweep": [1e-3, 1e-2, 5e-2, 1e-1, 0.5],
     },
     "num_training_samples": {
