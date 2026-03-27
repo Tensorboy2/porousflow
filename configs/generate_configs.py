@@ -417,10 +417,10 @@ DEVICE_CONFIGS = {
             "time": None,
             "mem": None,
         },
-        "training_overrides": {
-            "num_workers": 2,  
+        # "training_overrides": {
+        #     "num_workers": 2,  
             # "prefetch_factor": 2,  
-        },
+        # },
     },
     "cpu": {
         "slurm": {
