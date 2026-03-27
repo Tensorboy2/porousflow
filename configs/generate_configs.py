@@ -173,7 +173,7 @@ DEFAULT_MODEL_PRESET = "quick_test"
 # Each list defines the values to sweep over for that hyperparameter
 HYPERPARAM_SWEEPS = {
     "learning_rate": {
-        "single": [1e-3],  # Default single value
+        "single": [5e-4],  # Default single value
         "sweep": [5e-5,1e-4, 5e-4, 1e-3, 5e-3],
     },
     "batch_size": {
@@ -181,7 +181,7 @@ HYPERPARAM_SWEEPS = {
         "sweep": [64, 128, 256, 512],
     },
     "weight_decay": {
-        "single": [1e-1],
+        "single": [5e-2],
         "sweep": [1e-3, 1e-2, 5e-2, 1e-1, 0.5],
     },
     "num_training_samples": {
@@ -390,7 +390,7 @@ TASK_CONFIGS = {
         "batch_size": 128,
         "num_epochs": 1000,
         "decay": "cosine",
-        "warmup_steps": 1*5*16000/128, # steps per epoch * warmup epochs
+        "warmup_steps": 10*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
         "num_workers": 4,
