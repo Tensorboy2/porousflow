@@ -547,22 +547,22 @@ data = {
         },
         'ConvNeXt-V2-Pico': {
             'params': 8531652,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Pico_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': '',
         },
         'ConvNeXt-V2-Nano': {
             'params': 14951284,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Nano_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': '',
         },
         'ConvNeXt-V2-Tiny': {
             'params': 27818596,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Tiny_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': '',
         },
         'ConvNeXt-V2-Small': {
             'params': 49453156,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Small_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': '',
         },
         'ConvNeXt-V2-Base': {
@@ -579,12 +579,12 @@ data = {
     'convnext-rms': {
         'ConvNeXt-RMS-Atto': {
             'params': 3373884,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-RMS-Atto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': '',
         },
         'ConvNeXt-RMS-Femto': {
             'params': 4832020,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-RMS-Femto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': '',
         },
         'ConvNeXt-RMS-Pico': {
@@ -648,44 +648,44 @@ data = {
     'vit': {
         'ViT-T16': {
             'params': 5401156,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models/ViT-T16_lr-0.005_wd-0.01_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': '',
         },
         'ViT-S16': {
             'params': 21419140,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models/ViT-S16_lr-0.0005_wd-0.05_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr',
             'state_dict_path': '',
         },
         'ViT-B16': {
             'params': 85305604,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models/ViT-B16_lr-0.0005_wd-0.05_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr',
             'state_dict_path': '',
         },
         'ViT-L16': {
             'params': 302644228,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models/ViT-L16_lr-0.0005_wd-0.05_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr',
             'state_dict_path': '',
         },
     },
     'swin': {
         'Swin-T': {
             'params': 27504334,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models/Swin-T_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr',
             'state_dict_path': '',
         },
         'Swin-S': {
             'params': 48804958,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models/Swin-S_lr-0.0001_wd-0.05_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr',
             'state_dict_path': '',
         },
         'Swin-B': {
             'params': 86700156,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models/Swin-B_lr-0.0001_wd-0.05_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr',
             'state_dict_path': '',
         },
         'Swin-L': {
             'params': 194930872,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models/Swin-L_lr-0.0001_wd-0.05_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr',
             'state_dict_path': '',
         },
     },
