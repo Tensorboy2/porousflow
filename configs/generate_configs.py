@@ -88,9 +88,9 @@ MODEL_PRESETS = {
     ],
     "full_swin": [
         # "Swin-T",
-        # "Swin-S",
-        "Swin-B",
-        "Swin-L",
+        "Swin-S",
+        # "Swin-B",
+        # "Swin-L",
     ],
     "full_convnext": [
         "ConvNeXt-Atto",
