@@ -208,7 +208,7 @@ HYPERPARAM_SWEEPS = {
         'sweep': [4,3,2,1,0],
     },
     "loss_function": {
-        'single': ['rmse'],
+        'single': ['mse'],
         'sweep': ['mse','L1','rmse','huber','log-cosh','rse']
     }
 }

@@ -557,12 +557,14 @@ data = {
         },
         'ConvNeXt-V2-Tiny': {
             'params': 27818596,
-            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Tiny_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'metrics_path': '',
+            # 'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Tiny_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Tiny_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
         },
         'ConvNeXt-V2-Small': {
             'params': 49453156,
-            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Small_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'metrics_path': '',
+            # 'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Small_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Small_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
         },
         'ConvNeXt-V2-Base': {
