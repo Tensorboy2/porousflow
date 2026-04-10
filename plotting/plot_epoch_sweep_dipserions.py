@@ -500,17 +500,17 @@ data = {
         },
         'ConvNeXt-Femto': {
             'params': 4832020,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-Femto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': '',
         },
         'ConvNeXt-Pico': {
             'params': 8531652,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-Pico_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': '',
         },
         'ConvNeXt-Nano': {
             'params': 14951284,
-            'metrics_path': '',
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-Nano_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': '',
         },
         'ConvNeXt-Tiny': {
@@ -762,9 +762,62 @@ for family, sizes in data.items():
             "val_r2": float(val_r2) if val_r2 is not None else None,
             "test_r2": float(test_r2) if test_r2 is not None else None,
         }
-        for_plotting[model] = (params, val_r2, test_r2)
+
+        for_plotting[family] = for_plotting.get(family, {})
+        for_plotting[family][model] = (params, val_r2, test_r2)
 
 # Save updated cache
 with open(CACHE_FILE, 'w') as f:
     json.dump(cached_data, f, indent=2)
 print(f"Saved updated cache to {CACHE_FILE}")
+
+
+# Plotting
+fig, axes = plt.subplots(2, 1, figsize=(figsize[0], figsize[1]*1.45), sharex=True, sharey=True)
+legend_model_handles = []
+for family, models in for_plotting.items():
+    color = family_cmaps.get(family, 'C0')
+    marker = family_markers.get(family, 'o')
+    name = family_map.get(family, family)
+    xs_val, ys_val = [], []
+    xs_test, ys_test = [], []
+    for model, (params, val_r2, test_r2) in models.items():
+        if val_r2 is not None:
+            xs_val.append(params)
+            ys_val.append(1 - val_r2)
+        if test_r2 is not None:
+            xs_test.append(params)
+            ys_test.append(1 - test_r2)
+
+    if xs_val and ys_val:
+        axes[0].plot(xs_val, ys_val, color=color, alpha=0.3, zorder=1)
+        for x, y in zip(xs_val, ys_val):
+            axes[0].plot(x, y, color=color, linestyle='', marker=marker,
+                         markersize=7, fillstyle='none', zorder=2)
+
+    if xs_test and ys_test:
+        axes[1].plot(xs_test, ys_test, color=color, alpha=0.3, zorder=1)
+        for x, y in zip(xs_test, ys_test):
+            axes[1].plot(x, y, color=color, linestyle='', marker=marker,
+                         markersize=7, fillstyle='none', zorder=2)
+
+    legend_model_handles.append(
+        Line2D([0], [0], marker=marker, color=color,
+               label=name, markersize=8, fillstyle='none', linestyle='-')
+    )
+    
+for ax in axes:
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.grid(True, which="both", ls="-", alpha=0.15)
+
+axes[0].set_ylabel(r'Validation $1 - R^2$')
+axes[1].set_ylabel(r'Test $1 - R^2$')
+axes[1].set_xlabel('Total Parameters')
+
+axes[0].legend(handles=legend_model_handles, title="Architectures",
+               loc='best', fontsize=8)
+plt.tight_layout()
+plt.savefig('thesis_plots/scaling_laws_r2_vs_params_dispersion.pdf')
+plt.close()
+print("Saved thesis_plots/scaling_laws_r2_vs_params_dispersion.pdf")
