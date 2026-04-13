@@ -496,8 +496,8 @@ data = {
         'ConvNeXt-Atto': {
             'params': 3373884,
             # 'metrics_path': '',
-            'metrics_path': 'results/dispersion_convnext_long_test/ConvNeXt-Atto_lr-0.0005_wd-0.05_bs-128_epochs-1500_cosine_warmup-6250.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
-            'state_dict_path': 'results/dispersion_convnext_long_test/ConvNeXt-Atto_lr-0.0005_wd-0.05_bs-128_epochs-1500_cosine_warmup-6250.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-Atto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': 'results/dispersion_all_models_2/ConvNeXt-Atto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
         },
         'ConvNeXt-Femto': {
             'params': 4832020,
@@ -560,13 +560,15 @@ data = {
             'params': 27818596,
             'metrics_path': '',
             # 'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Tiny_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
-            'state_dict_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Tiny_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
+            # 'state_dict_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Tiny_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
+            'state_dict_path': '',
         },
         'ConvNeXt-V2-Small': {
             'params': 49453156,
             'metrics_path': '',
             # 'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Small_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
-            'state_dict_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Small_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
+            # 'state_dict_path': 'results/dispersion_all_models_2/ConvNeXt-V2-Small_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
+            'state_dict_path': '',
         },
         'ConvNeXt-V2-Base': {
             'params': 87564420,
@@ -674,7 +676,7 @@ data = {
         'Swin-T': {
             'params': 27504334,
             'metrics_path': 'results/dispersion_all_models/Swin-T_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr',
-            'state_dict_path': '',
+            'state_dict_path': 'results/dispersion_epoch_sweep/Swin-T_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse.pth',
         },
         'Swin-S': {
             'params': 48804958,
@@ -824,3 +826,130 @@ plt.tight_layout()
 plt.savefig('thesis_plots/scaling_laws_r2_vs_params_dispersion.pdf')
 plt.close()
 print("Saved thesis_plots/scaling_laws_r2_vs_params_dispersion.pdf")
+
+
+
+
+convnext_comparisont = {
+    'original': {
+        'ConvNeXt-Atto': {
+            'params': 3373884,
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-Atto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Femto': {
+            'params': 4832020,
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-Femto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Pico': {
+            'params': 8531652,
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-Pico_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Nano': {
+            'params': 14951284,
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-Nano_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': '',
+        },
+        # 'ConvNeXt-Tiny': {
+        #     'params': 27818596,
+        #     'metrics_path': '',
+        #     'state_dict_path': '',
+        # },
+    },
+
+    'modified': {
+        'ConvNeXt-Atto': {
+            'params': 3373884,
+            'metrics_path': 'results/dispersion_all_models/ConvNeXt-Atto_lr-0.005_wd-0.01_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Femto': {
+            'params': 4832020,
+            'metrics_path': 'results/dispersion_all_models/ConvNeXt-Femto_lr-0.005_wd-0.005_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Pico': {
+            'params': 8531652,
+            'metrics_path': 'results/dispersion_all_models/ConvNeXt-Pico_lr-0.005_wd-0.01_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Nano': {
+            'params': 14951284,
+            'metrics_path': 'results/dispersion_all_models/ConvNeXt-Nano_lr-0.005_wd-0.01_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Tiny': {
+            'params': 27818596,
+            'metrics_path': 'results/dispersion_all_models/ConvNeXt-Tiny_lr-0.001_wd-0.005_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Small': {
+            'params': 49453156,
+            'metrics_path': 'results/dispersion_all_models/ConvNeXt-Small_lr-0.001_wd-0.005_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Base': {
+            'params': 87564420,
+            'metrics_path': 'results/dispersion_all_models/ConvNeXt-Base_lr-0.005_wd-0.005_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Large': {
+            'params': 196227268,
+            'metrics_path': 'results/dispersion_all_models/ConvNeXt-Large_lr-0.005_wd-0.005_bs-128_epochs-600_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': '',
+        },
+    },
+}
+
+# showing comparisont of two versions of convnext
+fig, ax = plt.subplots(figsize=figsize)
+legend_model_handles = []
+for version, models in convnext_comparisont.items():
+    color = 'C0' if version == 'original' else 'C1'
+    marker = 'o' if version == 'original' else 's'
+    name = version.capitalize()
+    xs, ys = [], []
+    for model, info in models.items():
+        params = info['params']
+        metrics_path = info['metrics_path']
+        val_r2 = None
+
+        if metrics_path and os.path.exists(metrics_path):
+            try:
+                root = zarr.open(metrics_path, mode='r')
+                val_r2 = root['R2_val'][:]
+                val_r2 = np.max(val_r2)
+                print(f"Loaded val R2 for {model} ({version}) from metrics: {val_r2:.5f}")
+            except Exception as e:
+                print(f"Error loading metrics for {model} ({version}): {e}")
+        else:
+            print(f"No metrics path for {model} ({version}), skipping.")
+
+        if val_r2 is not None:
+            xs.append(params)
+            ys.append(1 - val_r2)
+
+    if xs and ys:
+        ax.plot(xs, ys, color=color, alpha=0.3, zorder=1)
+        for x, y in zip(xs, ys):
+            ax.plot(x, y, color=color, linestyle='', marker=marker,
+                    markersize=7, fillstyle='none', zorder=2)
+        legend_model_handles.append(
+            Line2D([0], [0], marker=marker, color=color,
+                   label=name, markersize=8, fillstyle='none', linestyle='-')
+        )
+
+
+ax.set_xscale('log')
+ax.set_yscale('log')
+ax.set_xlabel('Total Parameters')
+ax.set_ylabel(r'Validation $1 - R^2$')
+ax.grid(True, which="both", ls="-", alpha=0.15)
+ax.legend(handles=legend_model_handles, title="ConvNeXt Versions",
+          loc='best', fontsize=8)
+plt.tight_layout()
+plt.savefig('thesis_plots/convnext_comparison_dispersion.pdf')
+plt.close()
+print("Saved thesis_plots/convnext_comparison_dispersion.pdf")
