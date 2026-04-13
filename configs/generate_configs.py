@@ -34,7 +34,7 @@ MODEL_PRESETS = {
         # "ConvNeXt-Large",
         # "ConvNeXt-Base",
         # "ConvNeXt-Femto",
-        "ConvNeXt-Atto",
+        "ConvNeXt-RMS-Atto",
         # "ConvNeXt-Tiny",
         # "ConvNeXt-Small",
         # "ConvNeXt-V2-Small",
