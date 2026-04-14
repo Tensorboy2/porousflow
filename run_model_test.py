@@ -220,7 +220,7 @@ def run_test(model, test_loader, device, criterion, config=None):
                     inputs, targets, pe = batch
                     inputs, targets, pe = inputs.to(device), targets.to(device), pe.to(device)
                     outputs = model(inputs, pe)
-                    outputs = torch.sinh(outputs)
+                    # outputs = torch.sinh(outputs)
                     all_pe.append(pe.cpu().numpy())
                     has_pe = True
                 loss = criterion(outputs, targets)

@@ -953,3 +953,132 @@ plt.tight_layout()
 plt.savefig('thesis_plots/convnext_comparison_dispersion.pdf')
 plt.close()
 print("Saved thesis_plots/convnext_comparison_dispersion.pdf")
+
+
+scale_comparisont = {
+    'asinh': {
+        'ConvNeXt-RMS-Atto': {
+            'params': 3373884,
+            'metrics_path': 'results/dispersion_all_models_2/ConvNeXt-Nano_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': 'results/dispersion_all_models_2/ConvNeXt-RMS-Atto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
+        },
+    },
+    'no_asinh': {
+        'ConvNeXt-RMS-Atto': {
+            'params': 3373884,
+            'metrics_path': 'results/convnext_no_asinh_test/ConvNeXt-RMS-Atto_lr-0.0001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': 'results/convnext_no_asinh_test/ConvNeXt-RMS-Atto_lr-0.0001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
+        },
+    },
+}
+# showing train and val curves aswell as final test of two versions of convnext
+fig, ax = plt.subplots(figsize=figsize)
+legend_model_handles = []
+for version, models in scale_comparisont.items():
+    # First define colors and markers for each version
+    if version == 'asinh':
+        color = 'C0'
+        marker = 'o'
+    else:        
+        color = 'C1'
+        marker = 's'
+
+    name = version.replace('_', ' ').capitalize()
+
+    # Then collect the train and val curves, and final test point for each model in this version
+    for model, info in models.items():
+        params = info['params']
+        metrics_path = info['metrics_path']
+        val_r2 = None
+
+        if metrics_path and os.path.exists(metrics_path):
+            try:
+                root = zarr.open(metrics_path, mode='r')
+                train_r2 = root['R2_train'][:]
+                val_r2 = root['R2_val'][:]
+                val_r2_max_id = np.argmax(val_r2)
+                val_r2_max = val_r2[val_r2_max_id]
+                print(f"Loaded val R2 for {model} ({version}) from metrics: {val_r2_max:.5f}")
+            except Exception as e:
+                print(f"Error loading metrics for {model} ({version}): {e}")
+        else:
+            print(f"No metrics path for {model} ({version}), skipping.")
+
+        if val_r2 is not None:
+            ax.plot(1-train_r2, color=color, alpha=0.3, zorder=1, linestyle='--')
+            ax.plot(1 - val_r2, color=color, zorder=2)
+            # Legend the colors for the line
+            legend_model_handles.append(
+                Line2D([0], [0], color=color, label=name, linestyle='-')
+            )
+            
+
+        # fetch test R2 from state dict if available, otherwise skip
+        state_dict_path = info['state_dict_path']
+        test_r2 = None
+        if state_dict_path and os.path.exists(state_dict_path):
+            print(f"State dict found for {model} ({version}), running test script...")
+            if version == 'no_asinh':
+                # cmd = build_test_cmd(state_dict_path, 'ConvNeXt-RMS-Atto_no_asinh', version)
+                # run: python3 run_model_test.py --pretrained_path results/convnext_no_asinh_test/ConvNeXt-RMS-Atto_lr-0.0001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth --model 'convnext' --model_name 'ConvNeXt-RMS-Atto_no_asinh' --size 'atto' --version 'rms' --task 'dispersion' --pe_encoder log --loss_function 'mse'
+                cmd = [
+                    "python3", "run_model_test.py",
+                    "--pretrained_path", state_dict_path,
+                    "--model", "convnext",
+                    "--model_name", "ConvNeXt-RMS-Atto_no_asinh",
+                    "--size", "atto",
+                    "--version", "rms",
+                    "--task", "dispersion",
+                    "--pe_encoder", "log",
+                    "--loss_function", "mse"
+                ]
+                result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+
+            else:
+                cmd = [
+                    "python3", "run_model_test.py",
+                    "--pretrained_path", state_dict_path,
+                    "--model", "convnext",
+                    "--model_name", "ConvNeXt-RMS-Atto",
+                    "--size", "atto",
+                    "--version", "rms",
+                    "--task", "dispersion",
+                    "--pe_encoder", "log",
+                    "--loss_function", "mse"
+                ]
+                result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            match = re.search(r"Test R2:\s*([\d.]+)", result.stdout)
+            
+            if match:
+                test_r2 = float(match.group(1))
+                print(f"Test R2 for {model} ({version}): {test_r2:.5f}")
+                ax.plot(val_r2_max_id, 1 - test_r2, color=color, marker='*', linestyle='',
+                        markersize=8, fillstyle='full', zorder=3)
+            else:
+                print(f"No Test R2 found in output for {model} ({version}).")
+        else:
+            print(f"No state dict for {model} ({version}), skipping test R2.")
+legend_model_handles.append(
+    Line2D([0], [0], color='gray',
+            label='Train', linestyle='--')
+)
+legend_model_handles.append(
+    Line2D([0], [0], color='gray',
+            label='Validation', linestyle='-')
+)
+legend_model_handles.append(
+    Line2D([0], [0], marker='*', color='gray',
+            label=r'Test $1-R^2$', markersize=8, fillstyle='full', linestyle='')
+)
+
+# ax.set_xscale('log')
+ax.set_yscale('log')
+ax.set_xlabel('Epochs')
+ax.set_ylabel(r'Validation $1 - R^2$')
+ax.grid(True, which="both", ls="-", alpha=0.15)
+ax.legend(handles=legend_model_handles, title="ConvNeXt Versions",
+          loc='best', fontsize=8, framealpha=0.5)
+plt.tight_layout()
+plt.savefig('thesis_plots/scale_comparison_dispersion.pdf')
+plt.close()
+
