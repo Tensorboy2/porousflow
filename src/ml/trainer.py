@@ -531,7 +531,7 @@ class Trainer:
                 self.save_model(save_path + ".pth")
                 print(f"    New best model saved (val R2 = {val_r2:.5f})")
             
-            if train_loss == float('nan') or val_loss == float('nan'):
+            if train_loss == torch.nan:
                 print("NaN detected in loss. Stopping training.")
                 break
         #save last model
