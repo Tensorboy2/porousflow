@@ -510,7 +510,7 @@ class Trainer:
                 f"loss: {train_loss:.5f} | "
                 f"R2: {train_r2:.5f} | "
                 f"grad‖: {grad_norm:.5e} | "
-                f"clipped: {clip_pct:.1f}%"  # NEW: show clipping percentage
+                f"clipped: {clip_pct:.1f}%"  
             )
 
             # ---- VALIDATION ----
@@ -530,6 +530,10 @@ class Trainer:
                 best_val_r2 = val_r2
                 self.save_model(save_path + ".pth")
                 print(f"    New best model saved (val R2 = {val_r2:.5f})")
+            
+            if train_loss == float('nan') or val_loss == float('nan'):
+                print("NaN detected in loss. Stopping training.")
+                break
         #save last model
         self.save_model(save_path+"_last_model.pth")
         self.save_metrics(save_path+'_metrics.zarr')

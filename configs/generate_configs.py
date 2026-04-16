@@ -47,7 +47,14 @@ MODEL_PRESETS = {
         "ViT-L16",
         "ResNet-152",
         "Swin-L",
-        # "SHViT-L",
+    ],
+    "biggest_greatfacet": [
+        "ConvNeXt-Large",
+        "ConvNeXt-V2-Large",
+        "ConvNeXt-RMS-Large",
+        # "ViT-L16",
+        "ResNet-152",
+        "Swin-L",
     ],
     "small_sweep": [
         #smallest
@@ -111,8 +118,8 @@ MODEL_PRESETS = {
         "ConvNeXt-Large",
     ],
     "full_convnext_v2": [
-        "ConvNeXt-V2-Atto",
-        "ConvNeXt-V2-Femto",
+        # "ConvNeXt-V2-Atto",
+        # "ConvNeXt-V2-Femto",
         # "ConvNeXt-V2-Pico",
         # "ConvNeXt-V2-Nano",
         # "ConvNeXt-V2-Tiny",
@@ -124,11 +131,11 @@ MODEL_PRESETS = {
         # "ConvNeXt-RMS-Atto",
         # "ConvNeXt-RMS-Femto",
         # "ConvNeXt-RMS-Pico",
-        "ConvNeXt-RMS-Nano",
-        "ConvNeXt-RMS-Tiny",
-        "ConvNeXt-RMS-Small",
-        # "ConvNeXt-RMS-Base",
-        # "ConvNeXt-RMS-Large",
+        # "ConvNeXt-RMS-Nano",
+        # "ConvNeXt-RMS-Tiny",
+        # "ConvNeXt-RMS-Small",
+        "ConvNeXt-RMS-Base",
+        "ConvNeXt-RMS-Large",
     ],
     "full_resnet": [
         # "ResNet-18",
@@ -179,7 +186,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [20, 50, 100, 100, 10000, None],
     },
     "num_epochs": {
-        "single": [3],
+        "single": [1000],
         "sweep": [600,1000],    
     },
     "decay": {
@@ -383,7 +390,7 @@ TASK_CONFIGS = {
         "warmup_steps": 30*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
-        "num_workers": 4,
+        "num_workers": 2,
         "prefetch_factor": 4,
         "pin_memory": True,
         "loss_function": 'mse',
