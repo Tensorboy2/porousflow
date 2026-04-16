@@ -55,8 +55,10 @@ MODEL_PRESETS = {
         "ResNet-152",
         "Swin-L",
     ],
-    "log_run_greatfacet_part_2": [
+    "log_run_greatfacet_part_1": [
         "ViT-L16",
+    ],
+    "log_run_greatfacet_part_2": [
         "ConvNeXt-Base",
         "ConvNeXt-V2-Base",
         "ConvNeXt-RMS-Base",
@@ -429,7 +431,7 @@ TASK_CONFIGS = {
         "warmup_steps": 30*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
-        "num_workers": 4,
+        "num_workers": 2,
         "prefetch_factor": 4,
         "pin_memory": True,
         "loss_function": 'mse',
