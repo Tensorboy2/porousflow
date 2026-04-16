@@ -70,7 +70,7 @@ MODEL_PRESETS = {
         "ConvNeXt-RMS-Small",
     ],
     "log_run_bigfacet_part_1": [
-        "swin-T",
+        "Swin-T",
         "ResNet-18",
         "ResNet-34",
         "ResNet-50",
