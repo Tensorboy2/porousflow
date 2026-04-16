@@ -963,24 +963,34 @@ scale_comparisont = {
             'state_dict_path': 'results/dispersion_all_models_2/ConvNeXt-RMS-Atto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
         },
     },
-    'no_asinh': {
+    'no_scale': {
         'ConvNeXt-RMS-Atto': {
             'params': 3373884,
             'metrics_path': 'results/convnext_no_asinh_test/ConvNeXt-RMS-Atto_lr-0.0001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': 'results/convnext_no_asinh_test/ConvNeXt-RMS-Atto_lr-0.0001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
         },
     },
+    'log': {
+        'ConvNeXt-RMS-Atto': {
+            'params': 3373884,
+            'metrics_path': 'results/convnext_log_test/ConvNeXt-RMS-Atto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': 'results/convnext_log_test/ConvNeXt-RMS-Atto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
+        },
+    },
 }
 # showing train and val curves aswell as final test of two versions of convnext
-fig, ax = plt.subplots(figsize=figsize)
+fig, ax = plt.subplots(figsize=(figsize[0], figsize[1]*0.8))
 legend_model_handles = []
 for version, models in scale_comparisont.items():
     # First define colors and markers for each version
     if version == 'asinh':
-        color = 'C0'
+        color = 'C2'
         marker = 'o'
+    elif version == 'log':
+        color = 'C0'
+        marker = 'D'
     else:        
-        color = 'C1'
+        color = 'C3'
         marker = 's'
 
     name = version.replace('_', ' ').capitalize()
@@ -1005,11 +1015,11 @@ for version, models in scale_comparisont.items():
             print(f"No metrics path for {model} ({version}), skipping.")
 
         if val_r2 is not None:
-            ax.plot(1-train_r2, color=color, alpha=0.3, zorder=1, linestyle='--')
-            ax.plot(1 - val_r2, color=color, zorder=2)
+            ax.plot(1-train_r2, color=color, alpha=0.2, zorder=1, linestyle='--', lw=1)
+            ax.plot(1 - val_r2, color=color, zorder=2, alpha=1.0, linestyle='-', lw=1.5)
             # Legend the colors for the line
             legend_model_handles.append(
-                Line2D([0], [0], color=color, label=name, linestyle='-')
+                Line2D([0], [0], color=color, label=name, linestyle='-', lw=2)
             )
             
 
@@ -1018,7 +1028,7 @@ for version, models in scale_comparisont.items():
         test_r2 = None
         if state_dict_path and os.path.exists(state_dict_path):
             print(f"State dict found for {model} ({version}), running test script...")
-            if version == 'no_asinh':
+            if version == 'no_scale':
                 # cmd = build_test_cmd(state_dict_path, 'ConvNeXt-RMS-Atto_no_asinh', version)
                 # run: python3 run_model_test.py --pretrained_path results/convnext_no_asinh_test/ConvNeXt-RMS-Atto_lr-0.0001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth --model 'convnext' --model_name 'ConvNeXt-RMS-Atto_no_asinh' --size 'atto' --version 'rms' --task 'dispersion' --pe_encoder log --loss_function 'mse'
                 cmd = [
@@ -1033,7 +1043,19 @@ for version, models in scale_comparisont.items():
                     "--loss_function", "mse"
                 ]
                 result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-
+            elif version =='log':
+                cmd = [
+                    "python3", "run_model_test.py",
+                    "--pretrained_path", state_dict_path,
+                    "--model", "convnext",
+                    "--model_name", "ConvNeXt-RMS-Atto_log",
+                    "--size", "atto",
+                    "--version", "rms",
+                    "--task", "dispersion",
+                    "--pe_encoder", "log",
+                    "--loss_function", "mse"
+                ]
+                result = subprocess.run(cmd, check=True, capture_output=True, text=True)
             else:
                 cmd = [
                     "python3", "run_model_test.py",
@@ -1053,7 +1075,7 @@ for version, models in scale_comparisont.items():
                 test_r2 = float(match.group(1))
                 print(f"Test R2 for {model} ({version}): {test_r2:.5f}")
                 ax.plot(val_r2_max_id, 1 - test_r2, color=color, marker='*', linestyle='',
-                        markersize=8, fillstyle='full', zorder=3)
+                        markersize=10, fillstyle='full', zorder=3, markeredgecolor='black', markeredgewidth=0.7)
             else:
                 print(f"No Test R2 found in output for {model} ({version}).")
         else:
@@ -1076,8 +1098,8 @@ ax.set_yscale('log')
 ax.set_xlabel('Epochs')
 ax.set_ylabel(r'Validation $1 - R^2$')
 ax.grid(True, which="both", ls="-", alpha=0.15)
-ax.legend(handles=legend_model_handles, title="ConvNeXt Versions",
-          loc='best', fontsize=8, framealpha=0.5)
+ax.legend(handles=legend_model_handles, title="Scale Variants",
+          loc='best', fontsize=8, framealpha=0.5,ncols=2)
 plt.tight_layout()
 plt.savefig('thesis_plots/scale_comparison_dispersion.pdf')
 plt.close()

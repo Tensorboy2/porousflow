@@ -175,15 +175,15 @@ class Trainer:
     
     def scale(self,x):
         # return torch.asinh(x)
-        return x
-        # return torch.log(x)
+        # return x
+        return torch.log(x)
     
         # return torch.sign(x)*torch.log(torch.abs(x)+1)
     
     def inverse_scale(self,y):
         # return torch.sinh(y)
-        return y
-        # return torch.exp(y)
+        # return y
+        return torch.exp(y)
         # return torch.sign(y) * (torch.exp(torch.abs(y)) - 1)
 
     def train_epoch_dispersion(self):

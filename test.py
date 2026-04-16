@@ -1,14 +1,35 @@
-from src.porousflow.lbm.lbm import LBM_solver
-from src.porousflow.media_generator.utils.binary_blobs import periodic_binary_blobs
-import time
-if __name__ == "__main__":
-    # jit warmup:
-    geometry = periodic_binary_blobs(n_dim=2, length=32,volume_fraction=0.4,blob_size_fraction=0.1, seed=9)
-    results = LBM_solver(solid=geometry, max_iterations=1)
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import gaussian_kde
 
-    sizes = [128, 256, 512, 1024, 2048, 4096]
-    for s in sizes:
-        start= time.time()
-        geometry = periodic_binary_blobs(n_dim=2, length=s,volume_fraction=0.4,blob_size_fraction=0.1, seed=9)
-        results = LBM_solver(solid=geometry, max_iterations=500)
-        print(f"Time taken for 4 iteration size {s}: ", time.time() - start)
+# Generate data
+np.random.seed(0)
+n = 20000
+x = np.random.rand(n)
+y = x**2 + np.random.normal(0, 0.05, n)
+
+x2 = np.random.rand(n)
+y2 = x2**2 + np.random.normal(0, 0.05, n)
+
+# KDE densities
+xy = np.vstack([x, y])
+z = gaussian_kde(xy)(xy)
+
+xy2 = np.vstack([x2, y2])
+z2 = gaussian_kde(xy2)(xy2)
+
+# Normalize densities
+z = (z - z.min()) / (z.max() - z.min())
+z2 = (z2 - z2.min()) / (z2.max() - z2.min())
+
+# Plot
+plt.figure()
+
+plt.scatter(x, y, c=z, cmap='Blues', alpha=0.5, s=20)
+plt.scatter(x2, y2, c=z2, cmap='Oranges', alpha=0.5, s=20, edgecolors='black', linewidths=0.2)
+
+plt.title("Overlapping Distributions with KDE Coloring")
+plt.xlabel("x")
+plt.ylabel("y")
+
+plt.show()

@@ -13,20 +13,8 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, asdict
 
 
-"""
-Run plans:
-    - The first run is a run over different batch sizes for all models.
-    - The second run is a run over different learning rates for all models.
-    - The third run is a run over different weight decays for all models.
-    - The fourth run is a run over different number of data samples for all models.
-    - The fifth run is a run over different number of epochs for all models.
-    - The sixth run is a run over different decay schedules for all models.
-"""
 
-
-# ============================================================================
-# CONFIGURATION PRESETS - Edit these to change experiment settings
-# ============================================================================
+# Configuration presets, edit these to change experiment settings:
 
 # Model presets for different experiment scales
 MODEL_PRESETS = {
@@ -59,7 +47,7 @@ MODEL_PRESETS = {
         "ViT-L16",
         "ResNet-152",
         "Swin-L",
-        "SHViT-L",
+        # "SHViT-L",
     ],
     "small_sweep": [
         #smallest
@@ -168,7 +156,7 @@ MODEL_PRESETS = {
     ],
 }
 
-# Default model preset to use
+# Default model preset to use:
 DEFAULT_MODEL_PRESET = "quick_test"
 
 # Hyperparameter sweep configurations
@@ -191,7 +179,7 @@ HYPERPARAM_SWEEPS = {
         "scaling": [20, 50, 100, 100, 10000, None],
     },
     "num_epochs": {
-        "single": [1000],
+        "single": [3],
         "sweep": [600,1000],    
     },
     "decay": {
