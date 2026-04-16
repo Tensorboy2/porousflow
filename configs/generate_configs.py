@@ -55,13 +55,13 @@ MODEL_PRESETS = {
         "ResNet-152",
         "Swin-L",
         "ViT-L16",
-    ],
-    "log_run_greatfacet_part_1": [
         "ConvNeXt-Base",
         "ConvNeXt-V2-Base",
     ],
-    "log_run_greatfacet_part_2": [
+    "log_run_greatfacet_part_1": [
         "ConvNeXt-RMS-Base",
+    ],
+    "log_run_greatfacet_part_2": [
         "ResNet-101",
     ],
     "log_run_greatfacet_part_3": [
