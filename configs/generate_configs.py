@@ -429,7 +429,7 @@ TASK_CONFIGS = {
         "warmup_steps": 30*5*16000/128, # steps per epoch * warmup epochs
         "num_training_samples": None,
         "num_validation_samples": None,
-        "num_workers": 2,
+        "num_workers": 4,
         "prefetch_factor": 4,
         "pin_memory": True,
         "loss_function": 'mse',
