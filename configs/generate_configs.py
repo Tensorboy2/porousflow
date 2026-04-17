@@ -70,13 +70,14 @@ MODEL_PRESETS = {
         "ConvNeXt-Pico",
         "ConvNeXt-V2-Pico",
         "ConvNeXt-RMS-Pico",
-    ],
-    "log_run_greatfacet_part_3": [
         "ViT-B16",
         "Swin-B",
         "ConvNeXt-Small",
         "ConvNeXt-V2-Small",
         "ConvNeXt-RMS-Small",
+    ],
+    "log_run_greatfacet_part_3": [
+        "ConvNeXt-RMS-Nano",
     ],
     "log_run_bigfacet_part_1": [
         "Swin-T",
@@ -95,7 +96,6 @@ MODEL_PRESETS = {
     "log_run_herbie": [
         # "ConvNeXt-Nano",
         # "ConvNeXt-V2-Nano",
-        "ConvNeXt-RMS-Nano",
     ],
     "small_sweep": [
         #smallest
