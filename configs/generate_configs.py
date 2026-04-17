@@ -57,10 +57,13 @@ MODEL_PRESETS = {
         "ViT-L16",
         "ConvNeXt-Base",
         "ConvNeXt-V2-Base",
-    ],
-    "log_run_greatfacet_part_1": [
         "ConvNeXt-RMS-Base",
         "ResNet-101",
+    ],
+    "log_run_greatfacet_part_1": [
+        "ConvNeXt-Tiny",
+        "ConvNeXt-V2-Tiny",
+        "ConvNeXt-RMS-Tiny",
     ],
     "log_run_greatfacet_part_2": [
         "ConvNeXt-RMS-Femto",
@@ -90,12 +93,9 @@ MODEL_PRESETS = {
         "ConvNeXt-V2-Femto",
     ],
     "log_run_herbie": [
-        "ConvNeXt-Nano",
-        "ConvNeXt-V2-Nano",
+        # "ConvNeXt-Nano",
+        # "ConvNeXt-V2-Nano",
         "ConvNeXt-RMS-Nano",
-        "ConvNeXt-Tiny",
-        "ConvNeXt-V2-Tiny",
-        "ConvNeXt-RMS-Tiny",
     ],
     "small_sweep": [
         #smallest

@@ -1104,3 +1104,173 @@ plt.tight_layout()
 plt.savefig('thesis_plots/scale_comparison_dispersion.pdf')
 plt.close()
 
+# Log test
+data = {
+    'convnext': {
+        'ConvNeXt-Atto': {
+            'params': 3373884,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Femto': {
+            'params': 4832020,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Pico': {
+            'params': 8531652,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Nano': {
+            'params': 14951284,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Tiny': {
+            'params': 27818596,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-Small': {
+            'params': 49453156,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+    },
+    'ConvNeXt-V2':{
+        'ConvNeXt-V2-Atto': {
+            'params': 3373884,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-V2-Femto': {
+            'params': 4832020,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-V2-Pico': {
+            'params': 8531652,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-V2-Nano': {
+            'params': 14951284,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-V2-Tiny': {
+            'params': 27818596,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-V2-Small': {
+            'params': 49453156,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+    },
+    'ConvNeXt-RMS':{
+        'ConvNeXt-RMS-Atto': {
+            'params': 3373884,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-RMS-Femto': {
+            'params': 4832020,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-RMS-Pico': {
+            'params': 8531652,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-RMS-Nano': {
+            'params': 14951284,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-RMS-Tiny': {
+            'params': 27818596,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ConvNeXt-RMS-Small': {
+            'params': 49453156,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+    },
+    'ResNet': {
+        'ResNet-18': {
+            'params': 11172292,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ResNet-34': {
+            'params': 21280452,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ResNet-50': {
+            'params': 23509956,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ResNet-101': {
+            'params': 42502084,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ResNet-152': {
+            'params': 58145732,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+    },
+    'ViT': {
+        'ViT-T16': {
+            'params': 5401156,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ViT-S16': {
+            'params': 21419140,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ViT-B16': {
+            'params': 85305604,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'ViT-L16': {
+            'params': 302644228,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+    },
+    'Swin': {
+        'Swin-T': {
+            'params': 27504334,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'Swin-S': {
+            'params': 48804958,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'Swin-B': {
+            'params': 86700156,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+        'Swin-L': {
+            'params': 194930872,
+            'metrics_path': '',
+            'state_dict_path': '',
+        },
+    },
+}
