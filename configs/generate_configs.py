@@ -61,8 +61,6 @@ MODEL_PRESETS = {
         "ResNet-101",
     ],
     "log_run_greatfacet_part_1": [
-        "ConvNeXt-Tiny",
-        "ConvNeXt-V2-Tiny",
         "ConvNeXt-RMS-Tiny",
     ],
     "log_run_greatfacet_part_2": [
@@ -72,12 +70,14 @@ MODEL_PRESETS = {
         "ConvNeXt-RMS-Pico",
         "ViT-B16",
         "Swin-B",
+        "ConvNeXt-RMS-Nano",
+    ],
+    "log_run_greatfacet_part_3": [
+        "ConvNeXt-Tiny",
+        "ConvNeXt-V2-Tiny",
         "ConvNeXt-Small",
         "ConvNeXt-V2-Small",
         "ConvNeXt-RMS-Small",
-    ],
-    "log_run_greatfacet_part_3": [
-        "ConvNeXt-RMS-Nano",
     ],
     "log_run_bigfacet_part_1": [
         "Swin-T",

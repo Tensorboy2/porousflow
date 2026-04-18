@@ -1109,23 +1109,23 @@ data = {
     'convnext': {
         'ConvNeXt-Atto': {
             'params': 3373884,
-            'metrics_path': '',
-            'state_dict_path': '',
+            'metrics_path': 'results/log_dispersion_all_models/ConvNeXt-Atto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': 'results/log_dispersion_all_models/ConvNeXt-Atto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
         },
         'ConvNeXt-Femto': {
             'params': 4832020,
-            'metrics_path': '',
+            'metrics_path': 'results/log_dispersion_all_models/ConvNeXt-Femto_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': '',
         },
         'ConvNeXt-Pico': {
             'params': 8531652,
-            'metrics_path': '',
+            'metrics_path': 'results/log_dispersion_all_models/ConvNeXt-Pico_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
             'state_dict_path': '',
         },
         'ConvNeXt-Nano': {
             'params': 14951284,
-            'metrics_path': '',
-            'state_dict_path': '',
+            'metrics_path': 'results/log_dispersion_all_models/ConvNeXt-Nano_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': 'results/log_dispersion_all_models/ConvNeXt-Nano_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
         },
         'ConvNeXt-Tiny': {
             'params': 27818596,
@@ -1156,8 +1156,8 @@ data = {
         },
         'ConvNeXt-V2-Nano': {
             'params': 14951284,
-            'metrics_path': '',
-            'state_dict_path': '',
+            'metrics_path': 'results/log_dispersion_all_models/ConvNeXt-V2-Nano_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse_metrics.zarr',
+            'state_dict_path': 'results/log_dispersion_all_models/ConvNeXt-V2-Nano_lr-0.001_wd-0.01_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_mse.pth',
         },
         'ConvNeXt-V2-Tiny': {
             'params': 27818596,
@@ -1274,3 +1274,80 @@ data = {
         },
     },
 }
+
+# show comparison of log vs original (asinh)
+fig, ax = plt.subplots(2,1, figsize=(figsize[0], figsize[1]*1.2), sharex=True, sharey=True)
+
+# validation plot
+for family, models in data.items():
+    for model, info in models.items():
+        params = info['params']
+        metrics_path = info['metrics_path']
+        val_r2 = None
+
+        if metrics_path and os.path.exists(metrics_path):
+            try:
+                root = zarr.open(metrics_path, mode='r')
+                val_r2 = root['R2_val'][:]
+                val_r2 = np.max(val_r2)
+                print(f"Loaded val R2 for {model} ({family}) from metrics: {val_r2:.5f}")
+            except Exception as e:
+                print(f"Error loading metrics for {model} ({family}): {e}")
+        else:
+            print(f"No metrics path for {model} ({family}), skipping.")
+
+        if val_r2 is not None:
+            ax[0].plot(params, 1 - val_r2, color=family_cmaps.get(family, 'C0'), marker=family_markers.get(family, 'o'),
+                       markersize=7, fillstyle='none', linestyle='', zorder=2)
+            ax[0].text(params, 1 - val_r2, model.split('-')[0], fontsize=6, ha='center', va='bottom')
+
+# test plot
+for family, models in data.items():
+    for model, info in models.items():
+        params = info['params']
+        state_dict_path = info['state_dict_path']
+        test_r2 = None
+
+        if False:#state_dict_path and os.path.exists(state_dict_path):
+            print(f"State dict found for {model} ({family}), running test script...")
+            # cmd = build_test_cmd(state_dict_path, model, family)
+            cmd = [
+                "python3", "run_model_test.py",
+                "--pretrained_path", state_dict_path,
+                "--model", family.lower(),
+                "--model_name", model+'_'+'log',
+                "--size", model.split('-')[1],
+                "--version", "rms",
+                "--task", "dispersion",
+                "--pe_encoder", "log",
+                "--loss_function", "mse"
+            ]
+            print("Running:", " ".join(cmd))
+            
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            match = re.search(r"Test R2:\s*([\d.]+)", result.stdout)
+            
+            if match:
+                test_r2 = float(match.group(1))
+                print(f"Test R2 for {model} ({family}): {test_r2:.5f}")
+                ax[1].plot(params, 1 - test_r2, color=family_cmaps.get(family, 'C0'), marker=family_markers.get(family, 'o'),
+                           markersize=7, fillstyle='none', linestyle='', zorder=2)
+                ax[1].text(params, 1 - test_r2, model.split('-')[0], fontsize=6, ha='center', va='bottom')
+            else:
+                print(f"No Test R2 found in output for {model} ({family}).")
+        else:
+            print(f"No state dict for {model} ({family}), skipping test R2.")
+
+ax[0].set_xscale('log')
+ax[0].set_yscale('log')
+ax[0].set_ylabel(r'Validation $1 - R^2$')
+ax[0].grid(True, which="both", ls="-", alpha=0.15)
+ax[1].set_xscale('log')
+ax[1].set_yscale('log')
+ax[1].set_xlabel('Total Parameters')
+ax[1].set_ylabel(r'Test $1 - R^2$')
+ax[1].grid(True, which="both", ls="-", alpha=0.15)
+plt.tight_layout()
+plt.savefig('thesis_plots/log_comparison_dispersion.pdf')
+plt.close()
+print("Saved thesis_plots/log_comparison_dispersion.pdf")
