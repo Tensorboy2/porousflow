@@ -37,9 +37,8 @@ fi
 # Show python info for debugging
 echo "Python: $(which python) $(python --version)"
 
-# ------------- Chunk calculation (FIXED) -------------
 # Split TOTAL samples across 1001 array tasks (0-1000)
-SAMPLES_PER_TASK=$(( (TOTAL + 1000) / 1001 ))  # ~24 samples per task
+SAMPLES_PER_TASK=$(( (TOTAL + 1000) / 1001 ))  # 24 samples per task
 START=$(( SLURM_ARRAY_TASK_ID * SAMPLES_PER_TASK ))
 END=$(( START + SAMPLES_PER_TASK - 1 ))
 
@@ -85,7 +84,7 @@ for SAMPLE_IDX in $(seq $START $END); do
     
     # Loop through Pe values for this sample
     for PE_IDX in $(seq 0 $((PE_COUNT-1))); do
-        # Safe Python check (FIXED: pass variables as args)
+        # Safe Python check 
         SHOULD_RUN=$(python - "$DATA_TYPE" "$SAMPLE_LOCAL" "$PE_IDX" <<'END'
 import zarr, numpy as np, sys
 data_type = sys.argv[1]

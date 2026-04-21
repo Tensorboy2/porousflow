@@ -8,18 +8,21 @@ The first step in data generation, is generating the domains. The domains are tw
 ```bash
 python3 src/porousflow/media_generator/media_generator.py N path
 ```
-Where $N$ is the number of samples required and path is the path to save the images.
+Where $N$ is the number of samples required and path is the path to save the images. Or with **slurm_generate_media.sh** on slurm clusters.
 
 The thesis runs on two targets, permeability and dispersion coefficients. Permeability is obtained from Lattice-Boltzmann (LBM) simulations in. This is done using the bash script **slurm_run_lbm.sh** for on a cluster with slurm. This launches array jobs of the lbm execution for each domain. 
 
 For dispersion coefficients, the velocity fields of the LBM simulation is used. The dispersion coefficients are obtained through tracer particle simulations using the Euler-Mayorama equation. Is executed using the **slurm_run_dispersion_array.sh**.
 
 ## Model training
-The model training can be prepared using the *config/generate_configs.py*. The script contains logic for preparing bash and slurm scripts for training on CPU, single GPU, or on a GPU cluster using slurm. No DDP logic is implemented as our models all fit with the dataset in vram. To generate a config the **--task** is set to either permeability or dispersion. Then the device is set to either cpu or gpu using **--device**. If the task is run on a single GPU station without slurm, add the flag **--herbie**. Next the models to train is set using predefined presets **--preset** in the script. The same logic holds for which experiemnts to ru, wheter it is to sweep some hyperparameter or just execute. It must be defined as an "experiment". Lastly a experiment name **--exp-name** to define a distinct name and output folder.
-
+The model training can be prepared using the *config/generate_configs.py*. The script contains logic for preparing bash and slurm scripts for training on CPU, single GPU, or on a GPU cluster using slurm. No DDP logic is implemented as our models all fit with the dataset in vram. To generate a config the **--task** is set to either permeability or dispersion. Then the device is set to either cpu or gpu using **--device**. If the task is run on a single GPU station without slurm, add the flag **--herbie**. Next the models to train is set using predefined presets **--preset** in the script. The same logic holds for which experiemnts to ru, wheter it is to sweep some hyperparameter or just execute. It must be defined as an "experiment". Lastly a experiment name **--exp-name** to define a distinct name and output folder. Execution looks like this:
 ```bash
 python3 ./configs/generate_configs.py --task _ --device _ (--herbie) --perset _ --experiment _ --exp-name _
 ```
+Then execute the resulting bash or slurm script.
+
+### Zarr->Numpy
+If ram on GPU is no issue, it is recommended to convert the zarr objects to numpy for faster dataloader. 
 
 ### Testing
 Running a model on the test data is done through **run_modle_test.py** using for example:
