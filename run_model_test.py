@@ -1,18 +1,13 @@
 from src.ml.trainer import Trainer
-# from src.ml.models.resnet import 
-# from src.ml.models.vit import 
 from src.ml.models.convnext import load_convnext_model
 from src.ml.models.vit import load_vit_model
 from src.ml.models.resnet import load_resnet_model
 from src.ml.models.SHViT import load_hierarchical_shvit
 from src.ml.models.swin import load_swin_model
 from src.ml.data_loader import get_permeability_dataloader, get_dispersion_dataloader
-from src.ml.trainer import Trainer
-from torch import optim
 import torch
 torch.manual_seed(0)
 import torch.nn as nn
-import yaml
 import os
 import argparse
 import zarr

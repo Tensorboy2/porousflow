@@ -17,6 +17,32 @@ def LBM_solver(solid,
             max_iterations=100_000,
             convergence_threshold=1e-8,
             force_strength=1e-5):
+    '''
+    Lattice Boltzmann Method (LBM) solver for 2D flow defined by the `solid` mask.
+    
+    :param solid: 2D boolean array where True = solid, False = fluid
+    :param force_dir: direction of body force (0 for x, 1 for y)
+    :param L_physical: physical length of the domain in the flow direction (m)
+    :param nu: kinematic viscosity of the fluid (m^2/s)
+    :param rho_phys: physical density of the fluid (kg/m^3)
+    :param g: gravitational acceleration (m/s^2)
+    :param tau: relaxation time for LBM (dimensionless, > 0.5 for stability)
+    :param max_iterations: maximum number of iterations to run
+    :param convergence_threshold: relative change in max velocity for convergence
+    :param force_strength: scaling factor for the body force (dimensionless)
+
+    :return u_phys: 2D array of velocity magnitudes in physical units (m/s)
+    :return kx_phys: permeability in x direction (m^2)
+    :return ky_phys: permeability in y direction (m^2)
+    :return iteration: number of iterations until convergence
+    :return Ma: Mach number of the flow (dimensionless)
+    :return Re_phys: Reynolds number in physical units (dimensionless)
+    :return dt: time step used in the simulation (s)
+    :return tau: relaxation time used in the simulation (dimensionless)
+    :return Re_lattice: Reynolds number in lattice units (dimensionless)
+    :return dx: lattice spacing (m)
+    :return F_lattice: body force per unit mass in lattice units (m/s^2)
+    '''
     Nx, Ny = solid.shape
 
     # fluid mask
@@ -32,18 +58,14 @@ def LBM_solver(solid,
                   1.0/36.0, 1.0/36.0, 1.0/36.0, 1.0/36.0], dtype=np.float64)
     bounce_back = np.array([0, 3, 4, 1, 2, 7, 8, 5, 6], dtype=np.int32)
 
-    # --------------------------------------------------------------------
     # parameter mapping
-    # --------------------------------------------------------------------
     cs = 1.0 / np.sqrt(3.0)
     dx = L_physical / Nx
     L_lattice = Ny
     nu_lattice = (tau - 0.5) / 3.0
     dt = nu_lattice * dx**2 / nu
 
-    # --------------------------------------------------------------------
     # Force: physical -> lattice
-    # --------------------------------------------------------------------
     F_lattice = force_strength*g* dt * dt / dx
 
     # initialize fields
@@ -69,9 +91,7 @@ def LBM_solver(solid,
                     feq = w[i] * rho[x, y] * (1.0 + 3.0*eu + 4.5*eu*eu - 1.5*u_sq)
                     f[x, y, i] = feq
 
-    # --------------------------------------------------------------------
     # main loop: collision (with Guo) -> streaming -> macroscopic update
-    # --------------------------------------------------------------------
     f_new = np.zeros((Nx, Ny, 9), dtype=np.float64)
 
     max_u = 0.0
@@ -124,8 +144,8 @@ def LBM_solver(solid,
         f, f_new = f_new, f
 
         # MACROSCOPIC quantities with forcing correction for momentum:
-        # rho = sum_i f_i
-        # u = (sum_i f_i e_i + 0.5 * F) / rho
+        # rho = sum_i N_i
+        # u = (sum_i N_i e_i + 0.5 * F) / rho
         for x in range(Nx):
             for y in range(Ny):
                 if fluid[x, y]:
@@ -159,9 +179,7 @@ def LBM_solver(solid,
                 break
             max_u = new_max_u
 
-    # --------------------------------------------------------------------
-    # permeability, convert back to physical units (kept your original code)
-    # --------------------------------------------------------------------
+    # permeability, convert back to physical units 
     sum_ux = 0.0
     sum_uy = 0.0
     fluid_count = 0

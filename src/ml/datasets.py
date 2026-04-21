@@ -1,4 +1,4 @@
-
+import numpy as np  
 import zarr
 from torch.utils.data import Dataset
 import torch
@@ -179,10 +179,8 @@ class DispersionDatasetCached(Dataset):
         return image, D, Pe
     
 
-import numpy as np  
 class DispersionDatasetMmap(Dataset):
     def __init__(self, npy_path, targets_path_x, targets_path_y, transform=None):
-        # Memory mapping: 0ms load time, 0 CPU decompression overhead
         self.images = np.load(npy_path, mmap_mode='r') 
         self.targets_x = np.load(targets_path_x, mmap_mode='r')
         self.targets_y = np.load(targets_path_y, mmap_mode='r')
@@ -205,7 +203,6 @@ class DispersionDatasetMmap(Dataset):
         Dy_val = self.targets_y[base_idx, pe_idx]
         
         # 2. Convert to tensors efficiently
-        # .copy() ensures the tensor owns its memory if the mmap pointer is volatile
         image = torch.from_numpy(image_np.copy()).float().unsqueeze(0) 
         # D = torch.tensor([Dx_val, Dy_val], dtype=torch.float32)
         Dx = torch.tensor(Dx_val).float().flatten()
@@ -214,7 +211,6 @@ class DispersionDatasetMmap(Dataset):
         
         # 3. Apply the transform
         if self.transform:
-            # Note: Ensure your transform handles these tensor shapes
             image, D = self.transform(image, Dx,Dy)
         else:
             D = torch.tensor([Dx[0],Dx[3]]).float()
@@ -253,7 +249,7 @@ class DispersionDatasetFull(Dataset):
         return self.total_len
     
     def __getitem__(self, idx):
-        # Map global idx → base image + Pe + direction
+        # Map global idx -> base image + Pe + direction
         base_idx = idx // self.samples_per_image
         inner_idx = idx % self.samples_per_image
         

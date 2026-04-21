@@ -17,13 +17,6 @@ else:
     from src.ml.datasets import PermeabilityDataset, DispersionDataset, DispersionDatasetCached, DispersionDatasetFull, DispersionDatasetMmap,PermeabilityDatasetMmap
 
 
-    
-   
-
-
-
-
-
 def get_permeability_dataloader(file_path,config):
     '''
     Docstring for get_permeability_dataloader

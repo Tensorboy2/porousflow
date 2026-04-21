@@ -8,6 +8,9 @@ import torchvision.transforms.functional as tf
 import random
 
 class PermeabilityTransform:
+    '''
+    Dataaugmentaion for permeability dataset. It performs one of the D4 transformations (rotations and flips) and optionally a periodic shift. 
+    '''
     def __init__(self, enable_shift=True):
         self.enable_shift = enable_shift
         self.permutations = [
@@ -43,6 +46,9 @@ class PermeabilityTransform:
 
 
 class DispersionTransform:
+    '''
+    Dataaugmentaion for dispersion dataset. It performs one of the limited D4 transformations (rotations and flips) and optionally a periodic shift.
+    '''
     def __init__(self, enable_shift=True):
         self.enable_shift = enable_shift
         self.permutations = [
