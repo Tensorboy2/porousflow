@@ -129,7 +129,7 @@ def worker(index, save_path, solid, ux, uy, Pe, Pe_index, K, nu):
     steps = int(50 * L**2)
 
     # align velicity fields along principal directions
-    A = np.linalg.inv(K)*nu
+    A = np.linalg.inv(K)*nu # This assumes that f=1 for the right units, which is the case for our LBM simulations.
     alpha_x, beta_x = A[0,0], A[0,1]
     alpha_y, beta_y = A[1,0], A[1,1]
 

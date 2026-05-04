@@ -28,9 +28,11 @@ plt.rcParams.update({
     "ytick.labelsize": 8,
     "legend.fontsize": 8,
 })
+from ploting import figsize
 fig, axes = plt.subplots(
     1, len(models),
-    figsize=(3.5 * 1.6, 3.2),
+    figsize=(figsize[0], figsize[1] * 0.8),
+    # figsize=(3.5 * 1.6, 3.2),
     sharex=True,
     sharey='row'
 )
@@ -74,6 +76,9 @@ for col, m in enumerate(models):
     ax_r2.set_yscale('log')
     # ax_r2.set_xscale('log')
     ax_r2.grid(alpha=0.3)
+
+    # increas x-ticks
+    ax_r2.set_xticks([0,1000, 2000])
 
 # axes[0, 0].set_ylabel('Loss')
 axes[0].set_ylabel(r'$1-R^2$')
