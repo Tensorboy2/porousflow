@@ -4,13 +4,11 @@ import matplotlib.pyplot as plt
 import zarr
 
 root = zarr.open('data/train.zarr',mode='r')
+solid = root['filled_images']['filled_images'][0]
 lbm_results = root['lbm_results']
-sample = np.argmax(lbm_results['K'][:,0,1])
-
-solid = root['filled_images']['filled_images'][sample]
-ux = lbm_results['ux_physical'][sample]
-uy = lbm_results['uy_physical'][sample]
-K = lbm_results['K'][sample]
+ux = lbm_results['ux_physical'][0]
+uy = lbm_results['uy_physical'][0]
+K = lbm_results['K'][0]
 
 def velocity_realignment(K,ux,uy,nu=1e-6):
     
@@ -22,7 +20,7 @@ def velocity_realignment(K,ux,uy,nu=1e-6):
     u_y_aligned = alpha_y * ux + beta_y * uy
     return u_x_aligned, u_y_aligned
 
-from src.porousflow.dispersion import run_dispersion_sim_physical
+from src.porousflow.dispersion import run_dispersion_sim_physical_test
 
 dx = 1.0
 L = solid.shape[0]
@@ -51,7 +49,7 @@ uy_max = np.max(np.abs(uy_norm))
 
 # --- 2. Molecular diffusivity ---
 # Pe = (mean_u * L) / D_m, and mean_u=1 after normalization
-Pe=10.0
+Pe=10
 D_m = L / Pe
 
 # --- 3. Time step calculation ---
@@ -68,36 +66,49 @@ dt_y = compute_dt(uy_max)
 tx = np.arange(steps) * dt_x
 ty = np.arange(steps) * dt_y
 
-# Normalize non aligned ux and uy for comparison
-ux_non_aligned_norm = ux / np.max(np.abs(ux[fluid_mask]))
-uy_non_aligned_norm = uy / np.max(np.abs(uy[fluid_mask]))
+_,_,frames = run_dispersion_sim_physical_test(solid, u_x_aligned,steps=200_000)
 
-M_aligned = run_dispersion_sim_physical(solid, u_x_aligned,num_particles=10000,D=D_m,steps=100_000)/D_m
-M_non_aligned = run_dispersion_sim_physical(solid, ux_non_aligned_norm,num_particles=10000,D=D_m,steps=100_000)/D_m
-
-# plot each component of M for both aligned and non-aligned cases
+# --- Plot snapshots ---
 from plotting.ploting import figsize
-fig, ax = plt.subplots(2,2, figsize=figsize)
-ax[0,0].plot(M_aligned[:,0,0], label='Aligned')
-ax[0,0].plot(M_non_aligned[:,0,0], label='Not Aligned')
-ax[0,0].set_title('M_xx')
-ax[0,0].legend()
 
-ax[0,1].plot(M_aligned[:,0,1], label='Aligned')
-ax[0,1].plot(M_non_aligned[:,0,1], label='Not Aligned')
-ax[0,1].set_title('M_xy')
-ax[0,1].legend()
+snapshot_indices = [0, 50, -1]  # or pick specific ones
 
-ax[1,0].plot(M_aligned[:,1,0], label='Aligned')
-ax[1,0].plot(M_non_aligned[:,1,0], label='Not Aligned')
-ax[1,0].set_title('M_xx')
-ax[1,0].legend()
+# Velocity magnitude for background
+umag = np.sqrt(u_x_aligned[:,:,0]**2 + u_x_aligned[:,:,1]**2)
 
-ax[1,1].plot(M_aligned[:,1,1], label='Aligned')
-ax[1,1].plot(M_non_aligned[:,1,1], label='Not Aligned')
-ax[1,1].set_title('M_xx')
-ax[1,1].legend()
+# Mask solid regions in umag
+umag_masked = np.where(fluid_mask, umag, np.nan)
 
+fig, axes = plt.subplots(1, len(snapshot_indices), figsize=(figsize[0],figsize[1]*0.6))
+
+for ax, idx in zip(axes, snapshot_indices):
+    particles = frames[idx]  # assumed shape (N, 2), columns: [x, y]
+
+    im = ax.imshow(
+        umag_masked.T,
+        cmap="viridis",
+        origin="lower",
+        interpolation="nearest",
+    )
+
+    # Overlay solid mask in gray
+    solid_overlay = np.where(solid, 0.0, np.nan)
+    ax.imshow(solid_overlay.T, cmap="gray", origin="lower", alpha=0.4, interpolation="nearest")
+
+    # Scatter particle positions
+    ax.scatter(
+        particles[:, 0],  # x  (column index)
+        particles[:, 1],  # y  (row index)
+        s=2,
+        c="red",
+        alpha=0.6,
+        linewidths=0,
+    )
+
+    # ax.set_title(f"Frame {idx if idx >= 0 else len(frames) + idx}")
+    ax.axis("off")
+
+# fig.colorbar(im, ax=axes[-1], label=r"$|\mathbf{u}|$", shrink=0.7)
 plt.tight_layout()
-plt.savefig('aligned_vs_not.png')
+plt.savefig("dispersion_snapshots.png", dpi=300)
 # plt.show()

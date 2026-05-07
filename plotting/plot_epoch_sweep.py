@@ -241,6 +241,7 @@ for model_family, model_list in models.items():
 
     # ----- Axis formatting -----
     ax.set_yscale('log')
+    # ax.set_xscale('log')
     ax.set_ylabel(r'Lowest $1 - R^2$')
     ax.set_xlabel('Training epochs')
     ax.set_xticks(length)
@@ -261,6 +262,33 @@ for model_family, model_list in models.items():
         handlelength=1.5,
         handletextpad=0.4,
     )
+
+    # Add loglog inset
+    if model_family == 'convnext':
+        placement = [0.75, 0.6, 0.2, 0.3]
+    elif model_family == 'convnext-v2': 
+        placement = [0.2, 0.6, 0.2, 0.3]
+    elif model_family == 'convnext-rms':
+        placement = [0.5, 0.55, 0.2, 0.3]
+    elif model_family == 'vit':
+        placement = [0.25, 0.3, 0.2, 0.3]
+    elif model_family == 'swin':
+        placement = [0.75, 0.45, 0.2, 0.3]
+    else:
+        placement = [0.6, 0.6, 0.2, 0.3]
+    inset_ax = fig.add_axes(placement,alpha=0.7)  # [left, bottom, width, height]
+    for line in ax.get_lines():
+        inset_ax.plot(line.get_xdata(), line.get_ydata(),
+                      color=line.get_color(),
+                      marker=line.get_marker(),
+                      markersize=3,
+                      linewidth=0.8,
+                      alpha=0.7)
+    inset_ax.set_xscale('log')
+    inset_ax.set_yscale('log')
+    # inset_ax.set_xticks(length)
+    inset_ax.grid(alpha=0.3)
+
 
     plt.tight_layout()
     plt.savefig(
