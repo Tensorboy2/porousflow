@@ -16,6 +16,7 @@ from tqdm import tqdm
 from sklearn.metrics import r2_score
 import h5py
 import torch.nn.functional as F
+from matplotlib.lines import Line2D
 
 
 datasets = {
@@ -55,6 +56,16 @@ def zarr_writer(path,data):
     for key, values in data.items():
         root.create_dataset(name=key, data=np.array(values), dtype='f4')
 
+# R2:
+def r2(y_true, y_pred):
+    print(type(y_true[0]), type(y_pred[0]))
+    ss_res = np.sum((y_true - y_pred) ** 2)
+    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+    print(f"R2 calculation: ss_res={ss_res}, ss_tot={ss_tot}, {ss_res / ss_tot}")
+    r2 = 1. - float(ss_res / ss_tot) if ss_tot > 0 else 0.0
+    print(r2, type(r2))
+    return r2
+
 from plotting.ploting import figsize
 def similarity_plot(targets,preds,path,R2):
     import matplotlib.pyplot as plt
@@ -68,7 +79,7 @@ def similarity_plot(targets,preds,path,R2):
     })
 
     titles = [r'$K_{xx}$', r'$K_{xy}$', r'$K_{yx}$', r'$K_{yy}$']
-    fig, ax = plt.subplots(1,2,figsize=(figsize[0],figsize[1]*0.8))
+    fig, ax = plt.subplots(1,2,figsize=(figsize[0],figsize[1]*1.0))
     index = [[0,3],[1,2]]
     targets=targets*8e-10
     preds = preds*8e-10
@@ -102,6 +113,58 @@ def similarity_plot(targets,preds,path,R2):
         ax[i].grid(alpha=0.3)
         ax[i].set_xlabel(r'Ground truth ($m^2$)')
         ax[i].legend(markerscale=4)
+
+    # Calculate R2 between K_xy and K_yx:
+    R2_xy_yx = r2(preds[:, 1], preds[:, 2])
+    # print(preds[:, 1]-preds[:, 2])
+    print(f"R² between K_xy and K_yx: {R2_xy_yx}")
+    # Add insett plot of K_xy vs K_yx:
+    inset_ax = fig.add_axes([0.78, 0.23, 0.18, 0.22])  # [left, bottom, width, height]
+    inset_ax.plot([targets[:, 1].min(), targets[:, 1].max()], [targets[:, 2].min(), targets[:, 2].max()], 'k--', alpha=0.2,linewidth=0.5)
+    inset_ax.plot(preds[:, 1], preds[:, 2],
+                    marker='o',
+                    linestyle='',
+                    markerfacecolor='C1',
+                    markeredgecolor='C1',
+                    markersize=0.7,
+                    markeredgewidth=0.4,
+                    alpha=0.5,
+                    label=rf"$1-R^2={R2_xy_yx:.2e}$"
+                    )
+    inset_ax.grid(alpha=0.3)
+    inset_ax.set_xlabel(r'$K_{yx}$', fontsize=8)
+    inset_ax.set_ylabel(r'$K_{xy}$', fontsize=8)
+    # remove ticks:
+    inset_ax.set_xticks([])
+    inset_ax.set_yticks([])
+    val = float(1 - R2_xy_yx)
+    mantissa, exp = f"{val:.1e}".split('e')
+    exp = int(exp)  # strips leading zeros and sign, e.g. 'e-04' -> -4
+    label = rf'$1-R^2={mantissa}\cdot 10^{{{exp}}}$'
+    inset_ax.annotate(label,(0.03,0.82),xycoords='axes fraction', fontsize=7)
+    print("target sym: ",1-r2(targets[:, 1], targets[:, 2]))
+    # inset_ax.legend(loc='upper left', markerscale=3, fontsize=7,frameon=False, handletextpad=0.1, borderpad=0.1)
+
+    # for i in range(2):
+    #     handles, labels = ax[i].get_legend_handles_labels()
+        
+    #     # Append the inset R² entry only to ax[1] (the right plot, where the inset lives)
+    #     if i == 1:
+    #         inset_handle = Line2D(
+    #             [], [],
+    #             marker='o',
+    #             linestyle='',
+    #             markerfacecolor='C1',
+    #             markeredgecolor='C1',
+    #             markersize=1.,
+    #             markeredgewidth=0.8,
+    #             alpha=0.5,
+    #             label=rf"$, 1-R^2={R2_xy_yx:.2e}$"
+    #         )
+    #         handles.append(inset_handle)
+        
+    #     ax[i].legend(handles=handles, loc='upper left', markerscale=4)
+
     ax[0].set_ylabel(r'Predicted ($m^2$)')
     plt.tight_layout()
     plt.savefig(f'thesis_plots/{path}_similarity_plot_v2.png', dpi=300, bbox_inches='tight')

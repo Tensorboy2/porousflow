@@ -341,11 +341,13 @@ data = {
         },
         'Swin-B': {
             'params': 86700156,
+            # 'metrics_path': 'results/dispersion_all_models_2/Swin-B_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr',
             'metrics_path': 'results/dispersion_all_models_2/Swin-B_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr',
             'state_dict_path': 'results/dispersion_all_models_2/Swin-B_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse.pth',
         },
         'Swin-L': {
             'params': 194930872,
+            # 'metrics_path': 'results/dispersion_all_models_2/Swin-L_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr',
             'metrics_path': 'results/dispersion_all_models_2/Swin-L_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse_metrics.zarr',
             'state_dict_path': 'results/dispersion_all_models_2/Swin-L_lr-0.0001_wd-0.05_bs-128_epochs-1000_cosine_warmup-18750.0_clipgrad-True_pe-encoder-log_pe-4_rmse.pth',
         },
@@ -654,6 +656,8 @@ for family, models in data_log.items():
         params = info['params']
         metrics_path = info['metrics_path']
         val_r2 = None
+        if metrics_path and not os.path.exists(metrics_path):
+            print(f"  PATH NOT FOUND: {metrics_path}")
 
         if metrics_path and os.path.exists(metrics_path):
             try:
@@ -662,7 +666,7 @@ for family, models in data_log.items():
                 val_r2 = np.max(val_r2)
                 print(f"Loaded val R2 for {model} ({family}) from metrics: {val_r2:.5f}")
             except Exception as e:
-                print(f"Error loading metrics for {model} ({family}): {e}")
+                print(f"Error loading metrics for {model} ({family}): {e}, {metrics_path}")
         else:
             print(f"No metrics path for {model} ({family}), skipping.")
 
@@ -685,15 +689,17 @@ for family, models in data.items():
         params = info['params']
         metrics_path = info['metrics_path']
         val_r2 = None
-
+        # print(metrics_path)
         if metrics_path and os.path.exists(metrics_path):
+            # print(metrics_path)
             try:
+                # print(metrics_path)
                 root = zarr.open(metrics_path, mode='r')
                 val_r2 = root['R2_val'][:]
                 val_r2 = np.max(val_r2)
                 print(f"Loaded val R2 for {model} ({family}) from metrics: {val_r2:.5f}")
             except Exception as e:
-                print(f"Error loading metrics for {model} ({family}): {e}")
+                print(f"Error loading metrics for {model} ({family}): {e}, {metrics_path},{val_r2}")
         else:
             print(f"No metrics path for {model} ({family}), skipping.")
 
