@@ -202,6 +202,21 @@ MODEL_PRESETS = {
         # All ResNet
         "ResNet-18", "ResNet-34", "ResNet-50", "ResNet-101", "ResNet-152",
     ],
+    # '''
+    # Models to rerun with specific hp:
+    #     - ConvNeXt-RMS-B/L
+    #     - Swin-L
+    #     - ResNet-18
+    #     - ConvNeXt-V2-B/L
+    #     - ConvNeXt-B/L
+    # '''
+    "rerun": [
+        "ConvNeXt-RMS-Base", "ConvNeXt-RMS-Large",
+        "Swin-L",
+        "ResNet-18",
+        "ConvNeXt-V2-Base", "ConvNeXt-V2-Large",
+        "ConvNeXt-Base", "ConvNeXt-Large",
+    ]
 }
 
 # Default model preset to use:
@@ -417,7 +432,7 @@ TASK_CONFIGS = {
         "warmup_steps": (16000/128)*30, # steps per epoch * warmup epochs
         "num_training_samples": None,  # None = use all data
         "num_validation_samples": None,
-        "num_workers": 4,
+        "num_workers": 2,
         "prefetch_factor": 4,
         "pin_memory": True,
         'loss_function': 'mse'
@@ -590,7 +605,7 @@ class ModelRegistry:
             "type": "swin",
             "size": "L",
             "clip_grad": True,
-            "warmup_steps": 20*16000/128,
+            # "warmup_steps": 20*16000/128,
             "description": "Sliding window Vision Transformer Large with 4x4 patches"
         },
         # Vision Transformers
